@@ -1,0 +1,1136 @@
+[
+  {
+    "id": "herbe",
+    "etape": "prairie",
+    "categorie": "plante",
+    "mode": "tuile",
+    "venue": "semee",
+    "roles": [
+      "producteur"
+    ],
+    "activite": "toujours",
+    "saisons_actives": [
+      "printemps",
+      "ete",
+      "automne"
+    ],
+    "hiver": "dormant",
+    "besoins": [
+      {
+        "type": "stat",
+        "stat": "fertilite",
+        "op": ">=",
+        "valeur": 5,
+        "portee": "zone",
+        "rayon": 0
+      },
+      {
+        "type": "stat",
+        "stat": "ombre",
+        "op": "<=",
+        "valeur": 60,
+        "portee": "zone",
+        "rayon": 0
+      }
+    ],
+    "capacite": {
+      "par": "tuiles",
+      "couvert": "herbe",
+      "nombre": 1
+    },
+    "reproduction": {
+      "saisons": [
+        "printemps",
+        "ete",
+        "automne"
+      ],
+      "portee_moyenne": 1,
+      "intervalle_jours": 1
+    },
+    "interactions": [],
+    "production": {
+      "seve_par_s": 0.01,
+      "pages_photo": 1
+    },
+    "depart_apres_jours": 1,
+    "croissance": {
+      "jours_adulte": 1,
+      "extension_par_jour": 0.15,
+      "ombre_projetee": 0,
+      "rayon_ombre": 0,
+      "cout_seve": 5,
+      "cout_graines": 0
+    },
+    "modele": "herbe",
+    "palette": [
+      "#789B4A",
+      "#A2B968",
+      "#D3CC92"
+    ],
+    "papiers_rares": [
+      "journal",
+      "washi",
+      "calque",
+      "dore"
+    ]
+  },
+  {
+    "id": "fleurs",
+    "etape": "prairie",
+    "categorie": "plante",
+    "mode": "tuile",
+    "venue": "semee",
+    "roles": [
+      "producteur"
+    ],
+    "activite": "toujours",
+    "saisons_actives": [
+      "printemps",
+      "ete",
+      "automne"
+    ],
+    "hiver": "dormant",
+    "besoins": [
+      {
+        "type": "stat",
+        "stat": "fertilite",
+        "op": ">=",
+        "valeur": 20,
+        "portee": "zone",
+        "rayon": 0
+      },
+      {
+        "type": "stat",
+        "stat": "humidite",
+        "op": ">=",
+        "valeur": 20,
+        "portee": "zone",
+        "rayon": 0
+      },
+      {
+        "type": "stat",
+        "stat": "ombre",
+        "op": "<=",
+        "valeur": 40,
+        "portee": "zone",
+        "rayon": 0
+      }
+    ],
+    "capacite": {
+      "par": "tuiles",
+      "couvert": "fleurs",
+      "nombre": 1
+    },
+    "reproduction": {
+      "saisons": [
+        "printemps",
+        "ete"
+      ],
+      "portee_moyenne": 1,
+      "intervalle_jours": 2
+    },
+    "interactions": [],
+    "production": {
+      "seve_par_s": 0.02,
+      "pages_photo": 1
+    },
+    "depart_apres_jours": 1,
+    "croissance": {
+      "jours_adulte": 2,
+      "extension_par_jour": 0.05,
+      "ombre_projetee": 0,
+      "rayon_ombre": 0,
+      "cout_seve": 10,
+      "cout_graines": 1
+    },
+    "modele": "fleurs",
+    "palette": [
+      "#F0DB77",
+      "#D8A6B6",
+      "#719551"
+    ],
+    "papiers_rares": [
+      "journal",
+      "washi",
+      "calque",
+      "dore"
+    ]
+  },
+  {
+    "id": "sauterelle",
+    "etape": "prairie",
+    "categorie": "insecte",
+    "mode": "population",
+    "venue": "spontanee",
+    "roles": [
+      "herbivore"
+    ],
+    "activite": "jour",
+    "saisons_actives": [
+      "printemps",
+      "ete",
+      "automne"
+    ],
+    "hiver": "dormant",
+    "besoins": [
+      {
+        "type": "couvert",
+        "couvert": "herbe",
+        "min": 0.2,
+        "portee": "ile"
+      }
+    ],
+    "capacite": {
+      "par": "tuiles",
+      "couvert": "herbe",
+      "nombre": 2,
+      "max": 80
+    },
+    "reproduction": {
+      "saisons": [
+        "printemps",
+        "ete"
+      ],
+      "portee_moyenne": 3,
+      "intervalle_jours": 2
+    },
+    "interactions": [
+      {
+        "type": "mange",
+        "cible": "herbe",
+        "intensite": 0.03
+      }
+    ],
+    "production": {
+      "seve_par_s": 0,
+      "pages_photo": 1
+    },
+    "depart_apres_jours": 1,
+    "modele": "sauterelle",
+    "palette": [
+      "#80A653",
+      "#AFBA71",
+      "#796B46"
+    ],
+    "papiers_rares": [
+      "journal",
+      "washi",
+      "calque",
+      "dore"
+    ]
+  },
+  {
+    "id": "abeille",
+    "etape": "prairie",
+    "categorie": "insecte",
+    "mode": "population",
+    "venue": "spontanee",
+    "roles": [
+      "pollinisateur"
+    ],
+    "activite": "jour",
+    "saisons_actives": [
+      "printemps",
+      "ete",
+      "automne"
+    ],
+    "hiver": "hiberne",
+    "besoins": [
+      {
+        "type": "couvert_nb",
+        "couvert": "fleurs",
+        "min": 6,
+        "portee": "ile"
+      },
+      {
+        "type": "amenagement",
+        "id": "hotel_insectes",
+        "min": 1,
+        "portee": "zone",
+        "rayon": 6
+      }
+    ],
+    "capacite": {
+      "par": "tuiles",
+      "couvert": "fleurs",
+      "nombre": 1,
+      "max": 40
+    },
+    "reproduction": {
+      "saisons": [
+        "printemps",
+        "ete"
+      ],
+      "portee_moyenne": 2,
+      "intervalle_jours": 2
+    },
+    "interactions": [
+      {
+        "type": "pollinise",
+        "cible": "fleurs",
+        "intensite": 0.8
+      }
+    ],
+    "production": {
+      "seve_par_s": 0,
+      "pages_photo": 1
+    },
+    "depart_apres_jours": 1,
+    "modele": "abeille",
+    "palette": [
+      "#C9A34D",
+      "#4A382A",
+      "#E5D9B9"
+    ],
+    "papiers_rares": [
+      "journal",
+      "washi",
+      "calque",
+      "dore"
+    ]
+  },
+  {
+    "id": "ver",
+    "etape": "prairie",
+    "categorie": "insecte",
+    "mode": "population",
+    "venue": "spontanee",
+    "roles": [
+      "decomposeur"
+    ],
+    "activite": "toujours",
+    "saisons_actives": [
+      "printemps",
+      "ete",
+      "automne",
+      "hiver"
+    ],
+    "hiver": "actif",
+    "besoins": [
+      {
+        "type": "stat",
+        "stat": "humidite",
+        "op": ">=",
+        "valeur": 35,
+        "portee": "zone",
+        "rayon": 3
+      },
+      {
+        "type": "stat",
+        "stat": "fertilite",
+        "op": ">=",
+        "valeur": 15,
+        "portee": "zone",
+        "rayon": 3
+      }
+    ],
+    "capacite": {
+      "par": "tuiles",
+      "couvert": "vegetal",
+      "nombre": 2,
+      "max": 100
+    },
+    "reproduction": {
+      "saisons": [
+        "printemps",
+        "automne"
+      ],
+      "portee_moyenne": 2,
+      "intervalle_jours": 2
+    },
+    "interactions": [
+      {
+        "type": "fertilise",
+        "cible": "herbe",
+        "intensite": 0.1
+      },
+      {
+        "type": "fertilise",
+        "cible": "fleurs",
+        "intensite": 0.1
+      },
+      {
+        "type": "fertilise",
+        "cible": "ronce",
+        "intensite": 0.1
+      },
+      {
+        "type": "fertilise",
+        "cible": "bouleau",
+        "intensite": 0.1
+      }
+    ],
+    "production": {
+      "seve_par_s": 0,
+      "pages_photo": 1
+    },
+    "depart_apres_jours": 1,
+    "modele": "ver",
+    "palette": [
+      "#A96F69",
+      "#CF9B8F",
+      "#73504A"
+    ],
+    "papiers_rares": [
+      "journal",
+      "washi",
+      "calque",
+      "dore"
+    ]
+  },
+  {
+    "id": "lapin",
+    "etape": "prairie",
+    "categorie": "animal",
+    "mode": "agent",
+    "venue": "spontanee",
+    "roles": [
+      "herbivore"
+    ],
+    "activite": "crepuscule",
+    "saisons_actives": [
+      "printemps",
+      "ete",
+      "automne",
+      "hiver"
+    ],
+    "hiver": "actif",
+    "besoins": [
+      {
+        "type": "couvert",
+        "couvert": "herbe",
+        "min": 0.3,
+        "portee": "zone",
+        "rayon": 5
+      },
+      {
+        "type": "amenagement",
+        "id": "tas_pierres",
+        "min": 1,
+        "portee": "zone",
+        "rayon": 4
+      }
+    ],
+    "capacite": {
+      "par": "tuiles",
+      "couvert": "herbe",
+      "nombre": 5,
+      "max": 12
+    },
+    "reproduction": {
+      "saisons": [
+        "printemps",
+        "ete"
+      ],
+      "portee_moyenne": 3,
+      "intervalle_jours": 3
+    },
+    "interactions": [
+      {
+        "type": "mange",
+        "cible": "herbe",
+        "intensite": 0.12
+      }
+    ],
+    "production": {
+      "seve_par_s": 0,
+      "pages_photo": 1
+    },
+    "depart_apres_jours": 1,
+    "modele": "lapin",
+    "palette": [
+      "#A58B6A",
+      "#D6C7A9",
+      "#6C5948"
+    ],
+    "papiers_rares": [
+      "journal",
+      "washi",
+      "calque",
+      "dore"
+    ]
+  },
+  {
+    "id": "alouette",
+    "etape": "prairie",
+    "categorie": "animal",
+    "mode": "agent",
+    "venue": "spontanee",
+    "roles": [
+      "insectivore"
+    ],
+    "activite": "jour",
+    "saisons_actives": [
+      "printemps",
+      "ete",
+      "automne"
+    ],
+    "hiver": "migre",
+    "besoins": [
+      {
+        "type": "espece",
+        "id": "sauterelle",
+        "min": 4,
+        "portee": "ile"
+      },
+      {
+        "type": "couvert",
+        "couvert": "ouvert",
+        "min": 0.4,
+        "portee": "ile"
+      }
+    ],
+    "capacite": {
+      "par": "espece",
+      "id": "sauterelle",
+      "nombre": 4,
+      "max": 4
+    },
+    "reproduction": {
+      "saisons": [
+        "printemps",
+        "ete"
+      ],
+      "portee_moyenne": 2,
+      "intervalle_jours": 3
+    },
+    "interactions": [
+      {
+        "type": "mange",
+        "cible": "sauterelle",
+        "intensite": 0.2
+      }
+    ],
+    "production": {
+      "seve_par_s": 0,
+      "pages_photo": 1
+    },
+    "depart_apres_jours": 1,
+    "modele": "alouette",
+    "palette": [
+      "#A18A65",
+      "#D4C5A5",
+      "#66533D"
+    ],
+    "papiers_rares": [
+      "journal",
+      "washi",
+      "calque",
+      "dore"
+    ]
+  },
+  {
+    "id": "ronce",
+    "etape": "lisiere",
+    "categorie": "plante",
+    "mode": "tuile",
+    "venue": "semee",
+    "roles": [
+      "abri",
+      "producteur"
+    ],
+    "activite": "toujours",
+    "saisons_actives": [
+      "printemps",
+      "ete",
+      "automne"
+    ],
+    "hiver": "dormant",
+    "besoins": [
+      {
+        "type": "stat",
+        "stat": "fertilite",
+        "op": ">=",
+        "valeur": 25,
+        "portee": "zone",
+        "rayon": 0
+      },
+      {
+        "type": "stat",
+        "stat": "ombre",
+        "op": "<=",
+        "valeur": 70,
+        "portee": "zone",
+        "rayon": 0
+      }
+    ],
+    "capacite": {
+      "par": "tuiles",
+      "couvert": "ronce",
+      "nombre": 1
+    },
+    "reproduction": {
+      "saisons": [
+        "ete",
+        "automne"
+      ],
+      "portee_moyenne": 1,
+      "intervalle_jours": 3
+    },
+    "interactions": [
+      {
+        "type": "abrite",
+        "cible": "lapin",
+        "intensite": 0.6
+      },
+      {
+        "type": "abrite",
+        "cible": "herisson",
+        "intensite": 0.6
+      },
+      {
+        "type": "abrite",
+        "cible": "merle",
+        "intensite": 0.6
+      },
+      {
+        "type": "abrite",
+        "cible": "renard",
+        "intensite": 0.6
+      }
+    ],
+    "production": {
+      "seve_par_s": 0.03,
+      "pages_photo": 1
+    },
+    "depart_apres_jours": 1,
+    "croissance": {
+      "jours_adulte": 3,
+      "extension_par_jour": 0.04,
+      "ombre_projetee": 15,
+      "rayon_ombre": 1,
+      "cout_seve": 20,
+      "cout_graines": 2
+    },
+    "modele": "ronce",
+    "palette": [
+      "#527345",
+      "#7D6A48",
+      "#493B50"
+    ],
+    "papiers_rares": [
+      "journal",
+      "washi",
+      "calque",
+      "dore"
+    ]
+  },
+  {
+    "id": "bouleau",
+    "etape": "lisiere",
+    "categorie": "plante",
+    "mode": "tuile",
+    "venue": "semee",
+    "roles": [
+      "producteur"
+    ],
+    "activite": "toujours",
+    "saisons_actives": [
+      "printemps",
+      "ete",
+      "automne"
+    ],
+    "hiver": "dormant",
+    "besoins": [
+      {
+        "type": "stat",
+        "stat": "fertilite",
+        "op": ">=",
+        "valeur": 20,
+        "portee": "zone",
+        "rayon": 0
+      },
+      {
+        "type": "stat",
+        "stat": "ombre",
+        "op": "<=",
+        "valeur": 30,
+        "portee": "zone",
+        "rayon": 0
+      }
+    ],
+    "capacite": {
+      "par": "tuiles",
+      "couvert": "arbre",
+      "nombre": 1
+    },
+    "reproduction": {
+      "saisons": [
+        "automne"
+      ],
+      "portee_moyenne": 1,
+      "intervalle_jours": 3
+    },
+    "interactions": [
+      {
+        "type": "fertilise",
+        "cible": "herbe",
+        "intensite": 0.08
+      },
+      {
+        "type": "fertilise",
+        "cible": "fleurs",
+        "intensite": 0.08
+      },
+      {
+        "type": "fertilise",
+        "cible": "ronce",
+        "intensite": 0.08
+      },
+      {
+        "type": "fertilise",
+        "cible": "bouleau",
+        "intensite": 0.08
+      }
+    ],
+    "production": {
+      "seve_par_s": 0.05,
+      "pages_photo": 1
+    },
+    "depart_apres_jours": 1,
+    "croissance": {
+      "jours_adulte": 12,
+      "extension_par_jour": 0.01,
+      "ombre_projetee": 25,
+      "rayon_ombre": 1.5,
+      "cout_seve": 40,
+      "cout_graines": 3
+    },
+    "modele": "bouleau",
+    "palette": [
+      "#E3DFD0",
+      "#4A453B",
+      "#8AA15A"
+    ],
+    "papiers_rares": [
+      "journal",
+      "washi",
+      "calque",
+      "dore"
+    ]
+  },
+  {
+    "id": "herisson",
+    "etape": "lisiere",
+    "categorie": "animal",
+    "mode": "agent",
+    "venue": "spontanee",
+    "roles": [
+      "insectivore"
+    ],
+    "activite": "nuit",
+    "saisons_actives": [
+      "printemps",
+      "ete",
+      "automne"
+    ],
+    "hiver": "hiberne",
+    "besoins": [
+      {
+        "type": "couvert_nb",
+        "couvert": "ronce",
+        "min": 3,
+        "portee": "ile"
+      },
+      {
+        "type": "amenagement",
+        "id": "tas_bois",
+        "min": 1,
+        "portee": "zone",
+        "rayon": 5
+      },
+      {
+        "type": "espece",
+        "id": "ver",
+        "min": 1,
+        "portee": "zone",
+        "rayon": 6
+      }
+    ],
+    "capacite": {
+      "par": "amenagement",
+      "id": "tas_bois",
+      "nombre": 2,
+      "max": 4
+    },
+    "reproduction": {
+      "saisons": [
+        "printemps"
+      ],
+      "portee_moyenne": 2,
+      "intervalle_jours": 3
+    },
+    "interactions": [
+      {
+        "type": "mange",
+        "cible": "ver",
+        "intensite": 0.3
+      },
+      {
+        "type": "mange",
+        "cible": "sauterelle",
+        "intensite": 0.2
+      },
+      {
+        "type": "evite",
+        "cible": "renard"
+      }
+    ],
+    "production": {
+      "seve_par_s": 0,
+      "pages_photo": 1
+    },
+    "depart_apres_jours": 1,
+    "modele": "herisson",
+    "palette": [
+      "#8A6A4F",
+      "#C9B49A",
+      "#3B2E25"
+    ],
+    "papiers_rares": [
+      "journal",
+      "washi",
+      "calque",
+      "dore"
+    ]
+  },
+  {
+    "id": "merle",
+    "etape": "lisiere",
+    "categorie": "animal",
+    "mode": "agent",
+    "venue": "spontanee",
+    "roles": [
+      "omnivore",
+      "disperseur"
+    ],
+    "activite": "jour",
+    "saisons_actives": [
+      "printemps",
+      "ete",
+      "automne",
+      "hiver"
+    ],
+    "hiver": "actif",
+    "besoins": [
+      {
+        "type": "couvert_nb",
+        "couvert": "ronce",
+        "min": 2,
+        "portee": "ile"
+      },
+      {
+        "type": "espece",
+        "id": "ver",
+        "min": 1,
+        "portee": "ile"
+      }
+    ],
+    "capacite": {
+      "par": "tuiles",
+      "couvert": "ronce",
+      "nombre": 2,
+      "max": 6
+    },
+    "reproduction": {
+      "saisons": [
+        "printemps",
+        "ete"
+      ],
+      "portee_moyenne": 2,
+      "intervalle_jours": 3
+    },
+    "interactions": [
+      {
+        "type": "mange",
+        "cible": "ver",
+        "intensite": 0.2
+      },
+      {
+        "type": "mange",
+        "cible": "tircis",
+        "intensite": 0.1
+      },
+      {
+        "type": "mange",
+        "cible": "ronce",
+        "intensite": 0.08
+      },
+      {
+        "type": "disperse",
+        "cible": "ronce",
+        "intensite": 0.1,
+        "plante": "ronce"
+      }
+    ],
+    "production": {
+      "seve_par_s": 0,
+      "pages_photo": 1
+    },
+    "depart_apres_jours": 1,
+    "modele": "merle",
+    "palette": [
+      "#34312D",
+      "#C69A42",
+      "#6E5A45"
+    ],
+    "papiers_rares": [
+      "journal",
+      "washi",
+      "calque",
+      "dore"
+    ]
+  },
+  {
+    "id": "renard",
+    "etape": "lisiere",
+    "categorie": "animal",
+    "mode": "agent",
+    "venue": "spontanee",
+    "roles": [
+      "predateur"
+    ],
+    "activite": "crepuscule",
+    "saisons_actives": [
+      "printemps",
+      "ete",
+      "automne",
+      "hiver"
+    ],
+    "hiver": "actif",
+    "besoins": [
+      {
+        "type": "espece",
+        "id": "lapin",
+        "min": 6,
+        "portee": "ile"
+      },
+      {
+        "type": "couvert_nb",
+        "couvert": "ronce",
+        "min": 4,
+        "portee": "ile"
+      },
+      {
+        "type": "rayon_ile",
+        "min": 11
+      }
+    ],
+    "capacite": {
+      "par": "espece",
+      "id": "lapin",
+      "nombre": 4,
+      "max": 2
+    },
+    "reproduction": {
+      "saisons": [
+        "printemps"
+      ],
+      "portee_moyenne": 2,
+      "intervalle_jours": 6
+    },
+    "interactions": [
+      {
+        "type": "mange",
+        "cible": "lapin",
+        "intensite": 0.08
+      }
+    ],
+    "production": {
+      "seve_par_s": 0,
+      "pages_photo": 1
+    },
+    "depart_apres_jours": 1,
+    "modele": "renard",
+    "palette": [
+      "#B86632",
+      "#E1D2AF",
+      "#463C32"
+    ],
+    "papiers_rares": [
+      "journal",
+      "washi",
+      "calque",
+      "dore"
+    ]
+  },
+  {
+    "id": "tircis",
+    "etape": "lisiere",
+    "categorie": "insecte",
+    "mode": "population",
+    "venue": "spontanee",
+    "roles": [
+      "pollinisateur"
+    ],
+    "activite": "jour",
+    "saisons_actives": [
+      "printemps",
+      "ete"
+    ],
+    "hiver": "dormant",
+    "besoins": [
+      {
+        "type": "couvert",
+        "couvert": "herbe",
+        "min": 0.3,
+        "portee": "ile"
+      },
+      {
+        "type": "stat",
+        "stat": "ombre",
+        "op": ">=",
+        "valeur": 20,
+        "portee": "zone",
+        "rayon": 2
+      },
+      {
+        "type": "stat",
+        "stat": "ombre",
+        "op": "<=",
+        "valeur": 50,
+        "portee": "zone",
+        "rayon": 2
+      },
+      {
+        "type": "couvert_nb",
+        "couvert": "fleurs",
+        "min": 4,
+        "portee": "ile"
+      }
+    ],
+    "capacite": {
+      "par": "tuiles",
+      "couvert": "fleurs",
+      "nombre": 2,
+      "max": 30
+    },
+    "reproduction": {
+      "saisons": [
+        "printemps",
+        "ete"
+      ],
+      "portee_moyenne": 2,
+      "intervalle_jours": 2
+    },
+    "interactions": [
+      {
+        "type": "pollinise",
+        "cible": "fleurs",
+        "intensite": 0.4
+      }
+    ],
+    "production": {
+      "seve_par_s": 0,
+      "pages_photo": 1
+    },
+    "depart_apres_jours": 1,
+    "modele": "tircis",
+    "palette": [
+      "#69513B",
+      "#D2BD7C",
+      "#99815A"
+    ],
+    "papiers_rares": [
+      "journal",
+      "washi",
+      "calque",
+      "dore"
+    ]
+  },
+  {
+    "id": "coulemelle",
+    "etape": "lisiere",
+    "categorie": "champignon",
+    "mode": "tuile",
+    "venue": "spontanee",
+    "roles": [
+      "decomposeur"
+    ],
+    "activite": "toujours",
+    "saisons_actives": [
+      "printemps",
+      "ete",
+      "automne",
+      "hiver"
+    ],
+    "hiver": "actif",
+    "besoins": [
+      {
+        "type": "stat",
+        "stat": "fertilite",
+        "op": ">=",
+        "valeur": 35,
+        "portee": "zone",
+        "rayon": 0
+      },
+      {
+        "type": "stat",
+        "stat": "humidite",
+        "op": ">=",
+        "valeur": 40,
+        "portee": "zone",
+        "rayon": 0
+      },
+      {
+        "type": "amenagement",
+        "id": "tas_bois",
+        "min": 1,
+        "portee": "zone",
+        "rayon": 2
+      }
+    ],
+    "capacite": {
+      "par": "amenagement",
+      "id": "tas_bois",
+      "nombre": 3,
+      "max": 24
+    },
+    "reproduction": {
+      "saisons": [
+        "automne"
+      ],
+      "portee_moyenne": 1,
+      "intervalle_jours": 2
+    },
+    "interactions": [
+      {
+        "type": "fertilise",
+        "cible": "herbe",
+        "intensite": 0.12
+      },
+      {
+        "type": "fertilise",
+        "cible": "fleurs",
+        "intensite": 0.12
+      },
+      {
+        "type": "fertilise",
+        "cible": "ronce",
+        "intensite": 0.12
+      },
+      {
+        "type": "fertilise",
+        "cible": "bouleau",
+        "intensite": 0.12
+      }
+    ],
+    "production": {
+      "seve_par_s": 0.02,
+      "pages_photo": 1
+    },
+    "depart_apres_jours": 1,
+    "modele": "coulemelle",
+    "palette": [
+      "#D8C8A7",
+      "#8A6B4B",
+      "#EEE5D2"
+    ],
+    "papiers_rares": [
+      "journal",
+      "washi",
+      "calque",
+      "dore"
+    ]
+  }
+]
