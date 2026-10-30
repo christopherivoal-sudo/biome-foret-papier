@@ -401,6 +401,88 @@ function verifierEtapes(liste, ctx) {
   for (const id of ctx.ids) if (!debloquees.has(id)) avert('etapes.json', `l'espèce « ${id} » n'est débloquée par aucune étape`);
 }
 
+// ---------- Missions de la garde forestière (consigne 04) ----------
+const QUOI = ['photo', 'arrivee', 'semis', 'construction', 'recolte', 'evenement'];
+const EVENEMENTS_PROTO = ['floraison', 'orage', 'secheresse'];
+const CONDS_MISSION = ['couvert', 'couvert_nb', 'stat', 'amenagement', 'espece', 'arbre_adulte', 'nb_especes', 'harmonie'];
+function verifierMissions(liste, ctx) {
+  if (!Array.isArray(liste)) { erreur('missions', 'tableau attendu'); return []; }
+  const vus = new Set();
+  liste.forEach(m => {
+    const lieu = `mission ${m && m.id}`;
+    if (!estObjet(m)) { erreur('missions', 'objet attendu'); return; }
+    chercherNull(m, lieu);
+    if (!ID_RE.test(m.id || '')) erreur(lieu, 'id invalide');
+    if (vus.has(m.id)) erreur(lieu, 'id en double'); vus.add(m.id);
+    enumVal(m.etape, ETAPES, lieu, 'etape');
+    for (const k of Object.keys(m)) if (!['id', 'etape', 'objectif', 'recompense'].includes(k)) erreur(lieu, `champ inconnu « ${k} »`);
+    const r = m.recompense;
+    if (!estObjet(r)) erreur(lieu, 'recompense : objet attendu');
+    else { borne(r.seve, 20, 150, lieu, 'recompense.seve'); borne(r.graines, 0, 5, lieu, 'recompense.graines'); borne(r.pages, 0, 2, lieu, 'recompense.pages'); }
+    const o = m.objectif;
+    if (!estObjet(o)) { erreur(lieu, 'objectif : objet attendu'); return; }
+    const rangMission = ETAPES.indexOf(m.etape);
+    const tropTard = (etapeId, quoi) => { if (ETAPES.indexOf(etapeId) > rangMission) erreur(lieu, `${quoi} n'est disponible qu'à l'étape ${etapeId}`); };
+    if (o.type === 'etat') {
+      if (!Array.isArray(o.conditions) || !o.conditions.length) erreur(lieu, 'objectif état : conditions manquantes');
+      else o.conditions.forEach((c, i) => {
+        if (!CONDS_MISSION.includes(c.type)) erreur(lieu, `condition ${c.type} non autorisée dans une mission`);
+        if (c.portee === 'zone') erreur(lieu, 'portée zone interdite dans une mission');
+        verifierCondition(c, `${lieu}, condition ${i + 1}`, Object.assign({}, ctx, { dependances: [] }));
+        if ((c.type === 'espece' || c.type === 'arbre_adulte') && ctx.parId[c.id]) tropTard(ctx.parId[c.id].etape, c.id);
+      });
+    } else if (o.type === 'compteur') {
+      enumVal(o.quoi, QUOI, lieu, 'quoi');
+      positif(o.nombre, lieu, 'nombre', true);
+      if (o.nombre < 1) erreur(lieu, 'nombre ≥ 1 attendu');
+      if ('moment' in o) (Array.isArray(o.moment) ? o.moment : [o.moment]).forEach(x => enumVal(x, MOMENTS, lieu, 'moment'));
+      if ('nouvelle' in o && o.nouvelle !== true) erreur(lieu, 'nouvelle : seulement true (ou champ omis)');
+      for (const k of Object.keys(o)) if (!['type', 'quoi', 'id', 'nombre', 'moment', 'nouvelle'].includes(k)) erreur(lieu, `objectif : champ inconnu « ${k} »`);
+      if ('id' in o) {
+        if (['photo', 'arrivee', 'semis'].includes(o.quoi)) {
+          const e = ctx.parId[o.id];
+          if (!e) erreur(lieu, `espèce « ${o.id} » inexistante`);
+          else { tropTard(e.etape, o.id); if (o.quoi === 'semis' && e.venue !== 'semee') erreur(lieu, `« ${o.id} » ne se sème pas`); }
+        } else if (o.quoi === 'construction') {
+          if (!ctx.amenagements.includes(o.id)) erreur(lieu, `aménagement « ${o.id} » inconnu`);
+          else if (ctx.actionsData[o.id]) tropTard(ctx.actionsData[o.id].etape, o.id);
+        } else if (o.quoi === 'evenement') enumVal(o.id, ctx.evenements || EVENEMENTS_PROTO, lieu, 'événement');
+        else erreur(lieu, `« id » sans objet pour ${o.quoi}`);
+      } else if (o.quoi === 'construction' || o.quoi === 'evenement') erreur(lieu, `« id » obligatoire pour ${o.quoi}`);
+    } else erreur(lieu, `objectif : type ${JSON.stringify(o.type)} inconnu (etat ou compteur)`);
+  });
+  return [...vus];
+}
+
+const TUTORIEL = ['accueil', 'carnet', 'sauterelles', 'semer_fleurs', 'besoin_partiel', 'hotel', 'alouette', 'abri_lapin', 'premiere_nuit', 'mare_paillis', 'harmonie', 'lisiere'];
+const ALERTES = ['floraison', 'orage', 'secheresse', 'fin_evenement', 'nouvelle_mission', 'mission_reussie', 'depart_espece', 'nuit', 'hiver', 'retour_hors_ligne'];
+function verifierGarde(t, nomFichier, especes, idsMissions) {
+  const g = t.garde, m = t.missions;
+  if (!estObjet(g)) { erreur(nomFichier, 'rubrique « garde » manquante'); return; }
+  const lieu = `${nomFichier}, garde`;
+  verifierChaine(g.nom, 30, lieu, 'nom');
+  const bloc = (obj, cles, max, nom, exacte = true) => {
+    if (!estObjet(obj)) { erreur(lieu, `${nom} : objet attendu`); return; }
+    for (const k of cles) if (!(k in obj)) erreur(lieu, `${nom}.${k} manquant`);
+    for (const [k, s] of Object.entries(obj)) { if (exacte && !cles.includes(k)) erreur(lieu, `${nom}.${k} : clé inattendue`); verifierChaine(s, max, lieu, `${nom}.${k}`); }
+  };
+  bloc(g.tutoriel, TUTORIEL, 90, 'tutoriel');
+  bloc(g.reactions, especes.map(e => e.id), 80, 'reactions');
+  bloc(g.alertes, ALERTES, 80, 'alertes');
+  bloc(g.indices, ['blocage', 'pub_naturaliste'], 90, 'indices');
+  if (estObjet(g.alertes)) {
+    if (typeof g.alertes.depart_espece === 'string' && !g.alertes.depart_espece.includes('{manque}')) erreur(lieu, 'alertes.depart_espece doit contenir {manque}');
+    if (typeof g.alertes.retour_hors_ligne === 'string' && !g.alertes.retour_hors_ligne.includes('{nombre}')) erreur(lieu, 'alertes.retour_hors_ligne doit contenir {nombre}');
+  }
+  if (!estObjet(m)) { erreur(nomFichier, 'rubrique « missions » manquante'); return; }
+  for (const id of idsMissions) if (!estObjet(m[id])) erreur(`${nomFichier}, missions`, `textes de la mission « ${id} » manquants`);
+  for (const [id, x] of Object.entries(m)) {
+    const l = `${nomFichier}, mission ${id}`;
+    if (!idsMissions.includes(id)) { erreur(l, 'mission sans mécanique dans missions.json'); continue; }
+    verifierChaine(x.titre, 40, l, 'titre'); verifierChaine(x.texte, 90, l, 'texte'); verifierChaine(x.reussite, 80, l, 'reussite');
+  }
+}
+
 // ---------- Programme principal ----------
 function main() {
   const a = args();
@@ -413,21 +495,37 @@ function main() {
   const amenData = lireJSON(path.join(RACINE, 'data/amenagements.json'), false);
   const amenagements = amenData ? verifierAmenagements(amenData, { parId }) : AMENAGEMENTS_DEFAUT;
   const amenIds = amenData ? amenData.filter(x => x.type === 'amenagement').map(x => x.id) : AMENAGEMENTS_DEFAUT;
+  const fichierMissions = a.missions || 'data/missions.json';
+  const missionsData = lireJSON(path.resolve(RACINE, fichierMissions), !!a.missions);
   const evData = lireJSON(path.join(RACINE, 'data/evenements.json'), false);
 
-  const ctx = { ids, amenagements: amenIds, actions: amenagements, dependances: [], evenements: evData ? evData.map(e => e.id) : null };
+  const ctx = { ids, parId, amenagements: amenIds, actions: amenagements, actionsData: Object.fromEntries((amenData || []).map(x => [x.id, x])), dependances: [], evenements: evData ? evData.map(e => e.id) : null };
   especes.forEach(e => verifierEspece(e, ctx));
   verifierDependances(especes, ctx);
 
   const etData = lireJSON(path.join(RACINE, 'data/etapes.json'), false);
   if (etData) verifierEtapes(etData, ctx);
 
+  const idsMissions = missionsData ? verifierMissions(missionsData, ctx) : [];
   const fichierFR = a.fr || 'data/textes/fr.json';
   const fr = lireJSON(path.resolve(RACINE, fichierFR));
   if (fr) verifierTextes(fr, rel(fichierFR), especes, ctx);
+  // Textes de la garde : dans fr.json (rubriques garde et missions), ou dans un fichier à part (--garde).
+  const garde = a.garde ? lireJSON(path.resolve(RACINE, a.garde)) : (fr && (fr.garde || fr.missions) ? fr : null);
+  if (garde) verifierGarde(garde, rel(a.garde || fichierFR), especes, idsMissions);
+  else if (missionsData) erreur('missions', 'textes de la garde et des missions introuvables');
   const fichierEN = a.en || 'data/textes/en.json';
   const en = lireJSON(path.resolve(RACINE, fichierEN), !!a.en);
-  if (en) { verifierTextes(en, rel(fichierEN), especes, ctx); if (fr) comparerLangues(fr, en); }
+  if (en) {
+    verifierTextes(en, rel(fichierEN), especes, ctx);
+    if (fr) {
+      // La garde et les missions peuvent attendre leur traduction : simple avertissement.
+      const frComp = Object.assign({}, fr);
+      for (const k of ['garde', 'missions']) if (k in fr && !(k in en)) { avert('FR/EN', `rubrique « ${k} » pas encore traduite`); delete frComp[k]; }
+      comparerLangues(frComp, en);
+      if (en.garde) verifierGarde(en, rel(fichierEN), especes, idsMissions);
+    }
+  }
 
   // Rapport
   const nbErr = problemes.filter(p => p.niv === 'ERREUR').length;
