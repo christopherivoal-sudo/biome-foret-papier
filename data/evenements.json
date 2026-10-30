@@ -1,0 +1,43 @@
+[
+  {
+    "id": "floraison",
+    "saisons": { "printemps": 1 },
+    "conditions": [],
+    "duree_jours": 1,
+    "effets": [
+      { "type": "multiplicateur_graines", "cible": "fleurs", "facteur": 2 },
+      { "type": "multiplicateur_croissance", "cible": "pollinisateur", "facteur": 1.5 }
+    ],
+    "papier": { "id": "washi", "multiplicateur": 5 },
+    "roblox": { "achetable": true, "portee": "serveur", "delai_min_minutes": 15 },
+    "statut": "proto"
+  },
+  {
+    "id": "orage",
+    "saisons": { "ete": 0.6, "automne": 0.3 },
+    "conditions": [],
+    "duree_jours": 0.25,
+    "effets": [
+      { "type": "stat_tuile", "stat": "humidite", "delta": 30, "portee": "ile" },
+      { "type": "abattre_arbre", "nombre": 1, "chance": 0.5 },
+      { "type": "abri_animaux" }
+    ],
+    "papier": { "id": "journal", "multiplicateur": 5 },
+    "roblox": { "achetable": true, "portee": "serveur", "delai_min_minutes": 15 },
+    "statut": "proto"
+  },
+  {
+    "id": "secheresse",
+    "saisons": { "ete": 0.25 },
+    "conditions": [{ "type": "etape", "min": "lisiere" }],
+    "duree_jours": 2,
+    "repos_annees": 1,
+    "effets": [
+      { "type": "stat_tuile_par_s", "stat": "humidite", "delta": -0.05, "cumul_max": 20, "plancher": 10 }
+    ],
+    "papier": { "id": "calque", "multiplicateur": 2 },
+    "recompense": { "condition": [{ "type": "harmonie", "min": 0.5 }], "pages": 3, "seve": 200 },
+    "roblox": { "achetable": false, "portee": "serveur", "delai_min_minutes": 15 },
+    "statut": "proto"
+  }
+]

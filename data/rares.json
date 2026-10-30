@@ -1,0 +1,6 @@
+[
+  { "id": "journal", "chance_base": 0.0167, "garantie_apres": 20, "statut": "proto" },
+  { "id": "washi",   "chance_base": 0.0167, "garantie_apres": 20, "statut": "proto" },
+  { "id": "calque",  "chance_base": 0.0125, "garantie_apres": 20, "statut": "plus_tard" },
+  { "id": "dore",    "chance_base": 0.0033, "garantie_apres": 0,  "statut": "plus_tard" }
+]

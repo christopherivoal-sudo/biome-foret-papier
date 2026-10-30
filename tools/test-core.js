@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Tests de src/core.js (sprints 1 et 2). Usage : node tools/test-core.js
+// Tests de src/core.js (sprints 1 à 3). Usage : node tools/test-core.js
 'use strict';
 const Core = require('../src/core.js');
 const data = Core.preparer(require('./donnees.js')());
@@ -359,6 +359,248 @@ console.log('Déterminisme avec l\'écologie');
   const c = JSON.parse(JSON.stringify(a));
   avancer(a, 300); avancer(c, 300);
   verifier('reprise depuis une sauvegarde JSON identique', JSON.stringify(a) === JSON.stringify(c));
+}
+
+// =====================================================================
+// Sprint 3 : événements, papiers rares, hors ligne
+// =====================================================================
+const brutes = require('./donnees.js');
+// Données modifiées pour un test (sans toucher aux vraies) : modif(données brutes) puis preparer.
+const variante = modif => { const d = brutes(); modif(d); return Core.preparer(d); };
+// Force le départ d'un événement à la prochaine mesure (la garde l'a déjà annoncé).
+function forcer(e, id) {
+  const h = Core.horloge(e);
+  e.meteo.tirage = h.annee + '-' + h.saison;
+  e.meteo.prevu = { id, debut: e.temps + 1, annonce: true };
+}
+const humMoy = e => Core.resume(e, data).humidite;
+// Force puis lance l'événement (les événements démarrent au pas écologique suivant, toutes les 5 s).
+function demarrer(e, d, id) { forcer(e, id); for (let k = 0; k < 6 && !e.meteo.actif; k++) Core.tick(e, d, 1); }
+
+console.log('Événements : tirage et annonce');
+{
+  const e = Core.creer(data, { graine: 31 });
+  avancer(e, 5);
+  verifier('printemps : une floraison est prévue (1 par printemps)', e.meteo.prevu && e.meteo.prevu.id === 'floraison', e.meteo.prevu);
+  const debut = e.meteo.prevu.debut;
+  verifier('elle commence dans la saison, ni trop tôt ni trop tard', debut >= 60 && debut + 240 <= 720 - 60, debut);
+  while (!evts(e, 'evenement', 'floraison').length && e.temps < 720) avancer(e, 1);
+  const an = evts(e, 'annonce', 'floraison')[0], ev = evts(e, 'evenement', 'floraison')[0];
+  verifier('la garde l\'annonce environ 30 s avant', an && ev && ev.t - an.t >= 25 && ev.t - an.t <= 35, [an, ev]);
+  verifier('meteo() renvoie l\'événement en cours', Core.meteo(e, data).actif.id === 'floraison');
+  avancer(e, 250);
+  verifier('la floraison dure 1 jour puis s\'achève', !e.meteo.actif && evts(e, 'evenement_fin', 'floraison').length === 1);
+  verifier('pas de 2e floraison le même printemps', !e.meteo.prevu);
+}
+{
+  let seche = 0, total = 0;
+  for (let g = 1; g <= 200; g++) {
+    const e = Core.creer(data, { graine: g });
+    e.temps = 720; e.saison = 'ete';
+    avancer(e, 5);
+    if (e.meteo.prevu && e.meteo.prevu.id === 'secheresse') seche++;
+    const f = Core.creer(data, { graine: g });
+    f.etape = 'lisiere'; f.temps = 720 * 5; f.saison = 'ete'; f.meteo.derniere.secheresse = 0;
+    avancer(f, 5);
+    if (f.meteo.prevu && f.meteo.prevu.id === 'secheresse') seche++;
+    const k = Core.creer(data, { graine: g });
+    k.etape = 'lisiere'; k.temps = 720 * 5; k.saison = 'ete';
+    avancer(k, 5);
+    if (k.meteo.prevu && k.meteo.prevu.id === 'secheresse') total++;
+  }
+  verifier('jamais de sécheresse en Prairie, ni deux étés de suite', seche === 0, seche);
+  verifier('en Lisière, sécheresse dans environ 25 % des étés', total > 30 && total < 70, total);
+}
+
+console.log('Floraison : graines ×2, mission « événement »');
+{
+  const base = Core.creer(data, { graine: 32 });
+  base.etape = 'lisiere';
+  const i = Core.idx(C + 2, C + 2);
+  Object.assign(base.tuiles[i], { c: 'fleurs', e: 'fleurs', age: 5, f: 40, h: 40, hb: 40, graines: 0 });
+  avancer(base, 3);
+  const a = JSON.parse(JSON.stringify(base)), b = JSON.parse(JSON.stringify(base));
+  forcer(a, 'floraison');
+  b.meteo.tirage = a.meteo.tirage; b.meteo.prevu = null;
+  a.missions.actives = [{ id: 'floraison_traversee', n: 0, remplie: false }];
+  avancer(a, 2); a.tuiles[i].graines = 0; b.tuiles[i].graines = 0;
+  avancer(a, 60); avancer(b, 60);
+  const ga = a.tuiles[i].graines, gb = b.tuiles[i].graines;
+  verifier('une fleur donne deux fois plus de graines pendant la floraison', gb > 0 && Math.abs(ga / gb - 2) < 0.01, [ga, gb]);
+  avancer(a, 240);
+  verifier('mission « floraison_traversee » remplie à la fin de la floraison', a.missions.actives[0].remplie);
+}
+
+console.log('Orage : pluie, abri, foudre');
+{
+  const d2 = variante(d => { d.evenements.find(x => x.id === 'orage').effets.find(x => x.type === 'abattre_arbre').chance = 1; });
+  const e = Core.creer(d2, { graine: 33 });
+  e.etape = 'lisiere';
+  e.temps = 720 + 30; e.saison = 'ete';
+  const bi = Core.idx(C + 5, C - 3);
+  Object.assign(e.tuiles[bi], { c: 'arbre', e: 'bouleau', age: 20, f: 40, nichoir: false });
+  const lapin = Core.ajouterAgent(e, 'lapin', C, C);
+  Object.assign(lapin, { x: C + 3, y: C, tx: C + 3, ty: C });
+  const h0 = humMoy(e);
+  demarrer(e, d2, 'orage');
+  Core.tick(e, d2, 1);
+  verifier('l\'orage mouille toute l\'île d\'un coup', humMoy(e) > h0 + 20, [h0, humMoy(e)]);
+  verifier('les animaux se mettent à l\'abri (le lapin rentre au foyer)', e.meteo.abri && lapin.tx === lapin.hx && lapin.ty === lapin.hy);
+  const t = e.tuiles[bi];
+  verifier('la foudre abat le bouleau adulte : tas de bois mort naturel', t.c === 'bois_mort' && t.a === 'tas_bois' && t.naturel && !t.e && evts(e, 'foudre', 'bouleau').length === 1, t);
+  verifier('le bois mort compte comme un tas de bois (hérisson)', Core.evaluer(e, d2, { type: 'amenagement', id: 'tas_bois', min: 1, portee: 'ile' }).ok);
+  const s0 = e.seve;
+  const r = Core.action(e, d2, 'retirer', C + 5, C - 3);
+  verifier('retirer le bois tombé ne rapporte rien', r.ok && e.seve === s0 && r.rendu === 0);
+  for (let k = 0; k < 45; k++) Core.tick(e, d2, 1);
+  verifier('l\'humidité reste haute pendant l\'orage', humMoy(e) > h0 + 20);
+  for (let k = 0; k < 20; k++) Core.tick(e, d2, 1);
+  verifier('fin de l\'orage : les animaux ressortent', !e.meteo.actif && !e.meteo.abri);
+  for (let k = 0; k < 720; k++) Core.tick(e, d2, 1);
+  verifier('3 jours plus tard, l\'humidité est revenue à la normale', Math.abs(e.meteo.humidite) < 1, e.meteo.humidite);
+}
+{
+  const d2 = variante(d => { d.evenements.find(x => x.id === 'orage').effets.find(x => x.type === 'abattre_arbre').chance = 1; });
+  const e = Core.creer(d2, { graine: 34 });
+  e.etape = 'lisiere'; e.temps = 750; e.saison = 'ete';
+  const bi = Core.idx(C + 5, C - 3);
+  Object.assign(e.tuiles[bi], { c: 'arbre', e: 'bouleau', age: 20, f: 40, nichoir: true });
+  const s0 = e.seve;
+  demarrer(e, d2, 'orage');
+  verifier('un nichoir sur l\'arbre abattu est remboursé en entier', e.tuiles[bi].c === 'bois_mort' && e.seve - s0 >= 50, e.seve - s0);
+}
+
+console.log('Sécheresse : épreuve douce et récompense');
+{
+  const e = Core.creer(data, { graine: 35 });
+  e.etape = 'lisiere'; e.temps = 750; e.saison = 'ete';
+  const h0 = humMoy(e);
+  demarrer(e, data, 'secheresse');
+  avancer(e, 470);
+  const m = Core.resume(e, data);
+  verifier('l\'humidité baisse (au plus −20)', m.humidite < h0 - 5 && e.meteo.humidite >= -20, [h0, m.humidite, e.meteo.humidite]);
+  verifier('aucune tuile sous le plancher de 10 à cause de la sécheresse', Core.tuilesIle(e).every(i => e.tuiles[i].h >= 10 - 1e-9));
+  e.harmonie = 0.9;
+  const p0 = e.pages, s0 = e.seve;
+  avancer(e, 10);
+  const fin = evts(e, 'evenement_fin', 'secheresse')[0];
+  verifier('harmonie ≥ 50 % à la fin : 3 pages et 200 sève', fin && fin.reussi && e.pages === p0 + 3 && e.seve - s0 >= 200, fin);
+  verifier('le joueur a été prévenu de la fin', !e.meteo.actif);
+}
+{
+  const e = Core.creer(data, { graine: 36 });
+  e.etape = 'lisiere'; e.temps = 750; e.saison = 'ete';
+  demarrer(e, data, 'secheresse');
+  avancer(e, 470);
+  e.harmonie = 0.3; e.harmonieHist = [];
+  const p0 = e.pages;
+  // l'harmonie est recalculée toutes les 5 s : on la remet basse juste avant la fin
+  while (e.meteo.actif) { e.harmonie = 0.3; Core.tick(e, data, 1); }
+  const fin = evts(e, 'evenement_fin', 'secheresse')[0];
+  verifier('harmonie trop basse : pas de récompense, mais pas de punition', fin && fin.reussi === false && e.pages === p0, fin);
+}
+
+console.log('Papiers rares');
+{
+  const e = Core.creer(data, { graine: 37 });
+  e.harmonie = 0.5;
+  let j = 0, w = 0;
+  const n = 30000;
+  for (let k = 0; k < n; k++) { const p = Core.tirerPapier(e, data, 'lapin'); if (p === 'journal') j++; if (p === 'washi') w++; }
+  verifier('chance de base ≈ 1/60 pour le journal et pour le washi', Math.abs(j / n - 1 / 60) < 0.004 && Math.abs(w / n - 1 / 60) < 0.004, [j / n, w / n]);
+  verifier('calque et doré ne sortent pas dans le prototype', Core.chancesRares(e, data).map(c => c.id).join() === 'journal,washi');
+  e.harmonie = 0.9;
+  verifier('harmonie > 80 % : chances × 1,2', Math.abs(Core.chancesRares(e, data)[0].chance - 0.0167 * 1.2) < 1e-9);
+  e.harmonie = 0.5;
+  demarrer(e, data, 'floraison');
+  const ch = Core.chancesRares(e, data).find(c => c.id === 'washi');
+  verifier('floraison : washi × 5 et garantie affichée', Math.abs(ch.chance - 0.0167 * 5) < 1e-9 && ch.evenement && ch.garantieDans === 20, ch);
+  let pire = 0;
+  for (let serie = 0; serie < 300; serie++) {
+    let k = 0, p;
+    do { k++; p = Core.tirerPapier(e, data, 'fleurs'); } while (p !== 'washi' && k < 100);
+    pire = Math.max(pire, k);
+  }
+  verifier('garantie : un washi au plus tard au 20e essai pendant la floraison', pire <= 20, pire);
+}
+{
+  const e = Core.creer(data, { graine: 38 });
+  avancer(e, 30);
+  verifier('photo d\'un papier absent refusée', Core.photographier(e, data, 'sauterelle', 'washi').raison === 'pas_de_specimen');
+  const z = Object.keys(e.populations.sauterelle)[0];
+  e.meteo.tirage = '0-printemps'; e.meteo.prevu = null; // pas de floraison pendant ce test
+  const fin = e.temps + 240;
+  e.rares.push({ id: 'sauterelle', papier: 'washi', fin, zone: +z });
+  const l = Core.raresPresents(e, data).filter(r => r.fin === fin);
+  verifier('le spécimen rare est listé avec sa position', l.length === 1 && l[0].x !== undefined && l[0].reste === 240, l);
+  const p0 = e.pages;
+  const r = Core.photographier(e, data, 'sauterelle', 'washi');
+  verifier('photographié : nouvelle carte, 3 pages (+1 pour la première photo)', r.ok && r.carte && e.collection['sauterelle:washi'] && e.pages === p0 + 4, [r, e.pages - p0]);
+  verifier('deuxième photo du même papier : pas de nouvelle carte', !Core.photographier(e, data, 'sauterelle', 'washi').carte);
+  avancer(e, 245);
+  verifier('après sa durée, il reprend un papier normal', !Core.raresPresents(e, data).some(r => r.fin === fin));
+}
+{
+  const d2 = variante(d => { d.rares.forEach(r => { r.chance_base = 0.05; }); });
+  const e = Core.creer(d2, { graine: 39 });
+  for (let k = 0; k < 600; k++) Core.tick(e, d2, 1);
+  const rares = evts(e, 'rare');
+  verifier('des spécimens rares apparaissent aux arrivées, touffes et nuées', rares.length > 0, rares.length);
+  verifier('chaque spécimen a une espèce, un papier et une position', rares.every(r => d2.especes[r.id] && ['journal', 'washi'].includes(r.papier) && r.x !== undefined));
+}
+
+console.log('Hors ligne');
+{
+  const e = Core.creer(data, { graine: 40 });
+  avancer(e, 240);
+  e.seve = 0;
+  const bi = Core.idx(C + 6, C);
+  Object.assign(e.tuiles[bi], { c: 'arbre', e: 'bouleau', age: 1, f: 40 });
+  const avant = { temps: e.temps, saison: Core.horloge(e).saison, prevu: JSON.stringify(e.meteo.prevu), actif: JSON.stringify(e.meteo.actif) };
+  const prod = Core.productionSeve(e, data) * (0.5 + e.harmonie);
+  const r = Core.horsLigne(e, data, 10 * 3600);
+  verifier('absence de 10 h comptée 8 h (plafond)', r.duree === 8 * 3600 && r.plafonne);
+  verifier('sève à 50 % du taux', Math.abs(r.seve - Math.floor(prod * 0.5 * 8 * 3600)) <= 1 && e.seve === r.seve, [r.seve, prod]);
+  verifier('heure et saison figées, aucun événement', e.temps === avant.temps && Core.horloge(e).saison === avant.saison && JSON.stringify(e.meteo.prevu) === avant.prevu && JSON.stringify(e.meteo.actif) === avant.actif && !evts(e, 'evenement').some(j => j.t === e.temps));
+  verifier('les plantes ont poussé (bouleau adulte)', e.tuiles[bi].age >= 12, e.tuiles[bi].age);
+  verifier('le rapport est noté au journal', evts(e, 'retour').length === 1);
+  const d = Core.doublerRetour(e, r);
+  verifier('« Retour doublé » : une seule fois', d.ok && e.seve === 2 * r.seve && !Core.doublerRetour(e, r).ok);
+}
+{
+  const e = Core.creer(data, { graine: 41 });
+  e.seve = 500;
+  Core.action(e, data, 'tas_pierres', C + 4, C);
+  const r = Core.horsLigne(e, data, 3600);
+  verifier('arrivées résolues au retour (sauterelles, lapin)', r.nouvelles.includes('sauterelle') && r.nouvelles.includes('lapin'), r);
+  const l = e.agents.filter(a => a.esp === 'lapin');
+  verifier('le lapin est déjà chez lui, pas au bord de l\'île', l.length >= 1 && l.every(a => a.m === 'vit' && a.x === a.hx && a.y === a.hy), l);
+  verifier('renforts hors ligne plafonnés', l.length <= 1 + Core.P.renfortsHorsLigne);
+  const m = e.missions.actives;
+  verifier('les arrivées hors ligne comptent pour les missions', m.every(a => a.id !== 'visiteurs_de_lisiere') && Array.isArray(m));
+}
+{
+  const e = Core.creer(data, { graine: 42 });
+  e.etape = 'lisiere';
+  const h = Core.ajouterAgent(e, 'herisson', C, C);
+  h.mal = 0.95;
+  Core.horsLigne(e, data, 8 * 3600);
+  verifier('aucun départ hors ligne : le compteur de manque repart de zéro', e.agents.includes(h) && h.mal === 0 && !evts(e, 'depart').length);
+  avancer(e, 30);
+  verifier('pas de départ immédiat au retour', !evts(e, 'depart').length);
+}
+
+console.log('Anciennes sauvegardes et déterminisme');
+{
+  const e = Core.creer(data, { graine: 43 });
+  avancer(e, 60);
+  delete e.meteo; delete e.rares; delete e.collection;
+  let ok = true;
+  try { avancer(e, 30); Core.photographier(e, data, 'sauterelle'); Core.horsLigne(e, data, 60); } catch (err) { ok = false; console.log(err); }
+  verifier('une sauvegarde du sprint 2 reprend sans erreur', ok && e.meteo && Array.isArray(e.rares));
+  const a = Core.creer(data, { graine: 44 }), b = Core.creer(data, { graine: 44 });
+  avancer(a, 1500); avancer(b, 1500);
+  verifier('même graine → même île après 25 min, événements compris', JSON.stringify(a) === JSON.stringify(b) && evts(a, 'evenement').length + a.meteo.tirage.length > 0);
 }
 
 console.log(`\n${total - echecs}/${total} tests réussis.`);

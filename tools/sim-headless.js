@@ -3,6 +3,8 @@
 // Usage : node tools/sim-headless.js [--parties 20] [--minutes 60] [--graine 1] [--detail]
 // Mesure : première arrivée, passage à la Lisière, venue des 14 espèces, départs, rythme des événements,
 // sève, fertilité et humidité. Le joueur agit au plus une fois toutes les 4 secondes.
+// Sprint 3 : événements (nombre, effet sur l'humidité, récompense de la sécheresse), papiers rares
+// (spécimens apparus, cartes de collection), retour après 8 h hors ligne (mesuré sur une copie à 30 min).
 'use strict';
 const Core = require('../src/core.js');
 const data = Core.preparer(require('./donnees.js')());
@@ -29,6 +31,8 @@ function joueur(e) {
   if (m) return Core.reclamerMission(e, data, m.id);
   const aPhotographier = Core.especesPresentes(e, data).find(id => !(e.carnet[id] && e.carnet[id].photo));
   if (aPhotographier) return Core.photographier(e, data, aPhotographier);
+  const rare = Core.raresPresents(e, data).find(r => !e.collection[r.id + ':' + r.papier]);
+  if (rare) return Core.photographier(e, data, rare.id, rare.papier);
   const mure = T.find(o => o.t.graines >= 1);
   if (mure) return essayer('recolter', mure.i);
 
@@ -99,9 +103,12 @@ function joueur(e) {
 // ---------- Une partie ----------
 function partie(graine) {
   const e = Core.creer(data, { graine });
-  const r = { graine, premiereArrivee: null, lisiere: null, venues: {}, partis: {}, departsIndiv: {}, evenements: [], seve: {}, a15: null, maxTrou: 0 };
+  const r = { graine, premiereArrivee: null, lisiere: null, venues: {}, partis: {}, departsIndiv: {}, evenements: [], seve: {}, a15: null, maxTrou: 0,
+    meteo: [], rares: 0, raresManques: 0, humMin: 100, retour: null };
   let attente = 0, dernierEvt = 0, lu = 0;
-  const VISIBLES = new Set(['arrivee', 'renfort', 'naissance', 'predation', 'dispersion', 'repas', 'mission', 'depart', 'migration', 'hibernation', 'reveil', 'etape', 'pollinisation', 'graines', 'surpaturage']);
+  const VISIBLES = new Set(['arrivee', 'renfort', 'naissance', 'predation', 'dispersion', 'repas', 'mission', 'depart', 'migration', 'hibernation', 'reveil', 'etape', 'pollinisation', 'graines', 'surpaturage',
+    'annonce', 'evenement', 'evenement_fin', 'foudre', 'rare', 'collection']);
+  let ev = null;
   for (let t = 1; t <= MINUTES * 60; t++) {
     Core.tick(e, data, 1);
     for (const j of e.journal.filter(j => j.t === e.temps)) {
@@ -112,11 +119,26 @@ function partie(graine) {
       }
       if (j.type === 'parti') r.partis[j.id] = (r.partis[j.id] || 0) + 1;
       if (j.type === 'depart') r.departsIndiv[j.id] = (r.departsIndiv[j.id] || 0) + 1;
+      if (j.type === 'evenement') { ev = { id: j.id, debut: e.temps, humAvant: Core.resume(e, data).humidite, humMin: 100, especesAvant: Core.especesPresentes(e, data).length }; r.meteo.push(ev); }
+      if (j.type === 'evenement_fin' && ev) { Object.assign(ev, { reussi: j.reussi, especesApres: Core.especesPresentes(e, data).length, flAvant: ev.flAvant }); ev = null; }
+      if (j.type === 'foudre') r.meteo[r.meteo.length - 1].foudre = true;
+      if (j.type === 'rare') r.rares++;
       r.evenements.push(j.type);
     }
     // Plantes semées : « venue » au premier semis.
     for (const id of ['herbe', 'fleurs', 'ronce', 'bouleau']) if (r.venues[id] === undefined && Core.presence(e, data, id) > 0) r.venues[id] = e.temps;
+    if (ev && t % 10 === 0) { const h = Core.resume(e, data).humidite; ev.humMin = Math.min(ev.humMin, h); }
     if (--attente <= 0) { joueur(e); attente = DELAI_JOUEUR; }
+    if (t === 1800) {
+      // Retour après 8 h d'absence, sur une copie (la partie continue normalement).
+      const copie = JSON.parse(JSON.stringify(e));
+      const avant = Core.especesPresentes(copie, data).length;
+      const rap = Core.horsLigne(copie, data, 10 * 3600);
+      r.retour = { seve: rap.seve, plafonne: rap.plafonne, nouvelles: rap.nouvelles.length, arrivees: rap.arrivees.length, especesAvant: avant, especesApres: Core.especesPresentes(copie, data).length, seveAvant: Math.round(e.seve) };
+      // Une minute de jeu après le retour : aucun départ immédiat attendu.
+      for (let k = 0; k < 60; k++) Core.tick(copie, data, 1);
+      r.retour.departs1min = copie.journal.filter(j => j.type === 'depart' && j.t > copie.temps - 60).length;
+    }
     if (r.lisiere === null && e.etape === 'lisiere') r.lisiere = e.temps;
     if (t % 300 === 0) r.seve[t / 60] = Math.round(e.seve);
     if (t === 900) {
@@ -125,6 +147,8 @@ function partie(graine) {
     }
   }
   r.fin = Core.resume(e, data);
+  r.cartes = Object.keys(e.collection).length;
+  r.pages = e.pages;
   return r;
 }
 
@@ -163,4 +187,19 @@ if (res[0].a15) {
   }
 }
 console.log(`Fin : fertilité ${moy(r => r.fin.fertilite).toFixed(1)}, humidité ${moy(r => r.fin.humidite).toFixed(1)}, harmonie ${moy(r => r.fin.harmonie).toFixed(2)}, agents ${moy(r => r.fin.agents).toFixed(1)}, espèces ${moy(r => r.fin.especes.length).toFixed(1)}`);
+// Sprint 3
+const evts = res.flatMap(r => r.meteo);
+console.log(`\nÉvénements (${(evts.length / PARTIES).toFixed(1)} par partie) :`);
+for (const id of ['floraison', 'orage', 'secheresse']) {
+  const l = evts.filter(x => x.id === id);
+  if (!l.length) { console.log(`  ${id.padEnd(11)} jamais`); continue; }
+  const pertes = l.filter(x => x.especesApres !== undefined).map(x => x.especesAvant - x.especesApres);
+  let ligne = `  ${id.padEnd(11)} ${l.length} fois ; humidité moyenne ${(l.reduce((s, x) => s + x.humAvant, 0) / l.length).toFixed(0)} → min ${(l.reduce((s, x) => s + x.humMin, 0) / l.length).toFixed(0)} ; espèces perdues pendant l'événement : ${(pertes.reduce((s, v) => s + v, 0) / Math.max(1, pertes.length)).toFixed(1)} en moyenne`;
+  if (id === 'orage') ligne += ` ; foudre ${l.filter(x => x.foudre).length} fois`;
+  if (id === 'secheresse') ligne += ` ; récompense obtenue ${l.filter(x => x.reussi).length}/${l.filter(x => x.reussi !== undefined).length}`;
+  console.log(ligne);
+}
+console.log(`Papiers rares : ${med(res.map(r => r.rares))} spécimens apparus par partie (médiane), ${med(res.map(r => r.cartes))} cartes collectées sur 28 (min ${Math.min(...res.map(r => r.cartes))}, max ${Math.max(...res.map(r => r.cartes))}) ; pages à la fin : ${med(res.map(r => r.pages))}`);
+const ret = res.map(r => r.retour).filter(Boolean);
+if (ret.length) console.log(`Retour après 10 h d'absence à 30 min (plafond 8 h ${ret.every(x => x.plafonne) ? 'appliqué' : 'NON appliqué'}) : +${med(ret.map(x => x.seve))} sève (réserve avant ${med(ret.map(x => x.seveAvant))}), ${med(ret.map(x => x.arrivees))} arrivées dont ${med(ret.map(x => x.nouvelles))} nouvelles espèces, espèces ${med(ret.map(x => x.especesAvant))} → ${med(ret.map(x => x.especesApres))}, départs dans la minute qui suit : ${ret.reduce((s, x) => s + x.departs1min, 0)}`);
 if (DETAIL) for (const r of res) console.log(JSON.stringify({ graine: r.graine, trou: [r.trouA, r.maxTrou], lisiere: r.lisiere, venues: r.venues, partis: r.partis, effectifs: r.fin.effectifs, harmonie: r.fin.harmonieDetail }));

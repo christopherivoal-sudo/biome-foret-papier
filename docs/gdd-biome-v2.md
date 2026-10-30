@@ -1,6 +1,6 @@
 # Biome, la forêt de papier : document de conception v2
 
-Version 1.1, 30 octobre 2026. Rédigé par Claude, décisions de Christophe intégrées (section 11).
+Version 1.2, 31 octobre 2026 (précisions du sprint 3 en 5.1 et 8.5). Rédigé par Claude, décisions de Christophe intégrées (section 11).
 
 Repères de lecture :
 - **[PROTO]** : construit dans le prototype v2.
@@ -300,13 +300,20 @@ Le joueur **ne place jamais d'animal**. Il dispose de :
 |---|---|---|---|---|---|
 | **Floraison** | printemps, 1 fois par printemps | 1 jour | fleurs ×2 en graines, pollinisateurs ×1,5 | Washi ×5 | [PROTO] |
 | **Orage** | été (60 %), automne (30 %) | 1 min | humidité +30 partout ; la foudre peut abattre 1 arbre adulte → bois mort + petite clairière (renouvellement) ; animaux à l'abri pendant l'orage | Journal ×5 | [PROTO] |
-| **Sécheresse** | été (25 %), jamais 2 étés de suite | 2 jours | humidité −2 par seconde (plancher 10) ; mares réduites ; espèces humides en départ si ça dure. Récompense : harmonie ≥ 50 % à la fin → 3 pages + bonus de sève | Calque ×2 (les mirages) | [PROTO] |
+| **Sécheresse** | été (25 %), jamais 2 étés de suite, **jamais avant la Lisière** | 2 jours | l'humidité de l'air baisse de 0,05 par seconde jusqu'à −20 (plancher 10 par tuile) ; mares et paillis restent des refuges ; espèces humides en départ si ça dure. Récompense : harmonie ≥ 50 % à la fin → 3 pages + bonus de sève | Calque ×2 (les mirages) | [PROTO] |
 | **Migration** | printemps et automne | 1 jour | des visiteurs de passage (grues, cigognes) se posent s'il y a une prairie ou de l'eau ; on peut les photographier, ils ne restent pas | Doré ×3 sur les visiteurs | [PLUS TARD] |
 | **Nuit des lucioles** | été, la nuit | 1 nuit | lucioles décoratives ; les animaux nocturnes se montrent davantage | Calque ×5 | [PLUS TARD] |
 | **Brouillard** | automne | ½ jour | visibilité réduite ; champignons ×2 | Calque ×3 | [PLUS TARD] |
 | **Premières neiges** | début d'hiver | 1 jour | traces dans la neige qui révèlent les espèces présentes : indices gratuits | — | [PLUS TARD] |
 | **Incendie** | été, après une sécheresse, Jeune forêt et au-delà | 1 min | voir 5.2 | Doré ×2 sur la première espèce qui revient | [PLUS TARD] |
 | **Aube dorée** | rare (3 % par jour), toute saison | 1 matin | lumière dorée | Doré ×6 | [PLUS TARD] |
+
+Précisions du sprint 3 (règles codées dans `core.js`) :
+- **Tirage** : une fois par saison, en jeu actif. Les événements possibles sont tirés du plus rare au plus fréquent ; le premier qui sort est retenu (au plus un par saison). Il commence au hasard dans la saison et finit avant la saison suivante. La garde l'annonce 30 s avant.
+- **Orage** : l'humidité +30 tient pendant l'orage puis revient à la normale en environ un jour. L'arbre abattu devient un tas de bois mort naturel (compte comme un tas de bois, ne rapporte rien si on le retire) ; un nichoir posé dessus est remboursé en entier. Pendant l'orage, les animaux rentrent au foyer, aucun agent n'arrive et le renard ne chasse pas.
+- **Sécheresse** : interdite en Prairie pour ne pas freiner le passage à la Lisière (première version : Lisière repoussée de 16 à 24 min).
+- **Mission « événement »** : comptée à la fin de l'événement (« traverser »).
+- **Papiers rares** : tirés à l'arrivée d'un agent, à une naissance, à l'apparition d'une nuée ou d'une touffe (semis, extension, dispersion par le merle, champignon). Le papier favorisé par l'événement est tiré en premier, pour que chaque essai compte pour sa garantie. Hors événement, un spécimen garde son papier 1 jour.
 
 Règle d'or : les événements sont des **épreuves douces**. Au pire, une espèce part et pourra revenir ; la sève et les aménagements ne sont jamais détruits par un événement (sauf l'arbre abattu, qui devient du bois mort utile, et la zone brûlée par l'incendie, voir ci-dessous).
 
@@ -566,6 +573,8 @@ Valeurs autorisées :
   }
 ]
 ```
+
+Champ facultatif `repos_annees` : nombre d'années sans cet événement après qu'il a eu lieu (sécheresse : 1). Champs facultatifs d'un effet `stat_tuile_par_s` : `cumul_max` (écart maximal de l'humidité de l'air) et `plancher` (statistique de tuile minimale). Les multiplicateurs ont un champ `facteur`.
 
 Types d'effet : `stat_tuile`, `stat_tuile_par_s`, `multiplicateur_croissance` (`cible` : espèce ou rôle), `multiplicateur_arrivee`, `multiplicateur_graines`, `abattre_arbre`, `abri_animaux`, `visiteurs` (liste d'espèces de passage), `zone_feu` [PLUS TARD]. Le champ `recompense` est facultatif (et doit alors être omis, pas mis à `null`) ; s'il existe : `{ "condition": [...], "pages": 3, "seve": 200 }`.
 

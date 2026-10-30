@@ -454,6 +454,85 @@ function verifierMissions(liste, ctx) {
   return [...vus];
 }
 
+// ---------- Événements et papiers rares (sprint 3, GDD 8.5 et 8.6) ----------
+const EFFETS = {
+  stat_tuile: ['stat', 'delta'],
+  stat_tuile_par_s: ['stat', 'delta'],
+  multiplicateur_croissance: ['cible', 'facteur'],
+  multiplicateur_arrivee: ['facteur'],
+  multiplicateur_graines: ['cible', 'facteur'],
+  abattre_arbre: ['nombre', 'chance'],
+  abri_animaux: [],
+  visiteurs: ['especes'],
+  zone_feu: [],
+};
+const FACULTATIFS_EFFET = { portee: 1, cible: 1, plancher: 1, cumul_max: 1 };
+const STATUTS = ['proto', 'plus_tard'];
+function verifierRares(liste) {
+  if (!Array.isArray(liste)) { erreur('rares.json', 'tableau attendu'); return []; }
+  liste.forEach(r => {
+    const lieu = `papier ${r && r.id}`;
+    if (!estObjet(r)) { erreur('rares.json', 'objet attendu'); return; }
+    chercherNull(r, lieu);
+    enumVal(r.id, PAPIERS, lieu, 'id');
+    borne(r.chance_base, 0, 0.05, lieu, 'chance_base');
+    positif(r.garantie_apres, lieu, 'garantie_apres', true);
+    enumVal(r.statut, STATUTS, lieu, 'statut');
+  });
+  return liste.map(r => r.id);
+}
+function verifierEvenements(liste, ctx, papiers) {
+  if (!Array.isArray(liste)) { erreur('evenements.json', 'tableau attendu'); return; }
+  const vus = new Set();
+  liste.forEach(ev => {
+    const lieu = `événement ${ev && ev.id}`;
+    if (!estObjet(ev)) { erreur('evenements.json', 'objet attendu'); return; }
+    chercherNull(ev, lieu);
+    if (!ID_RE.test(ev.id || '')) erreur(lieu, 'id invalide');
+    if (vus.has(ev.id)) erreur(lieu, 'id en double'); vus.add(ev.id);
+    for (const k of Object.keys(ev)) if (!['id', 'saisons', 'conditions', 'duree_jours', 'effets', 'papier', 'recompense', 'roblox', 'statut', 'repos_annees'].includes(k)) erreur(lieu, `champ inconnu « ${k} »`);
+    if (!estObjet(ev.saisons) || !Object.keys(ev.saisons).length) erreur(lieu, 'saisons : objet { saison: chance } attendu');
+    else for (const [s, p] of Object.entries(ev.saisons)) { enumVal(s, SAISONS, lieu, 'saison'); borne(p, 0, 1, lieu, `chance en ${s}`); }
+    if (!Array.isArray(ev.conditions)) erreur(lieu, 'conditions : liste attendue');
+    else ev.conditions.forEach((c, i) => verifierCondition(c, `${lieu}, condition ${i + 1}`, Object.assign({}, ctx, { dependances: [] })));
+    borne(ev.duree_jours, 0.05, 3, lieu, 'duree_jours');
+    if (estNombre(ev.duree_jours) && ev.duree_jours > 2.5) erreur(lieu, 'un événement doit tenir dans une saison (3 jours), marge comprise');
+    if ('repos_annees' in ev) positif(ev.repos_annees, lieu, 'repos_annees', true);
+    enumVal(ev.statut, STATUTS, lieu, 'statut');
+    if (!Array.isArray(ev.effets) || !ev.effets.length) erreur(lieu, 'effets : liste non vide attendue');
+    else ev.effets.forEach((ef, i) => {
+      const l = `${lieu}, effet ${i + 1}`;
+      const champs = EFFETS[ef && ef.type];
+      if (!champs) { erreur(l, `type d'effet inconnu : ${JSON.stringify(ef && ef.type)}`); return; }
+      for (const ch of champs) if (!(ch in ef)) erreur(l, `champ « ${ch} » manquant`);
+      for (const k of Object.keys(ef)) if (k !== 'type' && !champs.includes(k) && !FACULTATIFS_EFFET[k]) erreur(l, `champ « ${k} » inconnu`);
+      if ('stat' in ef) enumVal(ef.stat, STATS, l, 'stat');
+      if ('delta' in ef) borne(ef.delta, -100, 100, l, 'delta');
+      if ('facteur' in ef) borne(ef.facteur, 0, 10, l, 'facteur');
+      if ('chance' in ef) borne(ef.chance, 0, 1, l, 'chance');
+      if ('plancher' in ef) borne(ef.plancher, 0, 100, l, 'plancher');
+      if ('cumul_max' in ef) borne(ef.cumul_max, 0, 100, l, 'cumul_max');
+      if ('portee' in ef && ef.portee !== 'ile') erreur(l, 'portee : seulement « ile » pour un effet');
+      if ('cible' in ef && !ctx.ids.has(ef.cible) && !ROLES.includes(ef.cible)) erreur(l, `cible « ${ef.cible} » : ni une espèce ni un rôle`);
+      if (ef.type === 'zone_feu' && ev.statut === 'proto') erreur(l, 'le feu est prévu plus tard (GDD 5.2)');
+    });
+    if ('papier' in ev) {
+      if (!estObjet(ev.papier)) erreur(lieu, 'papier : objet attendu');
+      else { enumVal(ev.papier.id, papiers, lieu, 'papier.id'); borne(ev.papier.multiplicateur, 1, 10, lieu, 'papier.multiplicateur'); }
+    }
+    if ('recompense' in ev) {
+      const r = ev.recompense;
+      if (!estObjet(r)) erreur(lieu, 'recompense : objet attendu');
+      else {
+        if (!Array.isArray(r.condition)) erreur(lieu, 'recompense.condition : liste attendue');
+        else r.condition.forEach((c, i) => verifierCondition(c, `${lieu}, récompense, condition ${i + 1}`, Object.assign({}, ctx, { dependances: [] })));
+        positif(r.pages || 0, lieu, 'recompense.pages', true); positif(r.seve || 0, lieu, 'recompense.seve', true);
+      }
+    }
+    if ('roblox' in ev && !estObjet(ev.roblox)) erreur(lieu, 'roblox : objet attendu');
+  });
+}
+
 const TUTORIEL = ['accueil', 'carnet', 'sauterelles', 'semer_fleurs', 'besoin_partiel', 'hotel', 'alouette', 'abri_lapin', 'premiere_nuit', 'mare_paillis', 'harmonie', 'lisiere'];
 const ALERTES = ['floraison', 'orage', 'secheresse', 'fin_evenement', 'nouvelle_mission', 'mission_reussie', 'depart_espece', 'nuit', 'hiver', 'retour_hors_ligne'];
 function verifierGarde(t, nomFichier, especes, idsMissions) {
@@ -505,6 +584,10 @@ function main() {
 
   const etData = lireJSON(path.join(RACINE, 'data/etapes.json'), false);
   if (etData) verifierEtapes(etData, ctx);
+
+  const rarData = lireJSON(path.join(RACINE, 'data/rares.json'), false);
+  const papiers = rarData ? verifierRares(rarData) : PAPIERS;
+  if (evData) verifierEvenements(evData, ctx, papiers);
 
   const idsMissions = missionsData ? verifierMissions(missionsData, ctx) : [];
   const fichierFR = a.fr || 'data/textes/fr.json';

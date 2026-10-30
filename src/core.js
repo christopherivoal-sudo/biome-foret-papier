@@ -4,6 +4,8 @@
 // système de conditions, actions du joueur, pousse et extension des plantes.
 // Sprint 2 : arrivées, départs, capacités, chaîne alimentaire, pollinisation, fertilisation,
 // harmonie, règles hors schéma (notes de ChatGPT), carnet, photos et missions de la garde.
+// Sprint 3 : événements (floraison, orage, sécheresse), papiers rares journal et washi,
+// progression hors ligne plafonnée à 8 h.
 (function (racine, fabrique) {
   if (typeof module === 'object' && module.exports) module.exports = fabrique();
   else racine.BiomeCore = fabrique();
@@ -57,8 +59,18 @@
     humusEau: 0.3,              // humidité retenue par point de fertilité au-dessus de 10
     sevePhoto: 10,
     chanceComportement: 0.08,   // chance par pas écologique qu'un agent montre un comportement (repas)
-    chancePollinisation: 0.15,  // idem pour une nuée de pollinisateurs sur une fleur              // sève de la première photo d'une espèce
+    chancePollinisation: 0.15,  // idem pour une nuée de pollinisateurs sur une fleur
     nbMissions: 3,
+    // --- Événements, papiers rares, hors ligne (sprint 3) ---
+    annonceEvenement: 30,       // s : la garde annonce l'événement avant qu'il commence
+    margeEvenement: 0.25,       // jours : un événement ne commence ni ne finit au ras d'un changement de saison
+    retourHumidite: 0.5,        // jours : temps caractéristique du retour à la normale après un orage ou une sécheresse
+    seuilHarmonieRare: 0.8, bonusHarmonieRare: 1.2,
+    dureeRare: 1,               // jours : un spécimen rare garde son papier jusqu'à la fin de l'événement + 1 jour
+    pagesCarte: 3,              // pages pour une nouvelle carte de collection
+    horsLigneMax: 8 * 3600,     // s : progression hors ligne plafonnée à 8 h
+    tauxHorsLigne: 0.5,         // la sève s'accumule à 50 % du taux hors ligne
+    renfortsHorsLigne: 2,       // individus de plus au plus par espèce (agents) au retour
     // Rôles attendus par étape (part « chaîne » de l'harmonie) et habitats de la mosaïque.
     rolesAttendus: {
       prairie: ['producteur', 'herbivore', 'insectivore', 'decomposeur', 'pollinisateur'],
@@ -106,7 +118,8 @@
     const actions = Object.fromEntries(data.amenagements.map(a => [a.id, a]));
     const etapes = data.etapes.slice().sort((a, b) => a.ordre - b.ordre);
     const plantesOmbre = Object.values(especes).filter(e => e.croissance && e.croissance.ombre_projetee > 0).map(e => e.id);
-    return { _pret: true, especes, actions, etapes, plantesOmbre, missions: data.missions || [], textes: data.textes };
+    const evenements = data.evenements || [], rares = (data.rares || []).filter(r => r.statut === 'proto');
+    return { _pret: true, especes, actions, etapes, plantesOmbre, missions: data.missions || [], textes: data.textes, evenements, rares };
   }
   function fusionner(cible, src) {
     for (const [k, v] of Object.entries(src)) {
@@ -154,6 +167,7 @@
       harmonieDetail: null, saison: 'printemps', popMal: {}, popAncre: {}, esp: {}, carnet: {}, pollinisation: {},
       missions: { actives: [], faites: [] },
     };
+    completer(etat);
     for (let i = 0; i < N * N; i++) etat.tuiles.push(null);
     for (const i of tuilesIle(etat)) etat.tuiles[i] = tuileVide(10 + Math.floor(alea(etat) * 16));
     // Herbe au centre (environ 25 % des tuiles), quelques roches au bord.
@@ -166,6 +180,14 @@
     }
     calculerOmbre(etat, data);
     remplirMissions(etat, data);
+    return etat;
+  }
+
+  // Champs ajoutés au sprint 3 : une ancienne sauvegarde les reçoit à la reprise.
+  function completer(etat) {
+    if (!etat.meteo) etat.meteo = { actif: null, prevu: null, tirage: '', humidite: 0, derniere: {}, garantie: {} };
+    if (!etat.rares) etat.rares = [];
+    if (!etat.collection) etat.collection = {};
     return etat;
   }
 
@@ -454,6 +476,7 @@
     const t = etat.tuiles[i];
     Object.assign(t, { c: COUVERT_PLANTE[id] || 'arbre', e: id, age: 0, graines: 0, mal: 0, nichoir: false });
     if (data.especes[id].croissance.ombre_projetee) calculerOmbre(etat, data);
+    nouveauSpecimen(etat, data, id, { tuile: i });
   }
 
   function retirer(etat, data, x, y) {
@@ -462,8 +485,8 @@
     let rendu = 0;
     if (t.a) {
       const a = data.actions[t.a], ancre = t.ancre;
-      rendu = a.cout_seve;
-      etat.tuiles.forEach(tt => { if (tt && tt.a === a.id && tt.ancre === ancre) Object.assign(tt, { c: 'nu', a: '', ancre: -1, hb: P.humiditeBase }); });
+      rendu = t.naturel ? 0 : a.cout_seve; // un arbre abattu par la foudre ne rapporte rien
+      etat.tuiles.forEach(tt => { if (tt && tt.a === a.id && tt.ancre === ancre) Object.assign(tt, { c: 'nu', a: '', ancre: -1, hb: P.humiditeBase, naturel: false }); });
     } else if (t.e) {
       const fiche = data.especes[t.e];
       rendu = fiche.croissance ? fiche.croissance.cout_seve : 0;
@@ -638,11 +661,13 @@
       if (!a) return;
       Object.assign(a, { hx: x, hy: y, tx: x, ty: y, m: 'arrive' });
       o.agent = a.id;
+      nouveauSpecimen(etat, data, id, { agent: a.id });
     } else if (f.mode === 'population') {
       const z = zoneDe(x, y);
       (etat.populations[id] = etat.populations[id] || {})[z] = Math.min(P.effectifInitial, Math.max(1, capaciteZone(etat, data, id, z)));
       (etat.popAncre[id] = etat.popAncre[id] || {})[z] = i;
-    } else etat.tuiles[i].champi = id;
+      nouveauSpecimen(etat, data, id, { zone: z });
+    } else { etat.tuiles[i].champi = id; nouveauSpecimen(etat, data, id, { tuile: i }); }
     ca.venu = true;
     journal(etat, o);
     if (!renfort) noter(etat, data, 'arrivee', id, 1, { nouvelle: premiere });
@@ -651,13 +676,14 @@
     for (const id of especesDebloquees(etat, data)) {
       const f = data.especes[id];
       if (!f || f.venue !== 'spontanee' || !actifEnSaison(f, h.saison) || !momentOk(f, h.moment)) continue;
+      if (f.mode === 'agent' && etat.meteo.abri) continue; // pendant l'orage, les animaux restent à l'abri
       const st = etatEspece(etat, id), n = presence(etat, data, id);
       if (n === 0) {
         const i = chercherFoyer(etat, data, id);
         if (i < 0) continue;
         st.ctl++;
         const garanti = !carnet(etat, id).venu && st.ctl >= P.garantieControles;
-        if (garanti || alea(etat) < P.chanceArrivee) { arriver(etat, data, id, i, false); st.ctl = 0; st.repro = etat.temps; }
+        if (garanti || alea(etat) < P.chanceArrivee * multiplicateur(etat, data, 'multiplicateur_arrivee', id)) { arriver(etat, data, id, i, false); st.ctl = 0; st.repro = etat.temps; }
       } else if (f.mode === 'agent' && n < capacite(etat, data, id) && etat.agents.length < P.maxAgents && alea(etat) < P.chanceRenfort) {
         const i = chercherFoyer(etat, data, id);
         if (i >= 0) arriver(etat, data, id, i, true);
@@ -675,6 +701,7 @@
       a.x = a.tx; a.y = a.ty;
       if (a.m === 'arrive') { a.m = 'vit'; a.attente = 2; }
       else if (a.m === 'part') a.sorti = true;
+      else if (etat.meteo.abri) { a.tx = a.hx; a.ty = a.hy; } // à l'abri : retour au foyer, on ne flâne pas
       else if ((a.attente -= dt) <= 0) {
         // Flâne autour de son foyer.
         const ang = alea(etat) * 2 * Math.PI, r = alea(etat) * 2;
@@ -696,6 +723,8 @@
     const h = horloge(etat), jour = dt / P.dureeJour;
     const presentsAvant = especesPresentes(etat, data);
     if (h.saison !== etat.saison) changerSaison(etat, data, h.saison);
+    pasEvenements(etat, data, h);
+    nettoyerRares(etat, data);
     pasPopulations(etat, data, h, jour);
     pasVieAgents(etat, data, h, jour, dt);
     pasChampignons(etat, data, h, jour);
@@ -731,7 +760,7 @@
       const mal = etat.popMal[id] = etat.popMal[id] || {};
       const ancres = etat.popAncre[id] = etat.popAncre[id] || {};
       const repro = f.reproduction.saisons.includes(h.saison);
-      const g = f.reproduction.portee_moyenne / f.reproduction.intervalle_jours;
+      const g = f.reproduction.portee_moyenne / f.reproduction.intervalle_jours * multiplicateur(etat, data, 'multiplicateur_croissance', id);
       const K = {}, ok = {};
       for (const z of Object.keys(zones)) {
         K[z] = capaciteZone(etat, data, id, +z);
@@ -763,7 +792,7 @@
           if (zones[v] !== undefined || alea(etat) >= P.colonisation * jour) continue;
           if (capaciteZone(etat, data, id, v) < 1) continue;
           const c = foyerZone(etat, data, id, v, zoneCentre(etat, v));
-          if (c >= 0) { zones[v] = Math.min(P.effectifInitial / 2, capaciteZone(etat, data, id, v)); ancres[v] = c; }
+          if (c >= 0) { zones[v] = Math.min(P.effectifInitial / 2, capaciteZone(etat, data, id, v)); ancres[v] = c; nouveauSpecimen(etat, data, id, { zone: v }); }
         }
       }
       if (!Object.keys(zones).length) delete etat.populations[id];
@@ -807,6 +836,7 @@
           const b = ajouterAgent(etat, id, parent.hx, parent.hy);
           Object.assign(b, { hx: parent.hx, hy: parent.hy });
           journal(etat, { type: 'naissance', id, agent: b.id, x: parent.hx, y: parent.hy });
+          nouveauSpecimen(etat, data, id, { agent: b.id });
         }
       }
       // Lapins trop nombreux pour l'herbe : surpâturage, des tuiles deviennent nues.
@@ -863,7 +893,7 @@
   }
   // Chasse d'un agent (renard → lapin) : seulement au crépuscule et la nuit.
   function chasser(etat, data, a, it, h, jour) {
-    if (h.moment === 'jour') return;
+    if (h.moment === 'jour' || etat.meteo.abri) return;
     const proies = etat.agents.filter(b => b.esp === it.cible && b.m === 'vit');
     if (proies.length <= P.plancherProies) return;
     // Taux journalier concentré sur le tiers de journée où il chasse.
@@ -908,7 +938,7 @@
         const l = tuilesCercle(etat, x, y, 1.5).filter(j => { const t = etat.tuiles[j]; return !t.champi && !t.a && t.c !== 'eau' && t.c !== 'roche'; });
         if (!l.length) continue;
         const j = l[Math.floor(alea(etat) * l.length)];
-        if (besoinsOk(etat, data, id, j).ok) { etat.tuiles[j].champi = id; n++; }
+        if (besoinsOk(etat, data, id, j).ok) { etat.tuiles[j].champi = id; n++; nouveauSpecimen(etat, data, id, { tuile: j }); }
       }
     }
   }
@@ -999,14 +1029,27 @@
   }
 
   // ---------- Carnet et photos ----------
-  function photographier(etat, dataBrute, id) {
+  // papier (facultatif) : le joueur a cliqué sur un spécimen rare de ce papier ; il entre dans la collection.
+  function photographier(etat, dataBrute, id, papier) {
     const data = preparer(dataBrute), f = data.especes[id];
+    completer(etat);
     if (!f) return refus('espece_inconnue');
     if (presence(etat, data, id) === 0) return refus('absente');
+    let carte = false;
+    if (papier) {
+      if (!etat.rares.some(r => r.id === id && r.papier === papier)) return refus('pas_de_specimen', { papier });
+      const cle = id + ':' + papier;
+      if (!etat.collection[cle]) {
+        etat.collection[cle] = { t: etat.temps };
+        etat.pages += P.pagesCarte;
+        carte = true;
+        journal(etat, { type: 'collection', id, papier });
+      }
+    }
     const ca = carnet(etat, id), premiere = !ca.photo;
     if (premiere) { ca.photo = true; etat.pages += f.production.pages_photo; etat.seve += P.sevePhoto; }
     noter(etat, data, 'photo', id, 1, { nouvelle: premiere });
-    return { ok: true, premiere };
+    return { ok: true, premiere, carte };
   }
 
   // ---------- Missions de la garde forestière (GDD 1.7, 1.9) ----------
@@ -1044,6 +1087,281 @@
     return { ok: true, recompense: r };
   }
 
+  // =====================================================================
+  // ---------- Événements (sprint 3, GDD 5.1 et 8.5) ----------
+  // =====================================================================
+  // Un tirage par saison, en jeu actif seulement (hors ligne, la saison est figée) :
+  // les événements possibles sont tirés du plus rare au plus fréquent, le premier qui sort est retenu.
+  function debutSaison(etat) { const d = P.joursParSaison * P.dureeJour; return Math.floor(etat.temps / d) * d; }
+  function pasEvenements(etat, data, h) {
+    const m = etat.meteo, cle = h.annee + '-' + h.saison;
+    if (m.tirage !== cle && !m.actif) {
+      m.tirage = cle;
+      m.prevu = null;
+      const candidats = data.evenements
+        .filter(ev => ev.statut === 'proto' && (ev.saisons[h.saison] || 0) > 0)
+        .filter(ev => !ev.repos_annees || m.derniere[ev.id] === undefined || h.annee - m.derniere[ev.id] > ev.repos_annees)
+        .filter(ev => toutesVraies(etat, data, ev.conditions, {}))
+        .sort((a, b) => a.saisons[h.saison] - b.saisons[h.saison]);
+      for (const ev of candidats) {
+        if (alea(etat) >= ev.saisons[h.saison]) continue;
+        // Début au hasard dans la saison, en laissant l'événement finir avant la saison suivante.
+        const jMax = Math.max(P.margeEvenement, P.joursParSaison - ev.duree_jours - P.margeEvenement);
+        const debut = debutSaison(etat) + (P.margeEvenement + alea(etat) * (jMax - P.margeEvenement)) * P.dureeJour;
+        m.prevu = { id: ev.id, debut: Math.max(Math.round(debut), etat.temps + P.annonceEvenement), annonce: false };
+        break;
+      }
+    }
+    const pr = m.prevu;
+    if (pr && !m.actif) {
+      const ev = data.evenements.find(e => e.id === pr.id);
+      if (!pr.annonce && etat.temps >= pr.debut - P.annonceEvenement) { pr.annonce = true; journal(etat, { type: 'annonce', id: pr.id, debut: pr.debut }); }
+      if (etat.temps >= pr.debut) {
+        m.prevu = null;
+        // Conditions vérifiées au tirage puis de nouveau au départ (sécheresse : jamais avant la Lisière).
+        if (toutesVraies(etat, data, ev.conditions, {})) commencerEvenement(etat, data, ev);
+      }
+    }
+    if (m.actif && etat.temps >= m.actif.fin) finirEvenement(etat, data);
+  }
+  function commencerEvenement(etat, data, ev) {
+    const m = etat.meteo, h = horloge(etat);
+    m.actif = { id: ev.id, debut: etat.temps, fin: etat.temps + Math.round(ev.duree_jours * P.dureeJour) };
+    m.derniere[ev.id] = h.annee;
+    if (ev.papier) m.garantie[ev.papier.id] = 0;
+    journal(etat, { type: 'evenement', id: ev.id, fin: m.actif.fin });
+    for (const ef of ev.effets) {
+      if (ef.type === 'stat_tuile' && ef.stat === 'humidite') {
+        for (const i of tuilesIle(etat)) { const t = etat.tuiles[i]; if (t.c !== 'eau') t.h = Math.max(0, Math.min(100, t.h + ef.delta)); }
+      } else if (ef.type === 'stat_tuile') {
+        const champ = { fertilite: 'f', ombre: 'o' }[ef.stat];
+        for (const i of tuilesIle(etat)) { const t = etat.tuiles[i]; if (t.c !== 'eau' && t.c !== 'roche') t[champ] = Math.max(0, Math.min(100, t[champ] + ef.delta)); }
+      } else if (ef.type === 'abattre_arbre') {
+        for (let k = 0; k < ef.nombre; k++) if (alea(etat) < ef.chance) abattreArbre(etat, data);
+      } else if (ef.type === 'abri_animaux') m.abri = true;
+    }
+  }
+  // La foudre abat un arbre adulte : il devient un tas de bois mort naturel (utile au hérisson et à la coulemelle),
+  // et une petite clairière s'ouvre. Un nichoir posé dessus est remboursé en entier.
+  function abattreArbre(etat, data) {
+    const adultes = tuilesIle(etat).filter(i => { const t = etat.tuiles[i]; return t.c === 'arbre' && estAdulte(t, data.especes[t.e]); });
+    if (!adultes.length) return;
+    const sansNichoir = adultes.filter(i => !etat.tuiles[i].nichoir);
+    const l = sansNichoir.length ? sansNichoir : adultes;
+    const i = l[Math.floor(alea(etat) * l.length)], t = etat.tuiles[i], espece = t.e;
+    if (t.nichoir) etat.seve += data.actions.nichoir.cout_seve;
+    Object.assign(t, { c: 'bois_mort', e: '', age: 0, a: 'tas_bois', ancre: i, naturel: true, nichoir: false, graines: 0, mal: 0, champi: t.champi });
+    calculerOmbre(etat, data);
+    journal(etat, { type: 'foudre', id: espece, x: i % N, y: (i / N) | 0 });
+  }
+  function finirEvenement(etat, data) {
+    const m = etat.meteo, ev = data.evenements.find(e => e.id === m.actif.id);
+    m.actif = null; m.abri = false;
+    const o = { type: 'evenement_fin', id: ev.id };
+    if (ev.recompense) {
+      o.reussi = toutesVraies(etat, data, ev.recompense.condition, {});
+      if (o.reussi) { etat.pages += ev.recompense.pages || 0; etat.seve += ev.recompense.seve || 0; o.pages = ev.recompense.pages || 0; o.seve = ev.recompense.seve || 0; }
+    }
+    journal(etat, o);
+    noter(etat, data, 'evenement', ev.id); // mission « traverser un événement »
+  }
+  // Humidité de l'air (décalage de l'équilibre des tuiles) : tenue par l'orage, creusée par la sécheresse,
+  // puis retour progressif à la normale. Renvoie le plancher d'humidité en vigueur, ou null.
+  function pasHumiditeMeteo(etat, data, dt) {
+    const m = etat.meteo, ev = m.actif && data.evenements.find(e => e.id === m.actif.id);
+    let tenu = false, plancher = null;
+    if (ev) for (const ef of ev.effets) {
+      if (ef.stat !== 'humidite') continue;
+      if (ef.type === 'stat_tuile') { m.humidite = Math.max(m.humidite, ef.delta); tenu = true; }
+      else if (ef.type === 'stat_tuile_par_s') {
+        const lim = ef.cumul_max === undefined ? 100 : ef.cumul_max;
+        m.humidite = Math.max(-lim, Math.min(lim, m.humidite + ef.delta * dt));
+        tenu = true;
+        if (ef.plancher !== undefined) plancher = ef.plancher;
+      }
+    }
+    if (!tenu && m.humidite) {
+      m.humidite *= 1 - Math.min(1, dt / (P.retourHumidite * P.dureeJour));
+      if (Math.abs(m.humidite) < 0.05) m.humidite = 0;
+    }
+    return plancher;
+  }
+  // Produit des facteurs des effets actifs d'un type qui visent cette espèce (par id ou par rôle).
+  function multiplicateur(etat, data, type, id) {
+    const m = etat.meteo, ev = m.actif && data.evenements.find(e => e.id === m.actif.id);
+    if (!ev) return 1;
+    const f = data.especes[id];
+    let k = 1;
+    for (const ef of ev.effets) if (ef.type === type && (!ef.cible || ef.cible === id || (f && f.roles.includes(ef.cible)))) k *= ef.facteur;
+    return k;
+  }
+  // État de la météo pour l'interface : événement en cours (et sa progression), événement annoncé.
+  function meteo(etat, dataBrute) {
+    const m = completer(etat).meteo;
+    const actif = m.actif && { id: m.actif.id, reste: m.actif.fin - etat.temps, progression: (etat.temps - m.actif.debut) / (m.actif.fin - m.actif.debut) };
+    const annonce = m.prevu && m.prevu.annonce ? { id: m.prevu.id, dans: m.prevu.debut - etat.temps } : null;
+    return { actif, annonce, humidite: m.humidite, abri: !!m.abri };
+  }
+
+  // =====================================================================
+  // ---------- Papiers rares (sprint 3, GDD 5.3 et 8.6) ----------
+  // =====================================================================
+  // Chance actuelle d'un papier : base × événement × bonus d'harmonie.
+  function chancePapier(etat, data, r) {
+    const ev = etat.meteo.actif && data.evenements.find(e => e.id === etat.meteo.actif.id);
+    const boost = ev && ev.papier && ev.papier.id === r.id ? ev.papier.multiplicateur : 1;
+    return { chance: r.chance_base * boost * (etat.harmonie > P.seuilHarmonieRare ? P.bonusHarmonieRare : 1), boost: boost > 1 };
+  }
+  // Tirage à l'arrivée d'un individu ou à l'apparition d'une touffe ou d'une nuée.
+  // Pendant l'événement qui le favorise, un papier est garanti au bout de garantie_apres essais sans succès.
+  function tirerPapier(etat, data, id) {
+    const f = data.especes[id];
+    if (!f) return '';
+    // Le papier favorisé par l'événement en cours est tiré en premier : chaque essai compte pour sa garantie.
+    const ev = etat.meteo.actif && data.evenements.find(e => e.id === etat.meteo.actif.id);
+    const favori = ev && ev.papier ? ev.papier.id : '';
+    for (const r of data.rares.slice().sort((a, b) => (b.id === favori) - (a.id === favori))) {
+      if (!f.papiers_rares.includes(r.id)) continue;
+      const { chance, boost } = chancePapier(etat, data, r);
+      let ok = alea(etat) < chance;
+      if (boost && r.garantie_apres) {
+        const g = etat.meteo.garantie;
+        g[r.id] = (g[r.id] || 0) + 1;
+        if (g[r.id] >= r.garantie_apres) ok = true;
+        if (ok) g[r.id] = 0;
+      }
+      if (ok) return r.id;
+    }
+    return '';
+  }
+  // ou = { agent: id } | { zone: z } | { tuile: i }
+  function nouveauSpecimen(etat, data, id, ou) {
+    if (!data.rares.length) return;
+    completer(etat);
+    const papier = tirerPapier(etat, data, id);
+    if (!papier) return;
+    const m = etat.meteo, fin = Math.max(etat.temps, m.actif ? m.actif.fin : 0) + P.dureeRare * P.dureeJour;
+    const r = Object.assign({ id, papier, fin }, ou);
+    etat.rares.push(r);
+    const p = positionSpecimen(etat, r);
+    journal(etat, Object.assign({ type: 'rare', id, papier }, p || {}));
+  }
+  function positionSpecimen(etat, r) {
+    if (r.agent !== undefined) { const a = etat.agents.find(b => b.id === r.agent); return a ? { x: Math.round(a.x), y: Math.round(a.y) } : null; }
+    if (r.zone !== undefined) { const c = zoneCentre(etat, r.zone); return c >= 0 ? { x: c % N, y: (c / N) | 0 } : null; }
+    return { x: r.tuile % N, y: (r.tuile / N) | 0 };
+  }
+  // Un spécimen rare reprend un papier normal à la fin de sa durée, ou disparaît avec son porteur.
+  function nettoyerRares(etat, data) {
+    etat.rares = etat.rares.filter(r => {
+      if (etat.temps >= r.fin) return false;
+      if (r.agent !== undefined) return etat.agents.some(a => a.id === r.agent);
+      if (r.zone !== undefined) return !!(etat.populations[r.id] && etat.populations[r.id][r.zone] !== undefined);
+      const t = etat.tuiles[r.tuile];
+      return !!t && (t.e === r.id || t.champi === r.id);
+    });
+  }
+  // Pour le carnet : chances affichées et spécimens rares présents (avec leur position).
+  function chancesRares(etat, dataBrute) {
+    const data = preparer(dataBrute);
+    completer(etat);
+    return data.rares.map(r => {
+      const c = chancePapier(etat, data, r);
+      return { id: r.id, chance: c.chance, evenement: c.boost, garantieDans: c.boost && r.garantie_apres ? r.garantie_apres - (etat.meteo.garantie[r.id] || 0) : null };
+    });
+  }
+  function raresPresents(etat, dataBrute) {
+    const data = preparer(dataBrute);
+    completer(etat);
+    nettoyerRares(etat, data);
+    return etat.rares.map(r => Object.assign({}, r, positionSpecimen(etat, r), { reste: r.fin - etat.temps }));
+  }
+
+  // =====================================================================
+  // ---------- Hors ligne (sprint 3, GDD 1.3, 1.5 et 6.2) ----------
+  // =====================================================================
+  // Appelé par le jeu au retour du joueur, avec le temps écoulé depuis la dernière sauvegarde.
+  // Plafond 8 h. Sève à 50 % du taux, les plantes poussent et donnent des graines, les arrivées possibles
+  // sont résolues. Aucun départ, aucun événement, saison et heure figées (etat.temps n'avance pas).
+  function horsLigne(etat, dataBrute, secondes) {
+    const data = preparer(dataBrute);
+    completer(etat);
+    const s = Math.max(0, Math.min(secondes || 0, P.horsLigneMax));
+    const rapport = { duree: s, plafonne: secondes > P.horsLigneMax, seve: 0, graines: 0, nouvelles: [], arrivees: [], double: false };
+    if (s < P.pas) return rapport;
+    const h = horloge(etat), jours = s / P.dureeJour, croiss = P.croissanceSaison[h.saison];
+    // Sève : production actuelle × harmonie × 50 %.
+    const seve = Math.floor(productionSeve(etat, data) * (0.5 + etat.harmonie) * P.tauxHorsLigne * s);
+    etat.seve += seve; rapport.seve = seve;
+    const paillis = data.actions.paillis.effets;
+    for (const i of tuilesIle(etat)) {
+      const t = etat.tuiles[i];
+      t.mal = 0; t.cm = 0;
+      if (t.paillis > 0) {
+        const part = Math.min(t.paillis, jours) / paillis.duree_jours;
+        t.f = Math.min(100, t.f + paillis.fertilite * part); t.hb = Math.min(100, t.hb + paillis.humidite * part);
+        t.paillis = Math.max(0, t.paillis - jours);
+      }
+      if (!t.e) continue;
+      const fiche = data.especes[t.e];
+      t.age += jours * croiss;
+      const g = P.graines[t.e];
+      if (g && estAdulte(t, fiche) && g.saisons.includes(h.saison)) t.graines = Math.min(P.grainesMaxTuile, t.graines + g.parJour * jours);
+    }
+    calculerOmbre(etat, data);
+    // Personne ne part pendant l'absence : les compteurs de manque repartent de zéro au retour.
+    for (const a of etat.agents) a.mal = 0;
+    etat.popMal = {};
+    for (const st of Object.values(etat.esp)) st.surcap = 0;
+    // Arrivées : chaque espèce absente dont les besoins sont réunis vient (sans attendre le bon moment de la journée).
+    for (const id of especesDebloquees(etat, data)) {
+      const f = data.especes[id];
+      if (!f || f.venue !== 'spontanee' || !actifEnSaison(f, h.saison)) continue;
+      const n = presence(etat, data, id);
+      let venus = 0;
+      if (n === 0) {
+        const i = chercherFoyer(etat, data, id);
+        if (i < 0) continue;
+        const premiere = !carnet(etat, id).venu;
+        arriver(etat, data, id, i, false);
+        if (f.mode === 'agent') poserAuFoyer(etat);
+        rapport.arrivees.push(id); if (premiere) rapport.nouvelles.push(id);
+        venus = 1;
+      }
+      if (f.mode === 'agent') {
+        const cap = capacite(etat, data, id);
+        for (let k = 0; k < P.renfortsHorsLigne && n + venus < cap && etat.agents.length < P.maxAgents; k++) {
+          const i = chercherFoyer(etat, data, id);
+          if (i < 0) break;
+          arriver(etat, data, id, i, true); poserAuFoyer(etat); venus++;
+        }
+      }
+    }
+    journal(etat, { type: 'retour', duree: s, seve, nouvelles: rapport.nouvelles.slice() });
+    return rapport;
+  }
+  // Le dernier agent arrivé est déjà chez lui (il n'a pas besoin de traverser l'île sous les yeux du joueur).
+  function poserAuFoyer(etat) {
+    const a = etat.agents[etat.agents.length - 1];
+    if (a && a.m === 'arrive') Object.assign(a, { x: a.hx, y: a.hy, m: 'vit', attente: 2 });
+  }
+  // Pub récompensée « Retour doublé » : une fois par retour.
+  function doublerRetour(etat, rapport) {
+    if (!rapport || rapport.double) return refus('deja_double');
+    rapport.double = true; etat.seve += rapport.seve;
+    return { ok: true, seve: rapport.seve };
+  }
+  // Sève produite par seconde avant le facteur d'harmonie (même règle que pasTuiles).
+  function productionSeve(etat, data) {
+    let v = 0;
+    for (const i of tuilesIle(etat)) {
+      const t = etat.tuiles[i];
+      if (t.e && data.especes[t.e]) v += data.especes[t.e].production.seve_par_s * (estAdulte(t, data.especes[t.e]) ? 1 : 0.5);
+      if (t.champi) v += data.especes[t.champi].production.seve_par_s;
+    }
+    return v;
+  }
+
   // ---------- Pas de simulation ----------
   function pasTuiles(etat, data, dt) {
     const h = horloge(etat);
@@ -1054,6 +1372,7 @@
     const ile = tuilesIle(etat);
     let seve = 0;
     const naissances = [];
+    const plancher = pasHumiditeMeteo(etat, data, dt);
 
     for (const i of ile) {
       const t = etat.tuiles[i];
@@ -1067,7 +1386,8 @@
       // Humidité : rejoint l'équilibre (sol + eau voisine).
       if (t.c === 'eau') t.h = 100;
       else {
-        const cible = Math.min(100, t.hb + eau[i] + (etat.meteoHumidite || 0) + P.humusEau * Math.max(0, t.f - 10));
+        let cible = Math.min(100, t.hb + eau[i] + etat.meteo.humidite + P.humusEau * Math.max(0, t.f - 10));
+        if (plancher !== null) cible = Math.max(cible, Math.min(plancher, t.h)); // la sécheresse ne descend pas sous le plancher
         t.h += (cible - t.h) * Math.min(1, dt / P.relaxHumidite);
         t.h = Math.max(0, Math.min(100, t.h));
       }
@@ -1082,7 +1402,7 @@
       const arbreAdulte = t.c === 'arbre' && estAdulte(t, fiche);
       const conds = arbreAdulte ? fiche.besoins.filter(c => !(c.type === 'stat' && c.stat === 'ombre')) : fiche.besoins;
       const ok = conds.every(c => evaluer(etat, data, c, { x, y, soi: i }).ok);
-      if (ok) { t.mal = 0; t.age += jour * croiss; }
+      if (ok) { t.mal = 0; t.age += jour * croiss * multiplicateur(etat, data, 'multiplicateur_croissance', t.e); }
       else {
         // Hors ligne : jamais de départ (géré par le jeu). Ici, la plante dépérit après depart_apres_jours.
         t.mal += jour;
@@ -1099,7 +1419,7 @@
       const pol = t.e === 'fleurs' ? 1 + (etat.pollinisation[zoneDe(x, y)] || 0) : 1;
       if (adulte && g && g.saisons.includes(h.saison)) {
         const avant = Math.floor(t.graines);
-        t.graines = Math.min(P.grainesMaxTuile, t.graines + g.parJour * pol * jour);
+        t.graines = Math.min(P.grainesMaxTuile, t.graines + g.parJour * pol * multiplicateur(etat, data, 'multiplicateur_graines', t.e) * jour);
         if (Math.floor(t.graines) > avant) etat.journal.push({ t: etat.temps, type: 'graines', id: t.e, x, y });
       }
       const ext = fiche.croissance && fiche.croissance.extension_par_jour;
@@ -1122,6 +1442,7 @@
 
   function tick(etat, dataBrute, dt) {
     const data = preparer(dataBrute);
+    completer(etat);
     etat.accu += dt;
     while (etat.accu >= P.pas) {
       etat.accu -= P.pas;
@@ -1175,5 +1496,7 @@
     ajouterAgent, fixerPopulation, alea,
     besoinsOk, capacite, capaciteZone, effectif, calculerHarmonie, photographier, reclamerMission, noter,
     especesDebloquees, chercherFoyer, REGLES,
+    meteo, chancesRares, raresPresents, horsLigne, doublerRetour, productionSeve, completer,
+    tirerPapier: (etat, dataBrute, id) => tirerPapier(etat, preparer(dataBrute), id), // pour les tests
   };
 });
