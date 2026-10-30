@@ -1,0 +1,259 @@
+{
+  "especes": {
+    "herbe": {
+      "nom": "Meadow grass",
+      "nom_latin": "Poaceae",
+      "description": "A carpet of slender leaves welcomes the first residents of your meadow.",
+      "anecdote": "Grasses flower too: their tiny flowers grow in clusters called spikelets.",
+      "indices": [
+        "Even poor soil can support this first green carpet.",
+        "Let the light in: too much shade makes the grass retreat."
+      ],
+      "comportements": {
+        "arrivee": "Blades break through the soil. Your meadow is taking root.",
+        "pousse": "The green carpet slowly spreads wherever the soil suits it.",
+        "adulte": "The grass is well established. Grazers can find a meal here."
+      },
+      "depart": "The grass is thinning: {manque}. You can make a more welcoming spot."
+    },
+    "fleurs": {
+      "nom": "Wildflowers",
+      "nom_latin": "Angiospermae",
+      "description": "Splashes of color offer nectar to visitors and seeds for your next planting.",
+      "anecdote": "Pollen isn't a seed: it plays a part in fertilizing flowers.",
+      "indices": [
+        "Nourishing soil sets the stage for beautiful blooms.",
+        "A little moisture in the soil helps flowers settle in.",
+        "Choose a bright spot, away from deep shade."
+      ],
+      "comportements": {
+        "arrivee": "Young shoots appear where you sowed your seeds.",
+        "pousse": "Stems grow taller, and the first buds take shape.",
+        "adulte": "The flowers open. Watch the visitors that come to sip their nectar."
+      },
+      "depart": "The flowers are fading: {manque}. This patch can bloom again."
+    },
+    "sauterelle": {
+      "nom": "Grasshopper",
+      "nom_latin": "Roeseliana roeselii",
+      "description": "This little meadow grasshopper slips between the blades on its long legs.",
+      "anecdote": "Its wings are usually short, but some individuals have long wings and can fly.",
+      "indices": [
+        "A wide carpet of grass offers food to nibble and places to hide."
+      ],
+      "comportements": {
+        "arrivee": "A grasshopper has found your meadow. Look between the blades.",
+        "repas": "It nibbles a blade of grass, then slips back into the greenery."
+      },
+      "depart": "The grasshopper is looking for another meadow: {manque}."
+    },
+    "abeille": {
+      "nom": "Wild bee",
+      "nom_latin": "Osmia bicornis",
+      "description": "This solitary wild bee visits flowers and builds its nest in a hollow space.",
+      "anecdote": "The female divides her nest into cells with mud walls, leaving an egg and a supply of food in each one.",
+      "indices": [
+        "A meadow full of flowers may attract this busy visitor.",
+        "Hollow stems in a nearby bug hotel offer a place to nest."
+      ],
+      "comportements": {
+        "arrivee": "A wild bee explores the flowers and the bug hotel.",
+        "repas": "It drinks nectar and gathers pollen for its young.",
+        "pollinisation": "Pollen travels with it from flower to flower.",
+        "hiver": "The young bees spend winter sheltered in their cocoons."
+      },
+      "depart": "The bee seeks a new place to nest and visit flowers: {manque}."
+    },
+    "ver": {
+      "nom": "Earthworm",
+      "nom_latin": "Lumbricus terrestris",
+      "description": "Beneath your feet, this quiet resident pulls leaves into its tunnels and works the soil.",
+      "anecdote": "It breathes through its skin, which must stay moist to exchange gases with the air.",
+      "indices": [
+        "Soil that holds its moisture lets this little resident breathe.",
+        "Soil enriched with plant remains makes a welcoming home."
+      ],
+      "comportements": {
+        "arrivee": "A tunnel takes shape beneath the soil: an earthworm has moved in.",
+        "repas": "It pulls a fallen leaf into its tunnel to feed on."
+      },
+      "depart": "The earthworm retreats from this patch of soil: {manque}."
+    },
+    "lapin": {
+      "nom": "Rabbit",
+      "nom_latin": "Oryctolagus cuniculus",
+      "description": "At dusk, its ears rise above the grass. It grazes with shelter just a leap away.",
+      "anecdote": "Its teeth keep growing throughout its life. Chewing fibrous plants helps wear them down.",
+      "indices": [
+        "A lush meadow near its shelter provides plenty to graze on.",
+        "A nearby rock pile offers a place to hide."
+      ],
+      "comportements": {
+        "arrivee": "Ears peek above the grass. A rabbit is discovering your island.",
+        "repas": "It nips off a few blades of grass, its ears always alert."
+      },
+      "depart": "The rabbit moves to another patch of meadow: {manque}."
+    },
+    "alouette": {
+      "nom": "Skylark",
+      "nom_latin": "Alauda arvensis",
+      "description": "A small brown bird of open spaces, it searches for food on the ground and fills the sky with song.",
+      "anecdote": "The male sings in flight above the meadow, but the nest is built on the ground.",
+      "indices": [
+        "Plenty of grasshoppers promise a good supply of food.",
+        "Keep wide spaces free of trees and bushes for this meadow bird."
+      ],
+      "comportements": {
+        "arrivee": "A skylark lands in the open meadow. Remember to look up, too.",
+        "repas": "It catches a grasshopper among the blades.",
+        "hiver": "Winter is coming: your skylark leaves the island for a milder region."
+      },
+      "depart": "The skylark flies off to another meadow: {manque}."
+    },
+    "ronce": {
+      "nom": "Bramble",
+      "nom_latin": "Rubus fruticosus agg.",
+      "description": "Its tangled stems shelter small animals, while its blackberries feed the birds.",
+      "anecdote": "The tip of a long stem can take root when it touches the ground, growing into a new bramble.",
+      "indices": [
+        "Fairly rich soil helps it spread its stems.",
+        "It tolerates shade as long as some light still reaches it."
+      ],
+      "comportements": {
+        "arrivee": "A young bramble unfolds its first leaves.",
+        "pousse": "Its stems grow longer, slowly weaving a shelter.",
+        "adulte": "The bramble forms a dense refuge. Watch for blackberries in summer and fall."
+      },
+      "depart": "The bramble is withering: {manque}. Its shelter grows sparse."
+    },
+    "bouleau": {
+      "nom": "Birch",
+      "nom_latin": "Betula pendula",
+      "description": "A pioneer tree with pale bark. Its airy leaves cast the first shadows along the forest edge.",
+      "anecdote": "Its tiny winged seeds drift away on the wind.",
+      "indices": [
+        "Nourishing soil helps this young tree put down roots.",
+        "Give it plenty of light, clear of other trees' shade."
+      ],
+      "comportements": {
+        "arrivee": "A young birch opens its leaves above the grass.",
+        "pousse": "Its trunk rises, season after season.",
+        "adulte": "Its crown has spread. In fall, its leaves will nourish the soil."
+      },
+      "depart": "The birch is withering: {manque}. You can help new shoots return."
+    },
+    "herisson": {
+      "nom": "Hedgehog",
+      "nom_latin": "Erinaceus europaeus",
+      "description": "After nightfall, this small mammal rummages through the leaf litter in search of worms and insects.",
+      "anecdote": "During hibernation, its temperature drops and its heart slows to conserve its energy reserves.",
+      "indices": [
+        "Bramble patches offer sheltered paths to explore.",
+        "A nearby log pile provides a quiet hiding place.",
+        "Earthworms nearby promise a nighttime meal."
+      ],
+      "comportements": {
+        "arrivee": "Leaves rustle in the night. A hedgehog explores the forest edge.",
+        "repas": "Its snout probes the leaf litter: an earthworm becomes its meal.",
+        "hiver": "It hibernates in its nest under the logs. Leave its shelter undisturbed."
+      },
+      "depart": "The hedgehog moves on after nightfall: {manque}."
+    },
+    "merle": {
+      "nom": "Blackbird",
+      "nom_latin": "Turdus merula",
+      "description": "A hedgerow bird that turns over leaves, catches worms, and samples blackberries along the forest edge.",
+      "anecdote": "Despite its name, only the adult male is black: the female has brown feathers.",
+      "indices": [
+        "Bramble patches provide shelter and blackberries in season.",
+        "Earthworms on the island give it a reason to search the soil."
+      ],
+      "comportements": {
+        "arrivee": "A blackbird lands by the brambles and inspects the fallen leaves.",
+        "repas": "It pulls a worm from the soil, and samples blackberries when they ripen.",
+        "dispersion": "After a blackberry meal, its droppings carry bramble seeds farther afield."
+      },
+      "depart": "The blackbird flies off to another hedgerow: {manque}."
+    },
+    "renard": {
+      "nom": "Red fox",
+      "nom_latin": "Vulpes vulpes",
+      "description": "At dusk, it skirts the bushes and hunts in the meadow, watching for the slightest movement from the rabbits.",
+      "anecdote": "The fox doesn't just eat prey: fruit and berries are on its menu too.",
+      "indices": [
+        "A thriving rabbit population can keep this hunter fed.",
+        "Large bramble patches offer places to stay hidden.",
+        "Expand the island: it needs a large enough territory to settle in."
+      ],
+      "comportements": {
+        "arrivee": "A red shape slips along the bushes. The fox has found your island.",
+        "repas": "It hunts a rabbit in the meadow, then returns to cover."
+      },
+      "depart": "The fox moves on to another territory: {manque}."
+    },
+    "tircis": {
+      "nom": "Speckled wood",
+      "nom_latin": "Pararge aegeria",
+      "description": "Its cream-speckled brown wings flit through the shifting light and shade of the forest edge.",
+      "anecdote": "Its caterpillars eat grasses; the adult mostly drinks the sweet honeydew produced by aphids.",
+      "indices": [
+        "A wide carpet of grass can feed its caterpillars.",
+        "A little shade suits it better than a meadow in full sun.",
+        "Deep shade drives it away: leave gaps for sunlight.",
+        "Flowers scattered across the island also offer nectar."
+      ],
+      "comportements": {
+        "arrivee": "A speckled wood lands in a sunny patch beside the bushes.",
+        "repas": "It drinks honeydew from a leaf; its caterpillars nibble the grass.",
+        "pollinisation": "On an occasional flower visit, it may carry a little pollen."
+      },
+      "depart": "The speckled wood seeks another forest edge: {manque}."
+    },
+    "coulemelle": {
+      "nom": "Parasol mushroom",
+      "nom_latin": "Macrolepiota procera",
+      "description": "A broad cap on a slender stalk reveals the quiet work of a fungus breaking down organic matter in the soil.",
+      "anecdote": "Its stalk has a ring that can slide up and down, like a loose band around a stem.",
+      "indices": [
+        "Soil rich in organic matter feeds its network of threads.",
+        "Moist soil sets the stage for mushroom caps to appear.",
+        "Near a log pile, look for a layer of fallen leaves and plant remains."
+      ],
+      "comportements": {
+        "arrivee": "A network of threads settles into the soil at your forest edge.",
+        "repas": "Its threads break down leaf litter and absorb the nutrients.",
+        "fructification": "In fall, mushroom caps emerge from the soil to release their spores."
+      },
+      "depart": "The parasol mushroom's network is withering in this soil: {manque}."
+    }
+  },
+  "evenements": {
+    "floraison": {
+      "nom": "Spring bloom",
+      "annonce": "Spring bursts into bloom: your flowers produce twice as many seeds!",
+      "fin": "The great bloom ends. Your flowers return to their usual rhythm."
+    },
+    "orage": {
+      "nom": "Summer storm",
+      "annonce": "The soil soaks up water. Lightning may fell a tree, leaving useful deadwood.",
+      "fin": "The sky clears. The fallen wood can become a home for new residents."
+    },
+    "secheresse": {
+      "nom": "Summer drought",
+      "annonce": "Moisture is dropping. Hang in there: tend the soil that's still cool and damp.",
+      "fin": "The drought ends. The soil can slowly regain its moisture."
+    }
+  },
+  "etapes": {
+    "prairie": {
+      "nom": "Meadow",
+      "titre_passage": "The first pages of life",
+      "texte_passage": "It all starts with a little grass. Sow, build, and watch: animals will come on their own if your island meets their needs."
+    },
+    "lisiere": {
+      "nom": "Forest edge",
+      "titre_passage": "At the edge of a new page",
+      "texte_passage": "The first brambles and birches create new shelters. Welcome their visitors, and keep some room for the meadow too."
+    }
+  }
+}
