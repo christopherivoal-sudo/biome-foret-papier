@@ -11,6 +11,8 @@ module.exports = function chargerDonnees() {
     especes,
     amenagements: lire('amenagements.json'),
     etapes: lire('etapes.json'),
+    missions: lire('missions.json'),
+    equilibrage: fs.existsSync(path.join(D, 'equilibrage.json')) ? lire('equilibrage.json') : undefined,
     textes: { fr: lire('textes/fr.json') },
   };
 };

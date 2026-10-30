@@ -8,13 +8,15 @@ Jeu de gestion d'écosystème en papier plié (web puis Roblox). Dépôt commun 
 - `chatgpt/` : réponses de ChatGPT. **ChatGPT n'écrit que dans ce dossier.**
 - `data/` : données validées (espèces, textes, aménagements, étapes). Claude uniquement.
 - `src/` : code du jeu (`core.js` : simulation pure). Claude uniquement.
-- `tools/` : `validate.js` (vérification des données), `integrer.js` (copie chatgpt/ → data/ après validation), `test-core.js` (tests de la simulation).
+- `tools/` : `validate.js` (vérification des données), `integrer.js` (copie chatgpt/ → data/ après validation), `test-core.js` (tests de la simulation), `sim-headless.js` (parties simulées avec un joueur automatique, pour l'équilibrage).
+- `data/equilibrage.json` : réglages d'équilibrage de Claude, appliqués par-dessus les fiches (une nouvelle intégration ne les efface pas).
 
 ## Commandes (Node 18+)
 ```
 node tools/validate.js          # vérifie data/
 node tools/integrer.js          # valide puis intègre les fichiers de chatgpt/
 node tools/test-core.js         # tests de src/core.js
+node tools/sim-headless.js      # 20 parties d'1 h simulées : rythme, venues, départs
 ```
 
 ## Règles pour ChatGPT

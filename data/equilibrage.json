@@ -1,0 +1,9 @@
+{
+  "_note": "Réglages d'équilibrage écrits par Claude (sprint 2). Ils surchargent les fiches de data/especes/ sans les modifier : une nouvelle intégration des fiches de ChatGPT ne les efface pas. Seuls les champs listés changent ; dans une liste (besoins), un objet remplace l'élément de même rang.",
+  "especes": {
+    "tircis": {
+      "_pourquoi": "La moyenne d'ombre ≥ 20 dans un rayon de 2 était plus stricte que le GDD (« au moins 3 tuiles de mi-ombre »). On garde la règle des 3 tuiles entre 20 et 50 et on abaisse la moyenne à 10.",
+      "besoins": { "1": { "valeur": 10 } }
+    }
+  }
+}
