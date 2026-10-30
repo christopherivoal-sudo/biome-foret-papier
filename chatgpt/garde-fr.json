@@ -1,0 +1,103 @@
+{
+  "garde": {
+    "nom": "Odile",
+    "tutoriel": {
+      "accueil": "Bienvenue sur ton île ! Ici, on prépare des refuges et la vie vient d'elle-même.",
+      "carnet": "Ouvre ton carnet : chaque silhouette cache des pistes sur un futur habitant.",
+      "sauterelles": "Tiens, des sauterelles ! L'herbe leur offre le couvert, sans invitation.",
+      "semer_fleurs": "Sème 4 fleurs : leurs graines nourriront bientôt une prairie plus variée.",
+      "besoin_partiel": "Les fleurs plaisent à l'abeille, mais il lui manque encore un nid.",
+      "hotel": "Un hôtel à insectes offre des cavités aux osmies. Observe les fleurs !",
+      "alouette": "L'alouette suit les sauterelles. Garde-lui de l'espace ouvert.",
+      "abri_lapin": "Un tas de pierres près de l'herbe offre aux lapins une cachette.",
+      "premiere_nuit": "La nuit tombe. Certains habitants se reposent, d'autres s'activent.",
+      "mare_paillis": "Une mare humidifie le sol ; le paillis le nourrit. Les vers apprécient.",
+      "harmonie": "L'harmonie mesure l'équilibre de ton île, pas sa quantité d'arbres.",
+      "lisiere": "La lisière s'ouvre ! Garde de la prairie pour ceux qui aiment le grand air."
+    },
+    "reactions": {
+      "herbe": "L'herbe s'installe : les premiers repas de la prairie sont servis.",
+      "fleurs": "Des fleurs ! Leur nectar attire des visiteurs bien utiles.",
+      "sauterelle": "Une sauterelle ! Ses longues pattes la portent entre les herbes.",
+      "abeille": "Une osmie ! Cette abeille solitaire niche dans de petites cavités.",
+      "ver": "Un ver de terre ! Ses galeries aèrent le sol et brassent les débris.",
+      "lapin": "Des oreilles à l'horizon ! Le lapin garde toujours un refuge proche.",
+      "alouette": "L'alouette est là ! Elle niche au sol, au milieu des espaces ouverts.",
+      "ronce": "La ronce pousse : un abri épineux et bientôt des mûres pour les oiseaux.",
+      "bouleau": "Un bouleau ! Ce pionnier aime la lumière et prépare une ombre légère.",
+      "herisson": "Un hérisson ! La nuit, il fouille le sol à la recherche de petites bêtes.",
+      "merle": "Le merle arrive ! Il peut disperser des graines après avoir mangé des mûres.",
+      "renard": "Un renard ! Ce chasseur discret contribue à réguler les lapins.",
+      "tircis": "Un tircis ! Ses chenilles se nourrissent de graminées.",
+      "coulemelle": "Une coulemelle ! Son mycélium décompose la matière organique du sol."
+    },
+    "alertes": {
+      "floraison": "Les fleurs s'éveillent ! La récolte de graines promet d'être belle.",
+      "orage": "Le ciel gronde. La pluie abreuve le sol ; surveille les arbres.",
+      "secheresse": "Le sol sèche. Les coins humides deviennent de précieux refuges.",
+      "fin_evenement": "Le calme revient. Voyons ce qui a changé sur ton île.",
+      "nouvelle_mission": "J'ai une nouvelle piste pour toi. Passe donc à ma cabane !",
+      "mission_reussie": "Bien joué ! Une nouvelle page de notre histoire s'écrit.",
+      "depart_espece": "Un habitant est parti : il lui manquait {manque}. Il pourra revenir.",
+      "nuit": "La nuit arrive. Ouvre l'œil : certains voisins préfèrent l'obscurité.",
+      "hiver": "L'hiver ralentit les pousses. Certains animaux migrent ou hibernent.",
+      "retour_hors_ligne": "Pendant ton absence, {nombre} espèces sont venues visiter ton île."
+    },
+    "indices": {
+      "blocage": "Pas de nouvel arrivant ? Je peux t'offrir un indice gratuit sur un besoin à combler.",
+      "pub_naturaliste": "Une pub facultative peut révéler un besoin caché. Tu peux aussi chercher seul."
+    }
+  },
+  "missions": {
+    "premiers_semis": {
+      "titre": "Quatre touches de couleur",
+      "texte": "Sème 4 tuiles de fleurs : le nectar attirera bientôt les pollinisateurs.",
+      "reussite": "Voilà une prairie qui prépare un beau festin !"
+    },
+    "abri_des_lapins": {
+      "titre": "Un refuge de pierres",
+      "texte": "Pose 1 tas de pierres près de l'herbe pour offrir un abri aux lapins.",
+      "reussite": "Un petit abri peut faire une grande différence."
+    },
+    "hotel_des_abeilles": {
+      "titre": "Une chambre pour l'osmie",
+      "texte": "Construis 1 hôtel à insectes : les abeilles solitaires aiment les cavités.",
+      "reussite": "Un toit minuscule, une belle aide aux fleurs !"
+    },
+    "premieres_photos": {
+      "titre": "Deux pages vivantes",
+      "texte": "Photographie 2 habitants : l'observation fait grandir ton carnet.",
+      "reussite": "Deux rencontres à garder dans les pages !"
+    },
+    "graines_de_prairie": {
+      "titre": "La récolte des fleurs",
+      "texte": "Récolte 5 graines mûres : les fleurs pollinisées en donnent davantage.",
+      "reussite": "La patience porte ses graines !"
+    },
+    "ronces_refuges": {
+      "titre": "Une haie qui protège",
+      "texte": "Plante 3 ronces : elles offriront abri et mûres aux habitants de la lisière.",
+      "reussite": "Les meilleures cachettes ont parfois des épines."
+    },
+    "bois_pour_herisson": {
+      "titre": "Le refuge du hérisson",
+      "texte": "Pose 1 tas de bois : le hérisson pourra s'y abriter près des ronces.",
+      "reussite": "Un tas de branches, et tout un monde trouve refuge."
+    },
+    "visiteurs_de_lisiere": {
+      "titre": "Deux nouveaux voisins",
+      "texte": "Accueille 2 espèces encore jamais venues sur ton île.",
+      "reussite": "La lisière attire de nouveaux curieux !"
+    },
+    "portrait_du_merle": {
+      "titre": "Le merle en portrait",
+      "texte": "Photographie 1 merle : cet oiseau peut disperser les graines de ronce.",
+      "reussite": "Un portrait et peut-être de futures ronces !"
+    },
+    "floraison_traversee": {
+      "titre": "Au rythme des fleurs",
+      "texte": "Traverse 1 floraison entière : les fleurs produisent alors plus de graines.",
+      "reussite": "Tu as vu la prairie profiter du printemps !"
+    }
+  }
+}
