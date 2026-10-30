@@ -1,0 +1,150 @@
+[
+  {
+    "id": "premiers_semis",
+    "etape": "prairie",
+    "objectif": {
+      "type": "compteur",
+      "quoi": "semis",
+      "id": "fleurs",
+      "nombre": 4
+    },
+    "recompense": {
+      "seve": 50,
+      "graines": 2,
+      "pages": 0
+    }
+  },
+  {
+    "id": "abri_des_lapins",
+    "etape": "prairie",
+    "objectif": {
+      "type": "compteur",
+      "quoi": "construction",
+      "id": "tas_pierres",
+      "nombre": 1
+    },
+    "recompense": {
+      "seve": 45,
+      "graines": 1,
+      "pages": 0
+    }
+  },
+  {
+    "id": "hotel_des_abeilles",
+    "etape": "prairie",
+    "objectif": {
+      "type": "compteur",
+      "quoi": "construction",
+      "id": "hotel_insectes",
+      "nombre": 1
+    },
+    "recompense": {
+      "seve": 65,
+      "graines": 1,
+      "pages": 0
+    }
+  },
+  {
+    "id": "premieres_photos",
+    "etape": "prairie",
+    "objectif": {
+      "type": "compteur",
+      "quoi": "photo",
+      "nombre": 2
+    },
+    "recompense": {
+      "seve": 60,
+      "graines": 0,
+      "pages": 1
+    }
+  },
+  {
+    "id": "graines_de_prairie",
+    "etape": "prairie",
+    "objectif": {
+      "type": "compteur",
+      "quoi": "recolte",
+      "nombre": 5
+    },
+    "recompense": {
+      "seve": 40,
+      "graines": 2,
+      "pages": 0
+    }
+  },
+  {
+    "id": "ronces_refuges",
+    "etape": "lisiere",
+    "objectif": {
+      "type": "compteur",
+      "quoi": "semis",
+      "id": "ronce",
+      "nombre": 3
+    },
+    "recompense": {
+      "seve": 60,
+      "graines": 2,
+      "pages": 0
+    }
+  },
+  {
+    "id": "bois_pour_herisson",
+    "etape": "lisiere",
+    "objectif": {
+      "type": "compteur",
+      "quoi": "construction",
+      "id": "tas_bois",
+      "nombre": 1
+    },
+    "recompense": {
+      "seve": 70,
+      "graines": 1,
+      "pages": 0
+    }
+  },
+  {
+    "id": "visiteurs_de_lisiere",
+    "etape": "lisiere",
+    "objectif": {
+      "type": "compteur",
+      "quoi": "arrivee",
+      "nombre": 2,
+      "nouvelle": true
+    },
+    "recompense": {
+      "seve": 90,
+      "graines": 1,
+      "pages": 1
+    }
+  },
+  {
+    "id": "portrait_du_merle",
+    "etape": "lisiere",
+    "objectif": {
+      "type": "compteur",
+      "quoi": "photo",
+      "id": "merle",
+      "nombre": 1
+    },
+    "recompense": {
+      "seve": 65,
+      "graines": 0,
+      "pages": 1
+    }
+  },
+  {
+    "id": "floraison_traversee",
+    "etape": "lisiere",
+    "objectif": {
+      "type": "compteur",
+      "quoi": "evenement",
+      "id": "floraison",
+      "nombre": 1
+    },
+    "recompense": {
+      "seve": 110,
+      "graines": 3,
+      "pages": 1
+    }
+  }
+]
