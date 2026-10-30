@@ -1,0 +1,89 @@
+{
+  "id": "ver",
+  "etape": "prairie",
+  "categorie": "insecte",
+  "mode": "population",
+  "venue": "spontanee",
+  "roles": [
+    "decomposeur"
+  ],
+  "activite": "toujours",
+  "saisons_actives": [
+    "printemps",
+    "ete",
+    "automne",
+    "hiver"
+  ],
+  "hiver": "actif",
+  "besoins": [
+    {
+      "type": "stat",
+      "stat": "humidite",
+      "op": ">=",
+      "valeur": 35,
+      "portee": "zone",
+      "rayon": 3
+    },
+    {
+      "type": "stat",
+      "stat": "fertilite",
+      "op": ">=",
+      "valeur": 15,
+      "portee": "zone",
+      "rayon": 3
+    }
+  ],
+  "capacite": {
+    "par": "tuiles",
+    "couvert": "vegetal",
+    "nombre": 2,
+    "max": 100
+  },
+  "reproduction": {
+    "saisons": [
+      "printemps",
+      "automne"
+    ],
+    "portee_moyenne": 2,
+    "intervalle_jours": 2
+  },
+  "interactions": [
+    {
+      "type": "fertilise",
+      "cible": "herbe",
+      "intensite": 0.1
+    },
+    {
+      "type": "fertilise",
+      "cible": "fleurs",
+      "intensite": 0.1
+    },
+    {
+      "type": "fertilise",
+      "cible": "ronce",
+      "intensite": 0.1
+    },
+    {
+      "type": "fertilise",
+      "cible": "bouleau",
+      "intensite": 0.1
+    }
+  ],
+  "production": {
+    "seve_par_s": 0,
+    "pages_photo": 1
+  },
+  "depart_apres_jours": 1,
+  "modele": "ver",
+  "palette": [
+    "#a96f69",
+    "#cf9b8f",
+    "#73504a"
+  ],
+  "papiers_rares": [
+    "journal",
+    "washi",
+    "calque",
+    "dore"
+  ]
+}

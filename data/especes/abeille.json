@@ -1,0 +1,70 @@
+{
+  "id": "abeille",
+  "etape": "prairie",
+  "categorie": "insecte",
+  "mode": "population",
+  "venue": "spontanee",
+  "roles": [
+    "pollinisateur"
+  ],
+  "activite": "jour",
+  "saisons_actives": [
+    "printemps",
+    "ete",
+    "automne"
+  ],
+  "hiver": "hiberne",
+  "besoins": [
+    {
+      "type": "couvert_nb",
+      "couvert": "fleurs",
+      "min": 6,
+      "portee": "ile"
+    },
+    {
+      "type": "amenagement",
+      "id": "hotel_insectes",
+      "min": 1,
+      "portee": "zone",
+      "rayon": 6
+    }
+  ],
+  "capacite": {
+    "par": "tuiles",
+    "couvert": "fleurs",
+    "nombre": 1,
+    "max": 40
+  },
+  "reproduction": {
+    "saisons": [
+      "printemps",
+      "ete"
+    ],
+    "portee_moyenne": 2,
+    "intervalle_jours": 2
+  },
+  "interactions": [
+    {
+      "type": "pollinise",
+      "cible": "fleurs",
+      "intensite": 0.8
+    }
+  ],
+  "production": {
+    "seve_par_s": 0,
+    "pages_photo": 1
+  },
+  "depart_apres_jours": 1,
+  "modele": "abeille",
+  "palette": [
+    "#c9a34d",
+    "#4a382a",
+    "#e5d9b9"
+  ],
+  "papiers_rares": [
+    "journal",
+    "washi",
+    "calque",
+    "dore"
+  ]
+}

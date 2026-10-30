@@ -1,0 +1,69 @@
+{
+  "id": "alouette",
+  "etape": "prairie",
+  "categorie": "animal",
+  "mode": "agent",
+  "venue": "spontanee",
+  "roles": [
+    "insectivore"
+  ],
+  "activite": "jour",
+  "saisons_actives": [
+    "printemps",
+    "ete",
+    "automne"
+  ],
+  "hiver": "migre",
+  "besoins": [
+    {
+      "type": "espece",
+      "id": "sauterelle",
+      "min": 4,
+      "portee": "ile"
+    },
+    {
+      "type": "couvert",
+      "couvert": "ouvert",
+      "min": 0.4,
+      "portee": "ile"
+    }
+  ],
+  "capacite": {
+    "par": "espece",
+    "id": "sauterelle",
+    "nombre": 4,
+    "max": 4
+  },
+  "reproduction": {
+    "saisons": [
+      "printemps",
+      "ete"
+    ],
+    "portee_moyenne": 2,
+    "intervalle_jours": 3
+  },
+  "interactions": [
+    {
+      "type": "mange",
+      "cible": "sauterelle",
+      "intensite": 0.2
+    }
+  ],
+  "production": {
+    "seve_par_s": 0,
+    "pages_photo": 1
+  },
+  "depart_apres_jours": 1,
+  "modele": "alouette",
+  "palette": [
+    "#a18a65",
+    "#d4c5a5",
+    "#66533d"
+  ],
+  "papiers_rares": [
+    "journal",
+    "washi",
+    "calque",
+    "dore"
+  ]
+}

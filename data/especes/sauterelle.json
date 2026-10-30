@@ -1,0 +1,63 @@
+{
+  "id": "sauterelle",
+  "etape": "prairie",
+  "categorie": "insecte",
+  "mode": "population",
+  "venue": "spontanee",
+  "roles": [
+    "herbivore"
+  ],
+  "activite": "jour",
+  "saisons_actives": [
+    "printemps",
+    "ete",
+    "automne"
+  ],
+  "hiver": "dormant",
+  "besoins": [
+    {
+      "type": "couvert",
+      "couvert": "herbe",
+      "min": 0.2,
+      "portee": "ile"
+    }
+  ],
+  "capacite": {
+    "par": "tuiles",
+    "couvert": "herbe",
+    "nombre": 2,
+    "max": 80
+  },
+  "reproduction": {
+    "saisons": [
+      "printemps",
+      "ete"
+    ],
+    "portee_moyenne": 3,
+    "intervalle_jours": 2
+  },
+  "interactions": [
+    {
+      "type": "mange",
+      "cible": "herbe",
+      "intensite": 0.03
+    }
+  ],
+  "production": {
+    "seve_par_s": 0,
+    "pages_photo": 1
+  },
+  "depart_apres_jours": 1,
+  "modele": "sauterelle",
+  "palette": [
+    "#80a653",
+    "#afba71",
+    "#796b46"
+  ],
+  "papiers_rares": [
+    "journal",
+    "washi",
+    "calque",
+    "dore"
+  ]
+}

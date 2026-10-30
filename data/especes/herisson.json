@@ -1,0 +1,85 @@
+{
+  "id": "herisson",
+  "etape": "lisiere",
+  "categorie": "animal",
+  "mode": "agent",
+  "venue": "spontanee",
+  "roles": [
+    "insectivore"
+  ],
+  "activite": "nuit",
+  "saisons_actives": [
+    "printemps",
+    "ete",
+    "automne"
+  ],
+  "hiver": "hiberne",
+  "besoins": [
+    {
+      "type": "couvert_nb",
+      "couvert": "ronce",
+      "min": 3,
+      "portee": "ile"
+    },
+    {
+      "type": "amenagement",
+      "id": "tas_bois",
+      "min": 1,
+      "portee": "zone",
+      "rayon": 5
+    },
+    {
+      "type": "espece",
+      "id": "ver",
+      "min": 1,
+      "portee": "zone",
+      "rayon": 6
+    }
+  ],
+  "capacite": {
+    "par": "amenagement",
+    "id": "tas_bois",
+    "nombre": 2,
+    "max": 4
+  },
+  "reproduction": {
+    "saisons": [
+      "printemps"
+    ],
+    "portee_moyenne": 2,
+    "intervalle_jours": 3
+  },
+  "interactions": [
+    {
+      "type": "mange",
+      "cible": "ver",
+      "intensite": 0.3
+    },
+    {
+      "type": "mange",
+      "cible": "sauterelle",
+      "intensite": 0.2
+    },
+    {
+      "type": "evite",
+      "cible": "renard"
+    }
+  ],
+  "production": {
+    "seve_par_s": 0,
+    "pages_photo": 1
+  },
+  "depart_apres_jours": 1,
+  "modele": "herisson",
+  "palette": [
+    "#8a6a4f",
+    "#c9b49a",
+    "#3b2e25"
+  ],
+  "papiers_rares": [
+    "journal",
+    "washi",
+    "calque",
+    "dore"
+  ]
+}

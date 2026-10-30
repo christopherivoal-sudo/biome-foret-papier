@@ -1,0 +1,442 @@
+#!/usr/bin/env node
+// Biome, la forêt de papier : vérification des données (GDD v2, section 8.8).
+// Usage :
+//   node tools/validate.js                       vérifie data/
+//   node tools/validate.js --especes chatgpt/especes-prairie-lisiere.json --fr chatgpt/textes-fr.json [--en chatgpt/textes-en.json]
+// Sortie : une ligne par problème, en français. Code de sortie 1 s'il y a au moins une erreur bloquante.
+'use strict';
+const fs = require('fs');
+const path = require('path');
+
+const RACINE = path.resolve(__dirname, '..');
+
+// ---------- Valeurs autorisées (GDD 8.2 et 8.3) ----------
+const ETAPES = ['prairie', 'lisiere', 'jeune_foret', 'foret_ancienne', 'zone_humide'];
+const CATEGORIES = ['plante', 'animal', 'champignon', 'insecte'];
+const MODES = ['tuile', 'population', 'agent'];
+const VENUES = ['semee', 'spontanee'];
+const ROLES = ['producteur', 'herbivore', 'insectivore', 'omnivore', 'predateur', 'decomposeur', 'pollinisateur', 'disperseur', 'ingenieur', 'abri'];
+const ACTIVITES = ['jour', 'nuit', 'crepuscule', 'toujours'];
+const SAISONS = ['printemps', 'ete', 'automne', 'hiver'];
+const HIVERS = ['actif', 'hiberne', 'migre', 'dormant'];
+const MOMENTS = ['jour', 'nuit', 'crepuscule'];
+const PAPIERS = ['journal', 'washi', 'calque', 'dore'];
+const COUVERTS = ['nu', 'herbe', 'fleurs', 'ronce', 'arbre', 'eau', 'roche', 'bois_mort', 'amenagement', 'ouvert', 'vegetal', 'cendres'];
+const STATS = ['fertilite', 'humidite', 'ombre'];
+const INTERACTIONS = ['mange', 'pollinise', 'disperse', 'abrite', 'fertilise', 'evite', 'transforme'];
+const CAPACITE_PAR = ['tuiles', 'amenagement', 'espece'];
+const AMENAGEMENTS_DEFAUT = ['tas_pierres', 'mare', 'hotel_insectes', 'paillis', 'tas_bois', 'nichoir'];
+const VARIABLES = ['manque', 'nombre', 'joueur'];
+
+// Exceptions validées par Christophe (voir chatgpt/especes-prairie-lisiere-notes.md).
+const MAX_BESOINS = 3;
+const EXCEPTIONS_BESOINS = { tircis: 4 };
+
+// Longueurs maximales des textes (GDD 8.7).
+const LONG = { description: 140, anecdote: 160, indice: 90, message: 80, titre_passage: 50, texte_passage: 140 };
+
+// ---------- Rapport ----------
+const problemes = [];
+const erreur = (lieu, msg) => problemes.push({ niv: 'ERREUR', lieu, msg });
+const avert = (lieu, msg) => problemes.push({ niv: 'avertissement', lieu, msg });
+
+// ---------- Lecture ----------
+function args() {
+  const a = process.argv.slice(2), o = {};
+  for (let i = 0; i < a.length; i++) if (a[i].startsWith('--')) o[a[i].slice(2)] = a[i + 1] && !a[i + 1].startsWith('--') ? a[++i] : true;
+  return o;
+}
+function lireJSON(fichier, obligatoire = true) {
+  if (!fs.existsSync(fichier)) { if (obligatoire) erreur(rel(fichier), 'fichier introuvable'); return undefined; }
+  try { return JSON.parse(fs.readFileSync(fichier, 'utf8')); }
+  catch (e) { erreur(rel(fichier), 'JSON invalide : ' + e.message); return undefined; }
+}
+const rel = f => path.relative(RACINE, path.resolve(f)) || f;
+
+function chargerEspeces(source) {
+  const p = path.resolve(RACINE, source);
+  if (!fs.existsSync(p)) { erreur(source, 'introuvable'); return []; }
+  if (fs.statSync(p).isDirectory()) {
+    return fs.readdirSync(p).filter(f => f.endsWith('.json')).sort().map(f => {
+      const e = lireJSON(path.join(p, f));
+      if (e && e.id && e.id + '.json' !== f) erreur(rel(path.join(p, f)), `le nom du fichier doit être ${e.id}.json`);
+      return e;
+    }).filter(Boolean);
+  }
+  const t = lireJSON(p);
+  if (t === undefined) return [];
+  if (!Array.isArray(t)) { erreur(source, 'doit être un tableau de fiches'); return []; }
+  return t;
+}
+
+// ---------- Outils de contrôle ----------
+const estObjet = v => v && typeof v === 'object' && !Array.isArray(v);
+const estNombre = v => typeof v === 'number' && Number.isFinite(v);
+const ID_RE = /^[a-z][a-z0-9_]*$/;
+const HEX_RE = /^#[0-9a-fA-F]{6}$/;
+const longueur = s => [...s].length;
+const EMOJI_RE = /\p{Extended_Pictographic}/u;
+
+function chercherNull(v, lieu, chemin = '') {
+  if (v === null) { erreur(lieu, `valeur null interdite (${chemin || 'racine'}) : omettre le champ`); return; }
+  if (Array.isArray(v)) v.forEach((x, i) => chercherNull(x, lieu, `${chemin}[${i}]`));
+  else if (estObjet(v)) for (const k of Object.keys(v)) chercherNull(v[k], lieu, chemin ? `${chemin}.${k}` : k);
+}
+function enumVal(v, liste, lieu, champ) {
+  if (!liste.includes(v)) erreur(lieu, `${champ} = ${JSON.stringify(v)} inconnu (attendu : ${liste.join(', ')})`);
+}
+function borne(v, min, max, lieu, champ) {
+  if (!estNombre(v)) { erreur(lieu, `${champ} doit être un nombre`); return; }
+  if (v < min || v > max) erreur(lieu, `${champ} = ${v} hors bornes [${min}, ${max}]`);
+}
+function positif(v, lieu, champ, entier = false) {
+  if (!estNombre(v) || v < 0) erreur(lieu, `${champ} doit être un nombre ≥ 0`);
+  else if (entier && !Number.isInteger(v)) erreur(lieu, `${champ} doit être un entier`);
+}
+
+// ---------- Conditions (GDD 8.2) ----------
+const CHAMPS_COND = {
+  couvert: ['couvert', 'min', 'portee'],
+  couvert_nb: ['couvert', 'min', 'portee'],
+  stat: ['stat', 'op', 'valeur', 'portee'],
+  amenagement: ['id', 'min', 'portee'],
+  espece: ['id', 'min', 'portee'],
+  arbre_adulte: ['id', 'min'],
+  saison: ['dans'],
+  moment: ['dans'],
+  etape: ['min'],
+  rayon_ile: ['min'],
+  harmonie: ['min'],
+  nb_especes: ['min'],
+};
+const FACULTATIFS_COND = { rayon: 1, age_min_jours: 1, duree_jours: 1, etapes: 1 };
+
+function verifierCondition(c, lieu, ctx) {
+  if (!estObjet(c)) { erreur(lieu, 'condition : objet attendu'); return; }
+  const champs = CHAMPS_COND[c.type];
+  if (!champs) { erreur(lieu, `type de condition inconnu : ${JSON.stringify(c.type)}`); return; }
+  for (const ch of champs) if (!(ch in c)) erreur(lieu, `condition ${c.type} : champ « ${ch} » manquant`);
+  for (const k of Object.keys(c)) if (k !== 'type' && !champs.includes(k) && !FACULTATIFS_COND[k]) erreur(lieu, `condition ${c.type} : champ « ${k} » inconnu`);
+  if ('portee' in c) {
+    enumVal(c.portee, ['ile', 'zone'], lieu, 'portee');
+    if (c.portee === 'zone') { if (!('rayon' in c)) erreur(lieu, `condition ${c.type} : « rayon » obligatoire en portée zone`); else positif(c.rayon, lieu, 'rayon'); }
+    if (c.portee === 'ile' && 'rayon' in c) avert(lieu, `condition ${c.type} : « rayon » ignoré en portée île`);
+  }
+  switch (c.type) {
+    case 'couvert': enumVal(c.couvert, COUVERTS, lieu, 'couvert'); borne(c.min, 0, 1, lieu, 'couvert.min (fraction)'); break;
+    case 'couvert_nb': enumVal(c.couvert, COUVERTS, lieu, 'couvert'); positif(c.min, lieu, 'couvert_nb.min', true); break;
+    case 'stat': enumVal(c.stat, STATS, lieu, 'stat'); enumVal(c.op, ['>=', '<='], lieu, 'op'); borne(c.valeur, 0, 100, lieu, 'stat.valeur'); break;
+    case 'amenagement': enumVal(c.id, ctx.amenagements, lieu, 'aménagement'); positif(c.min, lieu, 'amenagement.min', true); break;
+    case 'espece':
+      positif(c.min, lieu, 'espece.min', true);
+      if (!ctx.ids.has(c.id)) erreur(lieu, `espèce « ${c.id} » inexistante`);
+      else ctx.dependances.push([ctx.idCourant, c.id, lieu]);
+      break;
+    case 'arbre_adulte':
+      positif(c.min, lieu, 'arbre_adulte.min', true);
+      if (!ctx.ids.has(c.id)) erreur(lieu, `arbre « ${c.id} » inexistant`);
+      if ('age_min_jours' in c) positif(c.age_min_jours, lieu, 'age_min_jours');
+      break;
+    case 'saison':
+      if (!Array.isArray(c.dans) || !c.dans.length) erreur(lieu, 'saison.dans : liste non vide attendue');
+      else c.dans.forEach(s => enumVal(s, SAISONS, lieu, 'saison'));
+      break;
+    case 'moment':
+      if (!Array.isArray(c.dans) || !c.dans.length) erreur(lieu, 'moment.dans : liste non vide attendue');
+      else c.dans.forEach(s => enumVal(s, MOMENTS, lieu, 'moment'));
+      break;
+    case 'etape': enumVal(c.min, ETAPES, lieu, 'etape.min'); break;
+    case 'rayon_ile': positif(c.min, lieu, 'rayon_ile.min', true); break;
+    case 'harmonie': borne(c.min, 0, 1, lieu, 'harmonie.min'); if ('duree_jours' in c) positif(c.duree_jours, lieu, 'duree_jours'); break;
+    case 'nb_especes':
+      positif(c.min, lieu, 'nb_especes.min', true);
+      if ('etapes' in c) (Array.isArray(c.etapes) ? c.etapes : [c.etapes]).forEach(e => enumVal(e, ETAPES, lieu, 'nb_especes.etapes'));
+      break;
+  }
+}
+
+// ---------- Fiche espèce (GDD 8.3) ----------
+const OBLIGATOIRES = ['id', 'etape', 'categorie', 'mode', 'venue', 'roles', 'activite', 'saisons_actives', 'hiver', 'besoins', 'capacite', 'reproduction', 'interactions', 'production', 'depart_apres_jours', 'modele', 'palette', 'papiers_rares'];
+const FACULTATIFS = ['croissance'];
+
+function verifierEspece(e, ctx) {
+  const lieu = `espèce ${e && e.id ? e.id : '?'}`;
+  if (!estObjet(e)) { erreur('espèces', 'chaque fiche doit être un objet'); return; }
+  chercherNull(e, lieu);
+  for (const ch of OBLIGATOIRES) if (!(ch in e)) erreur(lieu, `champ obligatoire « ${ch} » manquant`);
+  for (const k of Object.keys(e)) if (!OBLIGATOIRES.includes(k) && !FACULTATIFS.includes(k)) erreur(lieu, `champ inconnu « ${k} »`);
+  ctx.idCourant = e.id;
+
+  if (typeof e.id !== 'string' || !ID_RE.test(e.id)) erreur(lieu, 'id : minuscules ASCII, chiffres et _ seulement');
+  enumVal(e.etape, ETAPES, lieu, 'etape');
+  enumVal(e.categorie, CATEGORIES, lieu, 'categorie');
+  enumVal(e.mode, MODES, lieu, 'mode');
+  enumVal(e.venue, VENUES, lieu, 'venue');
+  if (!Array.isArray(e.roles) || !e.roles.length) erreur(lieu, 'roles : liste non vide attendue'); else e.roles.forEach(r => enumVal(r, ROLES, lieu, 'role'));
+  enumVal(e.activite, ACTIVITES, lieu, 'activite');
+  if (!Array.isArray(e.saisons_actives) || !e.saisons_actives.length) erreur(lieu, 'saisons_actives : liste non vide attendue'); else e.saisons_actives.forEach(s => enumVal(s, SAISONS, lieu, 'saison active'));
+  enumVal(e.hiver, HIVERS, lieu, 'hiver');
+  if (e.hiver === 'actif' && Array.isArray(e.saisons_actives) && !e.saisons_actives.includes('hiver')) avert(lieu, 'hiver = actif mais « hiver » absent de saisons_actives');
+  if (e.hiver !== 'actif' && Array.isArray(e.saisons_actives) && e.saisons_actives.includes('hiver')) avert(lieu, `hiver = ${e.hiver} mais « hiver » présent dans saisons_actives`);
+
+  // Cohérences de catégorie
+  if (e.categorie === 'plante' && e.mode !== 'tuile') erreur(lieu, 'une plante doit être en mode tuile');
+  if (e.categorie === 'animal' && e.mode !== 'agent') avert(lieu, 'un animal est normalement en mode agent');
+  if (e.categorie === 'insecte' && e.mode !== 'population') avert(lieu, 'un insecte est normalement en mode population');
+  if (e.venue === 'semee' && e.categorie !== 'plante') erreur(lieu, 'seules les plantes peuvent être semées (on n\'achète jamais d\'animal)');
+
+  // Besoins
+  if (!Array.isArray(e.besoins) || !e.besoins.length) erreur(lieu, 'besoins : liste non vide attendue');
+  else {
+    const max = EXCEPTIONS_BESOINS[e.id] || MAX_BESOINS;
+    if (e.besoins.length > max) erreur(lieu, `${e.besoins.length} besoins (maximum ${max})`);
+    e.besoins.forEach((c, i) => verifierCondition(c, `${lieu}, besoin ${i + 1}`, ctx));
+  }
+
+  // Capacité
+  const cap = e.capacite;
+  if (estObjet(cap)) {
+    enumVal(cap.par, CAPACITE_PAR, lieu, 'capacite.par');
+    positif(cap.nombre, lieu, 'capacite.nombre');
+    if (cap.nombre === 0) erreur(lieu, 'capacite.nombre ne peut pas valoir 0');
+    if ('max' in cap) positif(cap.max, lieu, 'capacite.max', true);
+    if (cap.par === 'tuiles') { if (!cap.couvert) erreur(lieu, 'capacite par tuiles : « couvert » manquant'); else enumVal(cap.couvert, COUVERTS, lieu, 'capacite.couvert'); }
+    if (cap.par === 'amenagement') enumVal(cap.id, ctx.amenagements, lieu, 'capacite.id (aménagement)');
+    if (cap.par === 'espece' && !ctx.ids.has(cap.id)) erreur(lieu, `capacite.id : espèce « ${cap.id} » inexistante`);
+    if (e.mode === 'agent' && !('max' in cap)) avert(lieu, 'agent sans capacite.max (limite de 30 agents par île)');
+  } else if ('capacite' in e) erreur(lieu, 'capacite : objet attendu');
+
+  // Reproduction
+  const rep = e.reproduction;
+  if (estObjet(rep)) {
+    if (!Array.isArray(rep.saisons)) erreur(lieu, 'reproduction.saisons : liste attendue'); else rep.saisons.forEach(s => enumVal(s, SAISONS, lieu, 'reproduction.saison'));
+    positif(rep.portee_moyenne, lieu, 'reproduction.portee_moyenne');
+    positif(rep.intervalle_jours, lieu, 'reproduction.intervalle_jours');
+  } else if ('reproduction' in e) erreur(lieu, 'reproduction : objet attendu');
+
+  // Interactions
+  if (Array.isArray(e.interactions)) e.interactions.forEach((it, i) => {
+    const l = `${lieu}, interaction ${i + 1}`;
+    if (!estObjet(it)) { erreur(l, 'objet attendu'); return; }
+    enumVal(it.type, INTERACTIONS, l, 'type');
+    if (!ctx.ids.has(it.cible)) erreur(l, `cible « ${it.cible} » inexistante`);
+    if (it.cible === e.id && it.type !== 'fertilise') erreur(l, 'une espèce ne peut pas interagir avec elle-même');
+    if ('intensite' in it) borne(it.intensite, 0, 1, l, 'intensite');
+    if (it.type === 'disperse') { if (!it.plante) erreur(l, 'disperse : champ « plante » manquant'); else if (!ctx.ids.has(it.plante)) erreur(l, `plante « ${it.plante} » inexistante`); }
+    if (it.type === 'transforme' && !it.effet) erreur(l, 'transforme : champ « effet » manquant');
+    for (const k of Object.keys(it)) if (!['type', 'cible', 'intensite', 'plante', 'effet'].includes(k)) erreur(l, `champ inconnu « ${k} »`);
+  }); else if ('interactions' in e) erreur(lieu, 'interactions : liste attendue');
+
+  // Production
+  if (estObjet(e.production)) { positif(e.production.seve_par_s, lieu, 'production.seve_par_s'); positif(e.production.pages_photo, lieu, 'production.pages_photo', true); }
+  positif(e.depart_apres_jours, lieu, 'depart_apres_jours');
+
+  // Croissance (plantes)
+  if (e.categorie === 'plante') {
+    const c = e.croissance;
+    if (!estObjet(c)) erreur(lieu, 'plante : champ « croissance » obligatoire');
+    else {
+      for (const k of ['jours_adulte', 'extension_par_jour', 'ombre_projetee', 'rayon_ombre', 'cout_seve', 'cout_graines']) if (!(k in c)) erreur(lieu, `croissance.${k} manquant`);
+      positif(c.jours_adulte, lieu, 'croissance.jours_adulte');
+      borne(c.extension_par_jour, 0, 1, lieu, 'croissance.extension_par_jour');
+      borne(c.ombre_projetee, 0, 100, lieu, 'croissance.ombre_projetee');
+      positif(c.rayon_ombre, lieu, 'croissance.rayon_ombre');
+      positif(c.cout_seve, lieu, 'croissance.cout_seve', true);
+      positif(c.cout_graines, lieu, 'croissance.cout_graines', true);
+    }
+  } else if ('croissance' in e) erreur(lieu, '« croissance » réservé aux plantes');
+
+  if (e.modele !== e.id) avert(lieu, `modele (${e.modele}) différent de l'id`);
+  if (!Array.isArray(e.palette) || e.palette.length !== 3 || !e.palette.every(c => HEX_RE.test(c))) erreur(lieu, 'palette : 3 couleurs hexadécimales #rrggbb attendues');
+  if (!Array.isArray(e.papiers_rares)) erreur(lieu, 'papiers_rares : liste attendue'); else e.papiers_rares.forEach(p => enumVal(p, PAPIERS, lieu, 'papier'));
+}
+
+function verifierDependances(especes, ctx) {
+  const parId = Object.fromEntries(especes.map(e => [e.id, e]));
+  for (const [de, vers, lieu] of ctx.dependances) {
+    if (de === vers) { erreur(lieu, 'une espèce ne peut pas avoir besoin d\'elle-même'); continue; }
+    const a = parId[de], b = parId[vers];
+    if (a && b && ETAPES.indexOf(b.etape) > ETAPES.indexOf(a.etape)) erreur(lieu, `dépend de « ${vers} », débloquée à une étape plus tardive (${b.etape})`);
+  }
+  // Cycles de dépendance
+  const graphe = {};
+  for (const [de, vers] of ctx.dependances) (graphe[de] = graphe[de] || []).push(vers);
+  const etat = {};
+  const visiter = (n, pile) => {
+    if (etat[n] === 2) return;
+    if (etat[n] === 1) { erreur(`espèce ${n}`, `cycle de dépendance impossible : ${[...pile, n].join(' → ')}`); return; }
+    etat[n] = 1; (graphe[n] || []).forEach(m => visiter(m, [...pile, n])); etat[n] = 2;
+  };
+  Object.keys(graphe).forEach(n => visiter(n, []));
+}
+
+// ---------- Textes (GDD 8.7) ----------
+function variablesDe(s) { return (s.match(/\{[^}]*\}/g) || []).map(v => v.slice(1, -1)).sort(); }
+
+function verifierChaine(s, max, lieu, champ) {
+  if (typeof s !== 'string' || !s.trim()) { erreur(lieu, `${champ} : texte non vide attendu`); return; }
+  if (max && longueur(s) > max) erreur(lieu, `${champ} : ${longueur(s)} caractères (maximum ${max})`);
+  if (EMOJI_RE.test(s)) erreur(lieu, `${champ} : emoji interdit`);
+  for (const v of variablesDe(s)) if (!VARIABLES.includes(v)) erreur(lieu, `${champ} : variable {${v}} non autorisée`);
+  if (/\s{2,}/.test(s) || s !== s.trim()) avert(lieu, `${champ} : espaces en trop`);
+}
+
+function comportementsAttendus(e) {
+  const att = ['arrivee'];
+  const types = (e.interactions || []).map(i => i.type);
+  if (types.includes('mange')) att.push('repas');
+  if (types.includes('pollinise')) att.push('pollinisation');
+  if (types.includes('disperse')) att.push('dispersion');
+  if (e.hiver === 'hiberne' || e.hiver === 'migre') att.push('hiver');
+  if (e.categorie === 'plante') att.push('pousse', 'adulte');
+  if (e.categorie === 'champignon') att.push('fructification');
+  return att;
+}
+
+function verifierTextes(t, nomFichier, especes, ctx) {
+  if (!estObjet(t)) { erreur(nomFichier, 'objet JSON attendu'); return; }
+  chercherNull(t, nomFichier);
+  for (const k of ['especes', 'evenements', 'etapes']) if (!estObjet(t[k])) erreur(nomFichier, `rubrique « ${k} » manquante`);
+  const parId = Object.fromEntries(especes.map(e => [e.id, e]));
+
+  for (const id of Object.keys(t.especes || {})) if (!parId[id]) erreur(`${nomFichier}, ${id}`, 'texte pour une espèce sans fiche');
+  for (const e of especes) {
+    const lieu = `${nomFichier}, espèce ${e.id}`;
+    const x = (t.especes || {})[e.id];
+    if (!estObjet(x)) { erreur(lieu, 'textes manquants'); continue; }
+    verifierChaine(x.nom, 40, lieu, 'nom');
+    verifierChaine(x.nom_latin, 60, lieu, 'nom_latin');
+    verifierChaine(x.description, LONG.description, lieu, 'description');
+    verifierChaine(x.anecdote, LONG.anecdote, lieu, 'anecdote');
+    if (!Array.isArray(x.indices)) erreur(lieu, 'indices : liste attendue');
+    else {
+      if (Array.isArray(e.besoins) && x.indices.length !== e.besoins.length) erreur(lieu, `${x.indices.length} indices pour ${e.besoins.length} besoins (il en faut autant, dans le même ordre)`);
+      x.indices.forEach((s, i) => verifierChaine(s, LONG.indice, lieu, `indice ${i + 1}`));
+    }
+    if (!estObjet(x.comportements)) erreur(lieu, 'comportements : objet attendu');
+    else {
+      for (const k of comportementsAttendus(e)) if (!(k in x.comportements)) erreur(lieu, `comportement « ${k} » manquant`);
+      for (const [k, s] of Object.entries(x.comportements)) verifierChaine(s, LONG.message, lieu, `comportement ${k}`);
+    }
+    verifierChaine(x.depart, LONG.message, lieu, 'depart');
+    if (typeof x.depart === 'string' && !x.depart.includes('{manque}')) erreur(lieu, 'depart doit contenir {manque}');
+    for (const k of Object.keys(x)) if (!['nom', 'nom_latin', 'description', 'anecdote', 'indices', 'comportements', 'depart'].includes(k)) avert(lieu, `champ inattendu « ${k} »`);
+  }
+  for (const [id, x] of Object.entries(t.evenements || {})) {
+    const lieu = `${nomFichier}, événement ${id}`;
+    if (ctx.evenements && !ctx.evenements.includes(id)) erreur(lieu, 'événement inconnu');
+    verifierChaine(x.nom, 40, lieu, 'nom'); verifierChaine(x.annonce, LONG.message, lieu, 'annonce'); verifierChaine(x.fin, LONG.message, lieu, 'fin');
+  }
+  if (ctx.evenements) for (const id of ctx.evenements) if (!(t.evenements || {})[id]) erreur(`${nomFichier}`, `textes de l'événement « ${id} » manquants`);
+  for (const [id, x] of Object.entries(t.etapes || {})) {
+    const lieu = `${nomFichier}, étape ${id}`;
+    enumVal(id, ETAPES, lieu, 'étape');
+    verifierChaine(x.nom, 40, lieu, 'nom'); verifierChaine(x.titre_passage, LONG.titre_passage, lieu, 'titre_passage'); verifierChaine(x.texte_passage, LONG.texte_passage, lieu, 'texte_passage');
+  }
+  const etapesUtilisees = [...new Set(especes.map(e => e.etape))];
+  for (const id of etapesUtilisees) if (!(t.etapes || {})[id]) erreur(nomFichier, `textes de l'étape « ${id} » manquants`);
+}
+
+// Comparaison FR / EN : mêmes clés, mêmes variables.
+function comparerLangues(fr, en, chemin = '') {
+  if (typeof fr === 'string') {
+    if (typeof en !== 'string') { erreur('FR/EN', `${chemin} : texte attendu en anglais`); return; }
+    if (variablesDe(fr).join() !== variablesDe(en).join()) erreur('FR/EN', `${chemin} : variables différentes (${variablesDe(fr)} / ${variablesDe(en)})`);
+    if (chemin.endsWith('nom_latin') && fr !== en) erreur('FR/EN', `${chemin} : le nom latin ne se traduit pas`);
+    return;
+  }
+  if (Array.isArray(fr)) {
+    if (!Array.isArray(en) || en.length !== fr.length) { erreur('FR/EN', `${chemin} : même nombre d'éléments attendu`); return; }
+    fr.forEach((x, i) => comparerLangues(x, en[i], `${chemin}[${i}]`)); return;
+  }
+  if (estObjet(fr)) {
+    if (!estObjet(en)) { erreur('FR/EN', `${chemin} : objet attendu`); return; }
+    for (const k of Object.keys(fr)) if (!(k in en)) erreur('FR/EN', `${chemin}.${k} : clé absente en anglais`); else comparerLangues(fr[k], en[k], chemin ? `${chemin}.${k}` : k);
+    for (const k of Object.keys(en)) if (!(k in fr)) erreur('FR/EN', `${chemin}.${k} : clé absente en français`);
+  }
+}
+
+// ---------- Aménagements et étapes (facultatifs tant qu'ils n'existent pas) ----------
+function verifierAmenagements(liste, ctx) {
+  if (!Array.isArray(liste)) { erreur('amenagements.json', 'tableau attendu'); return []; }
+  const vus = new Set();
+  liste.forEach(a => {
+    const lieu = `action ${a && a.id}`;
+    if (!estObjet(a)) { erreur('amenagements.json', 'objet attendu'); return; }
+    chercherNull(a, lieu);
+    if (!ID_RE.test(a.id || '')) erreur(lieu, 'id invalide');
+    if (vus.has(a.id)) erreur(lieu, 'id en double'); vus.add(a.id);
+    enumVal(a.etape, ETAPES, lieu, 'etape');
+    enumVal(a.type, ['semis', 'amenagement'], lieu, 'type');
+    if (a.type === 'semis') {
+      const e = ctx.parId[a.espece];
+      if (!e) erreur(lieu, `espèce semée « ${a.espece} » inexistante`);
+      else {
+        if (e.venue !== 'semee') erreur(lieu, `« ${a.espece} » n'est pas une espèce semée`);
+        if (e.etape !== a.etape) avert(lieu, `étape différente de celle de l'espèce (${e.etape})`);
+      }
+    } else if (a.type === 'amenagement') {
+      positif(a.cout_seve, lieu, 'cout_seve', true);
+      if (!Number.isInteger(a.taille) || a.taille < 1) erreur(lieu, 'taille : entier ≥ 1 attendu');
+      enumVal(a.pose, ['tuile', 'surcouche', 'arbre_adulte'], lieu, 'pose');
+      enumVal(a.couvert, COUVERTS, lieu, 'couvert');
+      if (!estObjet(a.effets)) erreur(lieu, 'effets : objet attendu');
+    }
+  });
+  return liste.map(a => a.id);
+}
+function verifierEtapes(liste, ctx) {
+  if (!Array.isArray(liste)) { erreur('etapes.json', 'tableau attendu'); return; }
+  liste.forEach(et => {
+    const lieu = `étape ${et.id}`;
+    chercherNull(et, lieu);
+    enumVal(et.id, ETAPES, lieu, 'id');
+    positif(et.rayon_ile, lieu, 'rayon_ile', true);
+    (et.conditions_entree || []).forEach((c, i) => verifierCondition(c, `${lieu}, condition ${i + 1}`, ctx));
+    const d = et.debloque || {};
+    (d.especes || []).forEach(id => { if (!ctx.ids.has(id)) erreur(lieu, `débloque une espèce inexistante : ${id}`); });
+    (d.amenagements || []).forEach(id => { if (!ctx.actions.includes(id)) erreur(lieu, `débloque une action inconnue : ${id}`); });
+  });
+  const debloquees = new Set(liste.flatMap(et => (et.debloque || {}).especes || []));
+  for (const id of ctx.ids) if (!debloquees.has(id)) avert('etapes.json', `l'espèce « ${id} » n'est débloquée par aucune étape`);
+}
+
+// ---------- Programme principal ----------
+function main() {
+  const a = args();
+  const sourceEspeces = a.especes || 'data/especes';
+  const especes = chargerEspeces(sourceEspeces);
+  const ids = new Set(especes.map(e => e && e.id).filter(Boolean));
+  if (ids.size !== especes.length) erreur('espèces', 'identifiants en double');
+
+  const parId = Object.fromEntries(especes.filter(e => e && e.id).map(e => [e.id, e]));
+  const amenData = lireJSON(path.join(RACINE, 'data/amenagements.json'), false);
+  const amenagements = amenData ? verifierAmenagements(amenData, { parId }) : AMENAGEMENTS_DEFAUT;
+  const amenIds = amenData ? amenData.filter(x => x.type === 'amenagement').map(x => x.id) : AMENAGEMENTS_DEFAUT;
+  const evData = lireJSON(path.join(RACINE, 'data/evenements.json'), false);
+
+  const ctx = { ids, amenagements: amenIds, actions: amenagements, dependances: [], evenements: evData ? evData.map(e => e.id) : null };
+  especes.forEach(e => verifierEspece(e, ctx));
+  verifierDependances(especes, ctx);
+
+  const etData = lireJSON(path.join(RACINE, 'data/etapes.json'), false);
+  if (etData) verifierEtapes(etData, ctx);
+
+  const fichierFR = a.fr || 'data/textes/fr.json';
+  const fr = lireJSON(path.resolve(RACINE, fichierFR));
+  if (fr) verifierTextes(fr, rel(fichierFR), especes, ctx);
+  const fichierEN = a.en || 'data/textes/en.json';
+  const en = lireJSON(path.resolve(RACINE, fichierEN), !!a.en);
+  if (en) { verifierTextes(en, rel(fichierEN), especes, ctx); if (fr) comparerLangues(fr, en); }
+
+  // Rapport
+  const nbErr = problemes.filter(p => p.niv === 'ERREUR').length;
+  const nbAv = problemes.length - nbErr;
+  for (const p of problemes) console.log(`${p.niv === 'ERREUR' ? '✗' : '!'} [${p.niv}] ${p.lieu} : ${p.msg}`);
+  console.log(`\n${especes.length} fiches espèces vérifiées. ${nbErr} erreur(s), ${nbAv} avertissement(s).`);
+  console.log(nbErr ? 'Résultat : À CORRIGER.' : 'Résultat : OK.');
+  process.exit(nbErr ? 1 : 0);
+}
+
+if (require.main === module) main();
+module.exports = { verifierCondition, CHAMPS_COND };

@@ -1,0 +1,87 @@
+{
+  "id": "merle",
+  "etape": "lisiere",
+  "categorie": "animal",
+  "mode": "agent",
+  "venue": "spontanee",
+  "roles": [
+    "omnivore",
+    "disperseur"
+  ],
+  "activite": "jour",
+  "saisons_actives": [
+    "printemps",
+    "ete",
+    "automne",
+    "hiver"
+  ],
+  "hiver": "actif",
+  "besoins": [
+    {
+      "type": "couvert_nb",
+      "couvert": "ronce",
+      "min": 2,
+      "portee": "ile"
+    },
+    {
+      "type": "espece",
+      "id": "ver",
+      "min": 1,
+      "portee": "ile"
+    }
+  ],
+  "capacite": {
+    "par": "tuiles",
+    "couvert": "ronce",
+    "nombre": 2,
+    "max": 6
+  },
+  "reproduction": {
+    "saisons": [
+      "printemps",
+      "ete"
+    ],
+    "portee_moyenne": 2,
+    "intervalle_jours": 3
+  },
+  "interactions": [
+    {
+      "type": "mange",
+      "cible": "ver",
+      "intensite": 0.2
+    },
+    {
+      "type": "mange",
+      "cible": "tircis",
+      "intensite": 0.1
+    },
+    {
+      "type": "mange",
+      "cible": "ronce",
+      "intensite": 0.08
+    },
+    {
+      "type": "disperse",
+      "cible": "ronce",
+      "intensite": 0.1,
+      "plante": "ronce"
+    }
+  ],
+  "production": {
+    "seve_par_s": 0,
+    "pages_photo": 1
+  },
+  "depart_apres_jours": 1,
+  "modele": "merle",
+  "palette": [
+    "#34312d",
+    "#c69a42",
+    "#6e5a45"
+  ],
+  "papiers_rares": [
+    "journal",
+    "washi",
+    "calque",
+    "dore"
+  ]
+}

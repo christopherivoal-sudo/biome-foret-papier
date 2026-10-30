@@ -1,0 +1,96 @@
+{
+  "id": "ronce",
+  "etape": "lisiere",
+  "categorie": "plante",
+  "mode": "tuile",
+  "venue": "semee",
+  "roles": [
+    "abri",
+    "producteur"
+  ],
+  "activite": "toujours",
+  "saisons_actives": [
+    "printemps",
+    "ete",
+    "automne"
+  ],
+  "hiver": "dormant",
+  "besoins": [
+    {
+      "type": "stat",
+      "stat": "fertilite",
+      "op": ">=",
+      "valeur": 25,
+      "portee": "zone",
+      "rayon": 0
+    },
+    {
+      "type": "stat",
+      "stat": "ombre",
+      "op": "<=",
+      "valeur": 70,
+      "portee": "zone",
+      "rayon": 0
+    }
+  ],
+  "capacite": {
+    "par": "tuiles",
+    "couvert": "ronce",
+    "nombre": 1
+  },
+  "reproduction": {
+    "saisons": [
+      "ete",
+      "automne"
+    ],
+    "portee_moyenne": 1,
+    "intervalle_jours": 3
+  },
+  "interactions": [
+    {
+      "type": "abrite",
+      "cible": "lapin",
+      "intensite": 0.6
+    },
+    {
+      "type": "abrite",
+      "cible": "herisson",
+      "intensite": 0.6
+    },
+    {
+      "type": "abrite",
+      "cible": "merle",
+      "intensite": 0.6
+    },
+    {
+      "type": "abrite",
+      "cible": "renard",
+      "intensite": 0.6
+    }
+  ],
+  "production": {
+    "seve_par_s": 0.03,
+    "pages_photo": 1
+  },
+  "depart_apres_jours": 1,
+  "croissance": {
+    "jours_adulte": 3,
+    "extension_par_jour": 0.04,
+    "ombre_projetee": 15,
+    "rayon_ombre": 1,
+    "cout_seve": 20,
+    "cout_graines": 2
+  },
+  "modele": "ronce",
+  "palette": [
+    "#527345",
+    "#7d6a48",
+    "#493b50"
+  ],
+  "papiers_rares": [
+    "journal",
+    "washi",
+    "calque",
+    "dore"
+  ]
+}

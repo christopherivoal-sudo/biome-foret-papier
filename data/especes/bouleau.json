@@ -1,0 +1,94 @@
+{
+  "id": "bouleau",
+  "etape": "lisiere",
+  "categorie": "plante",
+  "mode": "tuile",
+  "venue": "semee",
+  "roles": [
+    "producteur"
+  ],
+  "activite": "toujours",
+  "saisons_actives": [
+    "printemps",
+    "ete",
+    "automne"
+  ],
+  "hiver": "dormant",
+  "besoins": [
+    {
+      "type": "stat",
+      "stat": "fertilite",
+      "op": ">=",
+      "valeur": 20,
+      "portee": "zone",
+      "rayon": 0
+    },
+    {
+      "type": "stat",
+      "stat": "ombre",
+      "op": "<=",
+      "valeur": 30,
+      "portee": "zone",
+      "rayon": 0
+    }
+  ],
+  "capacite": {
+    "par": "tuiles",
+    "couvert": "arbre",
+    "nombre": 1
+  },
+  "reproduction": {
+    "saisons": [
+      "automne"
+    ],
+    "portee_moyenne": 1,
+    "intervalle_jours": 3
+  },
+  "interactions": [
+    {
+      "type": "fertilise",
+      "cible": "herbe",
+      "intensite": 0.08
+    },
+    {
+      "type": "fertilise",
+      "cible": "fleurs",
+      "intensite": 0.08
+    },
+    {
+      "type": "fertilise",
+      "cible": "ronce",
+      "intensite": 0.08
+    },
+    {
+      "type": "fertilise",
+      "cible": "bouleau",
+      "intensite": 0.08
+    }
+  ],
+  "production": {
+    "seve_par_s": 0.05,
+    "pages_photo": 1
+  },
+  "depart_apres_jours": 1,
+  "croissance": {
+    "jours_adulte": 12,
+    "extension_par_jour": 0.01,
+    "ombre_projetee": 25,
+    "rayon_ombre": 1.5,
+    "cout_seve": 40,
+    "cout_graines": 3
+  },
+  "modele": "bouleau",
+  "palette": [
+    "#e3dfd0",
+    "#4a453b",
+    "#8aa15a"
+  ],
+  "papiers_rares": [
+    "journal",
+    "washi",
+    "calque",
+    "dore"
+  ]
+}

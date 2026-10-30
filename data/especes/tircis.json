@@ -1,0 +1,84 @@
+{
+  "id": "tircis",
+  "etape": "lisiere",
+  "categorie": "insecte",
+  "mode": "population",
+  "venue": "spontanee",
+  "roles": [
+    "pollinisateur"
+  ],
+  "activite": "jour",
+  "saisons_actives": [
+    "printemps",
+    "ete"
+  ],
+  "hiver": "dormant",
+  "besoins": [
+    {
+      "type": "couvert",
+      "couvert": "herbe",
+      "min": 0.3,
+      "portee": "ile"
+    },
+    {
+      "type": "stat",
+      "stat": "ombre",
+      "op": ">=",
+      "valeur": 20,
+      "portee": "zone",
+      "rayon": 2
+    },
+    {
+      "type": "stat",
+      "stat": "ombre",
+      "op": "<=",
+      "valeur": 50,
+      "portee": "zone",
+      "rayon": 2
+    },
+    {
+      "type": "couvert_nb",
+      "couvert": "fleurs",
+      "min": 4,
+      "portee": "ile"
+    }
+  ],
+  "capacite": {
+    "par": "tuiles",
+    "couvert": "fleurs",
+    "nombre": 2,
+    "max": 30
+  },
+  "reproduction": {
+    "saisons": [
+      "printemps",
+      "ete"
+    ],
+    "portee_moyenne": 2,
+    "intervalle_jours": 2
+  },
+  "interactions": [
+    {
+      "type": "pollinise",
+      "cible": "fleurs",
+      "intensite": 0.4
+    }
+  ],
+  "production": {
+    "seve_par_s": 0,
+    "pages_photo": 1
+  },
+  "depart_apres_jours": 1,
+  "modele": "tircis",
+  "palette": [
+    "#69513b",
+    "#d2bd7c",
+    "#99815a"
+  ],
+  "papiers_rares": [
+    "journal",
+    "washi",
+    "calque",
+    "dore"
+  ]
+}

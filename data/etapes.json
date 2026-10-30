@@ -1,0 +1,32 @@
+[
+  {
+    "id": "prairie",
+    "ordre": 1,
+    "rayon_ile": 9,
+    "conditions_entree": [],
+    "debloque": {
+      "especes": ["herbe", "fleurs", "sauterelle", "abeille", "ver", "lapin", "alouette"],
+      "amenagements": ["semer_herbe", "semer_fleurs", "tas_pierres", "mare", "hotel_insectes", "paillis"],
+      "agrandissement_cout": 0
+    },
+    "palette_ile": ["#b5d38a", "#8fb86a", "#e3d6b0"]
+  },
+  {
+    "id": "lisiere",
+    "ordre": 2,
+    "rayon_ile": 11,
+    "conditions_entree": [
+      { "type": "couvert", "couvert": "vegetal", "min": 0.6, "portee": "ile" },
+      { "type": "stat", "stat": "humidite", "op": ">=", "valeur": 35, "portee": "ile" },
+      { "type": "stat", "stat": "fertilite", "op": ">=", "valeur": 30, "portee": "ile" },
+      { "type": "nb_especes", "min": 6, "etapes": ["prairie"] },
+      { "type": "harmonie", "min": 0.6, "duree_jours": 1 }
+    ],
+    "debloque": {
+      "especes": ["ronce", "bouleau", "herisson", "merle", "renard", "tircis", "coulemelle"],
+      "amenagements": ["semer_ronce", "planter_bouleau", "tas_bois", "nichoir"],
+      "agrandissement_cout": 400
+    },
+    "palette_ile": ["#9cc27a", "#6f9e58", "#d8c9a3"]
+  }
+]

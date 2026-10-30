@@ -1,0 +1,12 @@
+[
+  { "id": "semer_herbe", "type": "semis", "espece": "herbe", "etape": "prairie" },
+  { "id": "semer_fleurs", "type": "semis", "espece": "fleurs", "etape": "prairie" },
+  { "id": "tas_pierres", "type": "amenagement", "etape": "prairie", "cout_seve": 30, "taille": 1, "pose": "tuile", "couvert": "amenagement", "effets": {} },
+  { "id": "mare", "type": "amenagement", "etape": "prairie", "cout_seve": 80, "taille": 2, "pose": "tuile", "couvert": "eau", "effets": { "humidite": 40, "rayon": 3 } },
+  { "id": "hotel_insectes", "type": "amenagement", "etape": "prairie", "cout_seve": 60, "taille": 1, "pose": "tuile", "couvert": "amenagement", "effets": { "capacite_pollinisateurs": 0.5, "rayon": 6 } },
+  { "id": "paillis", "type": "amenagement", "etape": "prairie", "cout_seve": 15, "taille": 1, "pose": "surcouche", "couvert": "nu", "effets": { "fertilite": 15, "humidite": 10, "duree_jours": 1 } },
+  { "id": "semer_ronce", "type": "semis", "espece": "ronce", "etape": "lisiere" },
+  { "id": "planter_bouleau", "type": "semis", "espece": "bouleau", "etape": "lisiere" },
+  { "id": "tas_bois", "type": "amenagement", "etape": "lisiere", "cout_seve": 40, "taille": 1, "pose": "tuile", "couvert": "bois_mort", "effets": {} },
+  { "id": "nichoir", "type": "amenagement", "etape": "lisiere", "cout_seve": 50, "taille": 1, "pose": "arbre_adulte", "couvert": "arbre", "effets": { "capacite_merle": 2 } }
+]

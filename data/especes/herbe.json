@@ -1,0 +1,75 @@
+{
+  "id": "herbe",
+  "etape": "prairie",
+  "categorie": "plante",
+  "mode": "tuile",
+  "venue": "semee",
+  "roles": [
+    "producteur"
+  ],
+  "activite": "toujours",
+  "saisons_actives": [
+    "printemps",
+    "ete",
+    "automne"
+  ],
+  "hiver": "dormant",
+  "besoins": [
+    {
+      "type": "stat",
+      "stat": "fertilite",
+      "op": ">=",
+      "valeur": 5,
+      "portee": "zone",
+      "rayon": 0
+    },
+    {
+      "type": "stat",
+      "stat": "ombre",
+      "op": "<=",
+      "valeur": 60,
+      "portee": "zone",
+      "rayon": 0
+    }
+  ],
+  "capacite": {
+    "par": "tuiles",
+    "couvert": "herbe",
+    "nombre": 1
+  },
+  "reproduction": {
+    "saisons": [
+      "printemps",
+      "ete",
+      "automne"
+    ],
+    "portee_moyenne": 1,
+    "intervalle_jours": 1
+  },
+  "interactions": [],
+  "production": {
+    "seve_par_s": 0.01,
+    "pages_photo": 1
+  },
+  "depart_apres_jours": 1,
+  "croissance": {
+    "jours_adulte": 1,
+    "extension_par_jour": 0.15,
+    "ombre_projetee": 0,
+    "rayon_ombre": 0,
+    "cout_seve": 5,
+    "cout_graines": 0
+  },
+  "modele": "herbe",
+  "palette": [
+    "#789b4a",
+    "#a2b968",
+    "#d3cc92"
+  ],
+  "papiers_rares": [
+    "journal",
+    "washi",
+    "calque",
+    "dore"
+  ]
+}

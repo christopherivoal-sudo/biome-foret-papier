@@ -1,0 +1,73 @@
+{
+  "id": "renard",
+  "etape": "lisiere",
+  "categorie": "animal",
+  "mode": "agent",
+  "venue": "spontanee",
+  "roles": [
+    "predateur"
+  ],
+  "activite": "crepuscule",
+  "saisons_actives": [
+    "printemps",
+    "ete",
+    "automne",
+    "hiver"
+  ],
+  "hiver": "actif",
+  "besoins": [
+    {
+      "type": "espece",
+      "id": "lapin",
+      "min": 6,
+      "portee": "ile"
+    },
+    {
+      "type": "couvert_nb",
+      "couvert": "ronce",
+      "min": 4,
+      "portee": "ile"
+    },
+    {
+      "type": "rayon_ile",
+      "min": 11
+    }
+  ],
+  "capacite": {
+    "par": "espece",
+    "id": "lapin",
+    "nombre": 4,
+    "max": 2
+  },
+  "reproduction": {
+    "saisons": [
+      "printemps"
+    ],
+    "portee_moyenne": 2,
+    "intervalle_jours": 6
+  },
+  "interactions": [
+    {
+      "type": "mange",
+      "cible": "lapin",
+      "intensite": 0.08
+    }
+  ],
+  "production": {
+    "seve_par_s": 0,
+    "pages_photo": 1
+  },
+  "depart_apres_jours": 1,
+  "modele": "renard",
+  "palette": [
+    "#b86632",
+    "#e1d2af",
+    "#463c32"
+  ],
+  "papiers_rares": [
+    "journal",
+    "washi",
+    "calque",
+    "dore"
+  ]
+}

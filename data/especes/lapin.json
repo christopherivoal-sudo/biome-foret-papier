@@ -1,0 +1,72 @@
+{
+  "id": "lapin",
+  "etape": "prairie",
+  "categorie": "animal",
+  "mode": "agent",
+  "venue": "spontanee",
+  "roles": [
+    "herbivore"
+  ],
+  "activite": "crepuscule",
+  "saisons_actives": [
+    "printemps",
+    "ete",
+    "automne",
+    "hiver"
+  ],
+  "hiver": "actif",
+  "besoins": [
+    {
+      "type": "couvert",
+      "couvert": "herbe",
+      "min": 0.3,
+      "portee": "zone",
+      "rayon": 5
+    },
+    {
+      "type": "amenagement",
+      "id": "tas_pierres",
+      "min": 1,
+      "portee": "zone",
+      "rayon": 4
+    }
+  ],
+  "capacite": {
+    "par": "tuiles",
+    "couvert": "herbe",
+    "nombre": 5,
+    "max": 12
+  },
+  "reproduction": {
+    "saisons": [
+      "printemps",
+      "ete"
+    ],
+    "portee_moyenne": 3,
+    "intervalle_jours": 3
+  },
+  "interactions": [
+    {
+      "type": "mange",
+      "cible": "herbe",
+      "intensite": 0.12
+    }
+  ],
+  "production": {
+    "seve_par_s": 0,
+    "pages_photo": 1
+  },
+  "depart_apres_jours": 1,
+  "modele": "lapin",
+  "palette": [
+    "#a58b6a",
+    "#d6c7a9",
+    "#6c5948"
+  ],
+  "papiers_rares": [
+    "journal",
+    "washi",
+    "calque",
+    "dore"
+  ]
+}
