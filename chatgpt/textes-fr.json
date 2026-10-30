@@ -1,0 +1,259 @@
+{
+  "especes": {
+    "herbe": {
+      "nom": "Herbe des prés",
+      "nom_latin": "Poaceae",
+      "description": "Un tapis de fines feuilles accueille les premiers habitants de ta prairie.",
+      "anecdote": "Les graminées fleurissent aussi : leurs petites fleurs sont regroupées en épillets.",
+      "indices": [
+        "Même une terre peu fertile peut porter ce premier tapis vert.",
+        "Laisse entrer la lumière : une ombre trop dense le fait reculer."
+      ],
+      "comportements": {
+        "arrivee": "Des brins percent la terre. Ta prairie prend racine.",
+        "pousse": "Le tapis gagne doucement les coins de terre qui lui conviennent.",
+        "adulte": "L'herbe est bien installée. Les brouteurs peuvent y trouver leur repas."
+      },
+      "depart": "L'herbe recule : {manque}. Tu peux lui préparer un coin plus accueillant."
+    },
+    "fleurs": {
+      "nom": "Fleurs sauvages",
+      "nom_latin": "Angiospermae",
+      "description": "Des touches de couleur offrent du nectar aux visiteurs et des graines pour tes prochains semis.",
+      "anecdote": "Le pollen n'est pas une graine : il participe à la fécondation des fleurs.",
+      "indices": [
+        "Une terre nourricière prépare de belles floraisons.",
+        "Un peu d'eau dans le sol aide les fleurs à s'installer.",
+        "Choisis un coin lumineux, loin des ombres épaisses."
+      ],
+      "comportements": {
+        "arrivee": "De jeunes pousses apparaissent là où tu as semé.",
+        "pousse": "Les tiges s'allongent ; les premiers boutons se dessinent.",
+        "adulte": "Les fleurs s'ouvrent. Observe les visiteurs qui viennent les butiner."
+      },
+      "depart": "Les fleurs se raréfient : {manque}. Leur place peut refleurir."
+    },
+    "sauterelle": {
+      "nom": "Decticelle bariolée",
+      "nom_latin": "Roeseliana roeselii",
+      "description": "Cette petite sauterelle des prairies se faufile entre les herbes, sur ses longues pattes.",
+      "anecdote": "Ses ailes sont souvent courtes, mais certains individus ont de longues ailes et peuvent voler.",
+      "indices": [
+        "Un large tapis d'herbe lui offre de quoi grignoter et se cacher."
+      ],
+      "comportements": {
+        "arrivee": "Une sauterelle a trouvé ta prairie. Regarde entre les brins.",
+        "repas": "Elle grignote un brin d'herbe, puis se glisse dans la végétation."
+      },
+      "depart": "La sauterelle cherche une autre prairie : {manque}."
+    },
+    "abeille": {
+      "nom": "Osmie rousse",
+      "nom_latin": "Osmia bicornis",
+      "description": "Cette abeille sauvage et solitaire butine les fleurs et installe son nid dans une cavité.",
+      "anecdote": "La femelle sépare les cellules de son nid par des cloisons de boue, avec un œuf et des provisions dans chacune.",
+      "indices": [
+        "Une prairie généreuse en fleurs peut attirer cette butineuse.",
+        "Des tiges creuses dans un hôtel à insectes voisin lui offrent un nid."
+      ],
+      "comportements": {
+        "arrivee": "Une abeille sauvage explore les fleurs et l'hôtel à insectes.",
+        "repas": "Elle boit du nectar et récolte du pollen pour sa descendance.",
+        "pollinisation": "Du pollen voyage avec elle, d'une fleur à l'autre.",
+        "hiver": "Les jeunes osmies passent l'hiver à l'abri, dans leurs cocons."
+      },
+      "depart": "L'osmie cherche un autre lieu pour nicher et butiner : {manque}."
+    },
+    "ver": {
+      "nom": "Ver de terre",
+      "nom_latin": "Lumbricus terrestris",
+      "description": "Sous tes pas, ce discret habitant entraîne des feuilles dans ses galeries et travaille le sol.",
+      "anecdote": "Il respire à travers sa peau, qui doit rester humide pour permettre les échanges avec l'air.",
+      "indices": [
+        "Une terre qui garde son humidité lui permet de respirer.",
+        "Un sol nourri de débris végétaux l'accueille volontiers."
+      ],
+      "comportements": {
+        "arrivee": "Une galerie se dessine sous la terre : un ver s'est installé.",
+        "repas": "Il entraîne une feuille morte dans sa galerie pour s'en nourrir."
+      },
+      "depart": "Le ver se retire de ce coin de terre : {manque}."
+    },
+    "lapin": {
+      "nom": "Lapin de garenne",
+      "nom_latin": "Oryctolagus cuniculus",
+      "description": "Au crépuscule, ses oreilles émergent de l'herbe. Il broute en gardant un abri à portée de bond.",
+      "anecdote": "Ses dents poussent toute sa vie. Mâcher des végétaux fibreux aide à les user.",
+      "indices": [
+        "Une prairie bien garnie près de son abri lui fournit de quoi brouter.",
+        "Un tas de pierres tout proche lui offre un refuge."
+      ],
+      "comportements": {
+        "arrivee": "Des oreilles dépassent de l'herbe. Un lapin découvre ton île.",
+        "repas": "Il coupe quelques brins d'herbe, les oreilles toujours en alerte."
+      },
+      "depart": "Le lapin rejoint un autre coin de prairie : {manque}."
+    },
+    "alouette": {
+      "nom": "Alouette des champs",
+      "nom_latin": "Alauda arvensis",
+      "description": "Petite silhouette brune des espaces ouverts, elle cherche sa nourriture au sol et chante dans le ciel.",
+      "anecdote": "Le mâle chante en vol au-dessus de la prairie, mais le nid est construit au sol.",
+      "indices": [
+        "Des sauterelles nombreuses lui promettent de quoi se nourrir.",
+        "Garde de grands espaces sans arbres ni buissons pour cet oiseau de prairie."
+      ],
+      "comportements": {
+        "arrivee": "Une alouette se pose dans la prairie ouverte. Lève aussi les yeux.",
+        "repas": "Elle attrape une sauterelle entre les herbes.",
+        "hiver": "L'hiver arrive : ton alouette quitte l'île pour une région plus douce."
+      },
+      "depart": "L'alouette s'envole vers une autre prairie : {manque}."
+    },
+    "ronce": {
+      "nom": "Ronce commune",
+      "nom_latin": "Rubus fruticosus agg.",
+      "description": "Ses tiges enchevêtrées abritent les petits animaux ; ses mûres nourrissent les oiseaux.",
+      "anecdote": "Le bout d'une longue tige peut prendre racine en touchant le sol et former une nouvelle ronce.",
+      "indices": [
+        "Une terre assez riche l'aide à déployer ses tiges.",
+        "Elle tolère l'ombre, à condition de recevoir encore de la lumière."
+      ],
+      "comportements": {
+        "arrivee": "Une jeune ronce déplie ses premières feuilles.",
+        "pousse": "Ses tiges s'allongent et tissent peu à peu un abri.",
+        "adulte": "La ronce forme un refuge dense. En été et en automne, guette les mûres."
+      },
+      "depart": "La ronce dépérit : {manque}. Son refuge s'éclaircit."
+    },
+    "bouleau": {
+      "nom": "Bouleau verruqueux",
+      "nom_latin": "Betula pendula",
+      "description": "Un arbre pionnier à l'écorce claire. Son feuillage léger dessine les premières ombres de la lisière.",
+      "anecdote": "Ses minuscules graines ailées se laissent emporter par le vent.",
+      "indices": [
+        "Un sol nourricier aide ce jeune arbre à s'enraciner.",
+        "Offre-lui beaucoup de lumière, hors de l'ombre des autres arbres."
+      ],
+      "comportements": {
+        "arrivee": "Un jeune bouleau ouvre ses feuilles au-dessus de l'herbe.",
+        "pousse": "Son tronc s'élève, saison après saison.",
+        "adulte": "Sa couronne s'est déployée. À l'automne, ses feuilles nourriront le sol."
+      },
+      "depart": "Le bouleau dépérit : {manque}. Tu peux aider les jeunes pousses à revenir."
+    },
+    "herisson": {
+      "nom": "Hérisson d'Europe",
+      "nom_latin": "Erinaceus europaeus",
+      "description": "À la nuit tombée, ce petit mammifère fouille la litière à la recherche de vers et d'insectes.",
+      "anecdote": "En hibernation, sa température baisse et son cœur ralentit pour économiser ses réserves.",
+      "indices": [
+        "Des massifs de ronces lui offrent des passages à couvert.",
+        "Un tas de bois voisin lui laisse une cachette tranquille.",
+        "Des vers de terre à proximité lui promettent un repas nocturne."
+      ],
+      "comportements": {
+        "arrivee": "Des feuilles remuent dans la nuit. Un hérisson explore la lisière.",
+        "repas": "Son museau fouille la litière : un ver de terre lui sert de repas.",
+        "hiver": "Il hiberne dans son nid sous le bois. Laisse son refuge tranquille."
+      },
+      "depart": "Le hérisson poursuit sa route à la nuit tombée : {manque}."
+    },
+    "merle": {
+      "nom": "Merle noir",
+      "nom_latin": "Turdus merula",
+      "description": "Un oiseau de haie qui retourne les feuilles, capture des vers et goûte les mûres de la lisière.",
+      "anecdote": "Malgré son nom, seul le mâle adulte est noir : la femelle porte un plumage brun.",
+      "indices": [
+        "Des massifs de ronces lui offrent un abri et des mûres en saison.",
+        "Des vers de terre dans l'île lui donnent de quoi fouiller le sol."
+      ],
+      "comportements": {
+        "arrivee": "Un merle se pose près des ronces et inspecte les feuilles au sol.",
+        "repas": "Il tire un ver du sol ; à la saison des mûres, il goûte aussi les fruits.",
+        "dispersion": "Après les mûres, ses fientes déposent des graines de ronce plus loin."
+      },
+      "depart": "Le merle s'envole vers une autre haie : {manque}."
+    },
+    "renard": {
+      "nom": "Renard roux",
+      "nom_latin": "Vulpes vulpes",
+      "description": "Au crépuscule, il longe les buissons et chasse dans la prairie, attentif aux mouvements des lapins.",
+      "anecdote": "Le renard ne mange pas que des proies : son menu comprend aussi des fruits et des baies.",
+      "indices": [
+        "Une population de lapins bien établie peut nourrir ce chasseur.",
+        "De grands massifs de ronces lui offrent des coins où se dissimuler.",
+        "Agrandis l'île : il lui faut un territoire assez vaste pour s'installer."
+      ],
+      "comportements": {
+        "arrivee": "Une silhouette rousse longe les buissons. Le renard a trouvé ton île.",
+        "repas": "Il chasse un lapin dans la prairie, puis retourne à couvert."
+      },
+      "depart": "Le renard reprend sa route vers un autre territoire : {manque}."
+    },
+    "tircis": {
+      "nom": "Tircis",
+      "nom_latin": "Pararge aegeria",
+      "description": "Ses ailes brunes tachetées de crème traversent les jeux d'ombre et de lumière de la lisière.",
+      "anecdote": "Ses chenilles mangent des graminées ; l'adulte boit surtout le miellat sucré produit par les pucerons.",
+      "indices": [
+        "Un grand tapis d'herbe pourra nourrir ses chenilles.",
+        "Un peu d'ombre lui convient mieux qu'une prairie entièrement au soleil.",
+        "Une ombre trop épaisse l'éloigne : laisse des trouées de lumière.",
+        "Des fleurs éparpillées dans l'île lui offrent aussi du nectar."
+      ],
+      "comportements": {
+        "arrivee": "Un tircis se pose dans une tache de soleil au bord des buissons.",
+        "repas": "Il boit du miellat sur une feuille ; ses chenilles grignotent l'herbe.",
+        "pollinisation": "En visitant parfois une fleur, il peut transporter un peu de pollen."
+      },
+      "depart": "Le tircis cherche une autre lisière : {manque}."
+    },
+    "coulemelle": {
+      "nom": "Coulemelle",
+      "nom_latin": "Macrolepiota procera",
+      "description": "Un grand chapeau sur un pied élancé révèle le travail discret d'un champignon décomposeur du sol.",
+      "anecdote": "Son pied porte un anneau qui peut coulisser, comme une bague autour d'une tige.",
+      "indices": [
+        "Une terre riche en matière organique nourrit son réseau de filaments.",
+        "Un sol bien humide prépare la sortie des chapeaux.",
+        "Près d'un tas de bois, cherche une litière de feuilles et de débris."
+      ],
+      "comportements": {
+        "arrivee": "Un réseau de filaments s'installe dans le sol de ta lisière.",
+        "repas": "Ses filaments décomposent la litière et en absorbent les nutriments.",
+        "fructification": "À l'automne, des chapeaux émergent du sol pour libérer leurs spores."
+      },
+      "depart": "Le réseau de la coulemelle dépérit dans ce sol : {manque}."
+    }
+  },
+  "evenements": {
+    "floraison": {
+      "nom": "Floraison printanière",
+      "annonce": "Le printemps fleurit : tes fleurs donnent deux fois plus de graines !",
+      "fin": "La grande floraison s'achève. Les fleurs retrouvent leur rythme habituel."
+    },
+    "orage": {
+      "nom": "Orage d'été",
+      "annonce": "Le sol se gorge d'eau. La foudre peut abattre un arbre : du bois mort utile.",
+      "fin": "Le ciel s'éclaircit. Le bois tombé pourra accueillir de nouveaux habitants."
+    },
+    "secheresse": {
+      "nom": "Sécheresse d'été",
+      "annonce": "L'humidité baisse. Tiens bon : veille sur les coins de terre encore frais.",
+      "fin": "La sécheresse s'achève. Le sol pourra retrouver peu à peu son humidité."
+    }
+  },
+  "etapes": {
+    "prairie": {
+      "nom": "Prairie",
+      "titre_passage": "Les premières pages du vivant",
+      "texte_passage": "Tout commence par un peu d'herbe. Sème, aménage et observe : les animaux viendront d'eux-mêmes si ton île leur convient."
+    },
+    "lisiere": {
+      "nom": "Lisière",
+      "titre_passage": "À l'orée d'une nouvelle page",
+      "texte_passage": "Les premières ronces et les bouleaux ouvrent de nouveaux refuges. Accueille leurs visiteurs et garde aussi une place à la prairie."
+    }
+  }
+}
