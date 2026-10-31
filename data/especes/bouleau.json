@@ -72,7 +72,7 @@
   },
   "depart_apres_jours": 1,
   "croissance": {
-    "jours_adulte": 12,
+    "jours_adulte": 5,
     "extension_par_jour": 0.01,
     "ombre_projetee": 25,
     "rayon_ombre": 1.5,

@@ -317,11 +317,24 @@
     "paillis_poser": "Drag over the golden tiles near the pond to spread mulch ({n} / {total}).",
     "jauge": "Well done! This gauge shows what your meadow needs to become a forest edge. Tap it.",
     "fin": "Your turn! Tap an animal to photograph it: every photo fills your field journal.",
-    "recolte": "Seeds are ripe! With “Observe”, tap the golden pod to collect them.",
+    "recolte": "Your flowers made seeds! Tap “Collect”: you need seeds to sow flowers, brambles and birches.",
     "vu_sauterelle": "The grasshoppers came on their own: the grass feeds them.",
     "vu_abeille": "The bees are here: flowers to visit and a hotel to nest in.",
     "vu_lapin": "A rabbit! Grass to nibble and rocks to hide under.",
     "vu_ver": "Earthworms: the pond and the mulch made the soil damp and rich.",
     "vu_alouette": "The skylark came to eat the grasshoppers, in wide open space."
-  }
+  },
+  "recolte": {
+    "bouton": "Collect ({nombre})"
+  },
+  "tuile_croissance": {
+    "pousse": "Growth: {pct}% · grown in ~{min} min",
+    "arret": "Not growing: {manque}",
+    "hiver": "Growth: {pct}% · grows again in spring"
+  },
+  "astuces": {
+    "bouleau_ombre": "This young birch has stopped growing: too much shade. Plant birches at least 2 tiles apart.",
+    "graines": "Grown flowers make seeds. You need seeds to sow flowers, brambles and birches."
+  },
+  "refus_nichoir": "Nest boxes go on a grown birch. The furthest along will be ready in ~{min} min."
 }

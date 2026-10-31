@@ -501,8 +501,9 @@
     const M = {
       palettes: pal,
       herbe: {
-        printemps: [touffe(mel(ph[0], '#b8d77a', 0.55), mel(ph[1], '#d2e79a', 0.4)), touffe(mel(ph[0], '#b8d77a', 0.4), mel(ph[1], '#d2e79a', 0.2), true)],
-        ete: [touffe(mel(ph[0], '#a6cc72', 0.4), ph[1]), touffe(mel(ph[0], '#a6cc72', 0.25), mel(ph[1], '#c4dc8a', 0.3), true)],
+        // Sprint 6 : brins moins sombres, proches du vert du sol (moins de « bruit » quand on dézoome).
+        printemps: [touffe(mel(ph[0], '#a9d27a', 0.6), mel(ph[1], '#cfe596', 0.35)), touffe(mel(ph[0], '#a9d27a', 0.5), mel(ph[1], '#cfe596', 0.2), true)],
+        ete: [touffe(mel(ph[0], '#98c46a', 0.55), ph[1]), touffe(mel(ph[0], '#98c46a', 0.45), mel(ph[1], '#c4dc8a', 0.3), true)],
         sec: [touffe(mel(ph[0], ph[2], 0.75), ph[2]), touffe(mel(ph[1], ph[2], 0.7), mel(ph[2], '#e8dfae', 0.3), true)],
         automne: [touffe(mel(ph[0], '#b59b4e', 0.45), mel(ph[1], '#c9ad5c', 0.4)), touffe(mel(ph[0], '#a88a46', 0.5), ph[2], true)],
         hiver: [touffe(mel(ph[2], '#efeadb', 0.4), '#e8e1cb'), touffe('#d8cfae', mel(ph[2], '#ffffff', 0.5), true)],

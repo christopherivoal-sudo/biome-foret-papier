@@ -307,3 +307,17 @@ button.chip { border: 1px solid #d6c7a9; }
 /* Sprint 6 : débit de sève sous le compteur. */
 .chip .debit { font-size: 10.5px; color: #8a7354; font-weight: normal; font-variant-numeric: tabular-nums; }
 @media (max-width: 700px) { .chip .debit { font-size: 9.5px; } }
+
+/* Sprint 6 (retours 3) : les bulles laissent passer les clics vers l'île (seuls leurs boutons sont cliquables).
+   Avant, « #jeu > * » rendait cliquables même les bulles invisibles : elles bloquaient l'île au-dessus de la barre. */
+#jeu > .guide, #jeu > .odile, #jeu > .aide-action, #jeu > .toasts, #jeu > .fil { pointer-events: none; }
+#jeu > .guide.ouverte .fermer, #jeu > .odile.ouverte button { pointer-events: auto; }
+
+/* Sprint 6 (retours 3) : bouton de récolte groupée, croissance des plantes dans le panneau de tuile. */
+.recolte-tout { position: fixed; left: 50%; bottom: 76px; transform: translateX(-50%); display: flex; align-items: center; gap: 5px; padding: 6px 14px 6px 10px;
+  border-radius: 18px; border: 1px solid #c79a3a; background: #fff3d4; font-size: 14px; font-weight: 600; color: #6b4e1c; box-shadow: 0 2px 8px rgba(60, 45, 25, 0.2); z-index: 2; animation: lueur 1.6s infinite; }
+.recolte-tout svg { width: 20px; height: 20px; }
+.guide-ouvert .recolte-tout, .odile-ouverte .recolte-tout { bottom: 150px; }
+.pousse { margin: 4px 0 2px; font-size: 12px; color: #4f6a37; }
+.pousse.arret { color: #a2492f; }
+@media (max-width: 700px) { .recolte-tout { bottom: 70px; } .guide-ouvert .recolte-tout, .odile-ouverte .recolte-tout { bottom: 160px; } }

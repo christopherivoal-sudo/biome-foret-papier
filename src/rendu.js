@@ -149,14 +149,38 @@
       return c;
     }
 
+    // Sprint 6 : couleurs du sol adoucies. Chaque sommet prend la moyenne des tuiles qui le touchent (hors eau) ;
+    // chaque triangle mélange la couleur de sa tuile et celle de ses sommets : moins de damier, transitions douces.
+    const couleursTuiles = [], couleursSommets = [];
+    function preparerCouleurs(etat, A) {
+      const M1 = N + 1;
+      for (let i = 0; i < N * N; i++) couleursTuiles[i] = etat.tuiles[i] ? couleurTuile(etat.tuiles[i], A, i) : null;
+      for (let j = 0; j <= N; j++) for (let i = 0; i <= N; i++) {
+        let r = 0, g = 0, b = 0, n = 0;
+        for (const [dx, dy] of [[-1, -1], [0, -1], [-1, 0], [0, 0]]) {
+          const x = i + dx, y = j + dy;
+          if (x < 0 || y < 0 || x >= N || y >= N) continue;
+          const c = couleursTuiles[y * N + x];
+          if (!c || etat.tuiles[y * N + x].c === 'eau') continue;
+          r += c[0]; g += c[1]; b += c[2]; n++;
+        }
+        couleursSommets[j * M1 + i] = n ? [r / n, g / n, b / n] : null;
+      }
+    }
     function dessinerTerrain(etat, A) {
       const T = terrain, P = T.P, V = T.V, te = R3.teinte;
       for (let k = 0; k < V.length; k++) cam.project(V[k][0], V[k][1], V[k][2], P[k]);
+      preparerCouleurs(etat, A);
       ctx.lineJoin = 'round'; ctx.lineWidth = 0.8;
       let cell = -1, col = null;
       for (const t of T.tris) {
-        if (t.cell !== cell) { cell = t.cell; col = couleurTuile(etat.tuiles[cell], A, cell); }
+        if (t.cell !== cell) { cell = t.cell; col = couleursTuiles[cell]; }
         let c = col;
+        if (etat.tuiles[cell].c !== 'eau') {
+          let r = 0, g = 0, b = 0, n = 0;
+          for (const v of t.v) { const cv = couleursSommets[v]; if (cv) { r += cv[0]; g += cv[1]; b += cv[2]; n++; } }
+          if (n) c = [col[0] * 0.45 + r / n * 0.55, col[1] * 0.45 + g / n * 0.55, col[2] * 0.45 + b / n * 0.55];
+        }
         if (etat.tuiles[cell].c === 'eau') { const w = 1 + 0.07 * Math.sin(temps * 2 + t.k * 1.7); c = [col[0] * w, col[1] * w, col[2] * w]; }
         const a = P[t.v[0]], b = P[t.v[1]], d = P[t.v[2]];
         const s = E.shade(c, t.n[0], t.n[1], t.n[2], undefined, te);
@@ -223,9 +247,11 @@
           const touffes = M.herbe[jeu];
           const ht = (0.22 + 0.24 * Math.min(1, t.age + 0.2)) * (seche ? 0.75 : 1) * (sais === 'hiver' ? 0.7 : 1);
           if (sais === 'hiver' && hash(i, 8) < 0.7) continue;
+          // De loin, une seule touffe par tuile, puis plus du tout : le sol vert suffit et l'île reste lisible.
+          if (cam.dist > 34 && t.c === 'herbe' && !papier) continue;
           R3.add(touffes[h1 < 0.5 ? 0 : 1], x + (h1 - 0.5) * 0.5, 0, z + (h2 - 0.5) * 0.5, h2 * 6.28, 1.0, ht, t.c === 'herbe' && papier ? { papier } : undefined);
           // Sprint 6 : herbe plus dense (3 touffes par tuile), pour une prairie qui se lit de loin.
-          if (sais !== 'hiver' && t.c === 'herbe') {
+          if (sais !== 'hiver' && t.c === 'herbe' && cam.dist < 26) {
             R3.add(touffes[h2 < 0.5 ? 1 : 0], x - 0.28 + hash(i, 7) * 0.12, 0, z + 0.22 - hash(i, 9) * 0.1, h1 * 6.28, 0.85, ht * 0.85);
             R3.add(touffes[h1 < 0.5 ? 1 : 0], x + 0.26 - hash(i, 11) * 0.1, 0, z - 0.26 + hash(i, 12) * 0.12, h2 * 3.1 + 1, 0.8, ht * 0.8);
           }
@@ -264,7 +290,8 @@
         if (t.graines >= 1 && (t.c === 'fleurs' || t.c === 'ronce' || t.c === 'arbre')) {
           // Graines mûres à récolter : petite capsule qui flotte au-dessus de la plante.
           const hy = t.c === 'arbre' ? 2.3 * (0.3 + 0.75 * maturite(t)) : t.c === 'ronce' ? 0.95 : 0.6;
-          R3.add(M.graine, x + 0.15, hy + Math.sin(temps * 2 + i) * 0.05, z, temps * 0.8 + i, 1.2);
+          R3.add(M.graine, x + 0.15, hy + Math.sin(temps * 2 + i) * 0.05, z, temps * 0.8 + i, 1.5);
+          cibles.push({ k: 'graine', tuile: i, x: x + 0.15, y: hy, z, r: 1.2 });
         }
       }
     }
@@ -648,6 +675,7 @@
       if (!terrain || terrain.sig !== signatureEau(etat)) construireTerrain(etat);
       const A = ambiance(etat, opts);
       R3.teinte = teinte(A);
+      R3.aretes = cam.dist < 22;
       lireJournal(etat);
       cibles = [];
       const liste = Core.tuilesIle(etat), rares = indexRares(etat);
@@ -730,11 +758,12 @@
     }
 
     // Cible cliquable la plus proche d'un point de l'écran (à moins de rayon pixels), ou null.
-    function cibleSous(sx, sy, rayon) {
+    function cibleSous(sx, sy, rayon, filtre) {
       rayon = rayon || 26;
       const tmp = [0, 0, 0];
       let best = null, bd = 1e9;
       for (const c of cibles) {
+        if (filtre && !filtre(c)) continue;
         cam.project(c.x, c.y, c.z, tmp);
         // Le rayon grandit quand on zoome (objet plus gros à l'écran) ; la cabane a une zone plus large.
         const lim = rayon * (c.r || 1) * Math.max(0.7, Math.min(2, 20 / tmp[2]));

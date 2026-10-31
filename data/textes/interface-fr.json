@@ -317,11 +317,24 @@
     "paillis_poser": "Glisse sur les tuiles dorées, près de la mare, pour étaler du paillis ({n} / {total}).",
     "jauge": "Bravo ! Cette jauge montre ce qu'il faut pour que ta prairie devienne une lisière. Touche-la.",
     "fin": "À toi de jouer ! Touche un animal pour le photographier : chaque photo remplit ton carnet.",
-    "recolte": "Des graines sont mûres ! Avec « Observer », touche la capsule dorée pour les récolter.",
+    "recolte": "Tes fleurs ont fait des graines ! Touche « Récolter » : il en faut pour semer fleurs, ronces et bouleaux.",
     "vu_sauterelle": "Les sauterelles sont venues seules : l'herbe les nourrit.",
     "vu_abeille": "Les abeilles sont là : des fleurs à butiner et un hôtel pour nicher.",
     "vu_lapin": "Un lapin ! De l'herbe à brouter et des pierres pour se cacher.",
     "vu_ver": "Des vers de terre : la mare et le paillis ont rendu le sol humide et riche.",
     "vu_alouette": "L'alouette est venue manger les sauterelles, dans un grand espace ouvert."
-  }
+  },
+  "recolte": {
+    "bouton": "Récolter ({nombre})"
+  },
+  "tuile_croissance": {
+    "pousse": "Croissance : {pct} % · adulte dans ~{min} min",
+    "arret": "Ne pousse plus : {manque}",
+    "hiver": "Croissance : {pct} % · repousse au printemps"
+  },
+  "astuces": {
+    "bouleau_ombre": "Ce jeune bouleau ne pousse plus : trop d'ombre. Plante les bouleaux à 2 cases d'écart au moins.",
+    "graines": "Les fleurs adultes font des graines. Il en faut pour semer fleurs, ronces et bouleaux."
+  },
+  "refus_nichoir": "Le nichoir se pose sur un bouleau adulte. Le plus avancé le sera dans ~{min} min."
 }

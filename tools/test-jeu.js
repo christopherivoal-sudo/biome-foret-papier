@@ -52,6 +52,13 @@ function prairiePrete() {
   const charger = (p, etat) => p.evaluate(e => { window.BIOME_JEU.etat = e; }, etat);
   // Clique sur l'écran au centre d'une tuile de l'île.
   const clicTuile = async (p, x, y) => {
+    // Attend que la caméra soit immobile (le guide peut la faire glisser vers une espèce qui arrive).
+    for (let k = 0; k < 30; k++) {
+      const a1 = await p.evaluate(() => { const c = window.BIOME_JEU.rendu.camera; return c.tx + ',' + c.tz + ',' + c.dist; });
+      await p.waitForTimeout(80);
+      const a2 = await p.evaluate(() => { const c = window.BIOME_JEU.rendu.camera; return c.tx + ',' + c.tz + ',' + c.dist; });
+      if (a1 === a2) break;
+    }
     const s = await p.evaluate(([x, y]) => window.BIOME_JEU.rendu.ecran(x, y, 0), [x, y]);
     await p.mouse.click(s.x, s.y);
     await p.waitForTimeout(150);
@@ -76,7 +83,8 @@ function prairiePrete() {
     const J = window.BIOME_JEU, e = J.etat, C = window.BiomeCore, d = C.preparer(window.BIOME_DATA);
     for (const i of C.tuilesIle(e)) {
       const x = i % C.N, y = (i / C.N) | 0, t = e.tuiles[i];
-      if (t.c === 'herbe' && C.besoinsEspece(e, d, 'fleurs', x, y).every(b => b.ok)) return { x, y };
+      const o = J.rendu.ecran(x, y, 0), vu = o.x > 150 && o.x < 1100 && o.y > 140 && o.y < 560; // bien à l'écran, hors des bulles
+      if (vu && t.c === 'herbe' && C.besoinsEspece(e, d, 'fleurs', x, y).every(b => b.ok)) return { x, y };
     }
     return null;
   });
@@ -87,7 +95,7 @@ function prairiePrete() {
     const avant = await p.evaluate(() => window.BIOME_JEU.etat.seve);
     await clicTuile(p, cible.x, cible.y);
     const apres = await p.evaluate(([x, y]) => { const e = window.BIOME_JEU.etat; return { seve: e.seve, c: e.tuiles[y * window.BiomeCore.N + x].c }; }, [cible.x, cible.y]);
-    verifier(apres.c === 'fleurs' && apres.seve <= avant - 10 + 1, 'clic sur la tuile : fleurs semées, 10 sève payées');
+    verifier(apres.c === 'fleurs' && apres.seve <= avant - 10 + 4, 'clic sur la tuile : fleurs semées, 10 sève payées');
     // Deuxième clic au même endroit : refus expliqué.
     await clicTuile(p, cible.x, cible.y);
     verifier(await p.locator('.toast.refus').count() >= 1, 'un refus est expliqué au joueur');
@@ -155,6 +163,14 @@ function prairiePrete() {
   await charger(p, S[2].etat);
   await p.waitForTimeout(1800);
   await capture(p, '3-lisiere');
+  // Sprint 6 (retours 3) : récolte groupée en un geste, et les bulles laissent passer les clics.
+  await p.evaluate(() => { const e = window.BIOME_JEU.etat, C = window.BiomeCore; let n = 0; for (const i of C.tuilesIle(e)) if (e.tuiles[i].c === 'fleurs' && n < 5) { e.tuiles[i].graines = 2; n++; } });
+  await p.waitForTimeout(700);
+  const g0 = await p.evaluate(() => window.BIOME_JEU.etat.graines);
+  await p.click('.recolte-tout');
+  const g1 = await p.evaluate(() => window.BIOME_JEU.etat.graines);
+  verifier(g1 - g0 >= 10, `bouton « Récolter » : toutes les capsules d'un coup (+${g1 - g0} graines)`);
+  verifier(await p.evaluate(() => getComputedStyle(document.querySelector('.guide')).pointerEvents) === 'none', 'les bulles ne bloquent pas les clics sur l\'île');
   // Photographier un animal : on clique là où le rendu l'a dessiné.
   const animal = await p.evaluate(() => {
     const c = window.BIOME_JEU.rendu.cibles.filter(c => c.k === 'agent');

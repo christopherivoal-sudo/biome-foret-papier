@@ -415,6 +415,16 @@
       if (s && !s.ok && s.conditions.filter(c => !c.ok).every(c => c.type === 'harmonie')) montrer('harmonie');
     }
     if (!u.premiere_nuit && h.moment === 'nuit' && !guideVisible()) montrer('premiere_nuit');
+    if (!u.bouleau_ombre && !guideVisible()) {
+      // Un jeune bouleau bloqué par l'ombre de ses voisins : Odile explique, une fois (sprint 6).
+      const fb = data.especes.bouleau;
+      for (const i of Core.tuilesIle(etat)) {
+        const t = etat.tuiles[i];
+        if (t.e !== 'bouleau' || t.age >= fb.croissance.jours_adulte) continue;
+        const b = bloquant(t, fb, i % N, (i / N) | 0);
+        if (b && b.c.stat === 'ombre') { u.bouleau_ombre = 1; odile(T('astuces.bouleau_ombre'), { priorite: 1, duree: 10000 }); break; }
+      }
+    }
     // Alertes de saison.
     if (saisonVue && saisonVue !== h.saison) {
       if (h.saison === 'hiver') odile(TX('garde.alertes.hiver'), { priorite: 0 });
@@ -540,8 +550,7 @@
     }
     if (guideRecolte >= 0 && (!e || actionChoisie === 'observer')) {
       txt = T('guide.recolte'); guideTuiles = [guideRecolte];
-      guideCible = actionChoisie === 'observer' ? { tuile: guideRecolte, haut: 0.6 } : { bouton: boutonsActions.observer };
-      if (guideCible.bouton) guideCible.bouton.classList.add('conseil');
+      guideCible = { bouton: boutonRecolte };
     }
     bulleGuide.querySelector('img').src = vignette('odile');
     texte(bulleGuide.querySelector('small'), etape);
@@ -680,6 +689,7 @@
       if (jauge.classList.contains('prete') !== s.ok) jauge.classList.toggle('prete', s.ok);
     }
     majBarre();
+    majRecolte();
   }
 
   // =====================================================================
@@ -762,6 +772,11 @@
   }
   function refus(r) {
     let t;
+    if (r.raison === 'arbre_adulte_requis') {
+      // Sprint 6 : dire quand le premier bouleau sera adulte.
+      const fb = data.especes.bouleau, jeunes = Core.tuilesIle(etat).filter(i => etat.tuiles[i].e === 'bouleau' && etat.tuiles[i].age < fb.croissance.jours_adulte);
+      if (jeunes.length) { const best = jeunes.reduce((a, i) => etat.tuiles[i].age > etat.tuiles[a].age ? i : a); return toast(T('refus_nichoir', { min: tempsAdulte(etat.tuiles[best], fb) }), { classe: 'refus', duree: 4000 }); }
+    }
     if (r.raison === 'seve' || r.raison === 'graines') t = T('refus.' + r.raison, { nombre: Math.ceil(r.details.manque) });
     else if (r.raison === 'verrouille') t = T('refus.verrouille', { etape: nomEtape(r.details.etape) });
     else if (r.raison === 'besoins') {
@@ -959,16 +974,37 @@
       if (t) { poser(actionChoisie, t.x, t.y); dernierTap = { x: t.x, y: t.y, fin: Date.now() + 600 }; }
       return;
     }
-    const c = rendu.cibleSous(sx, sy);
+    // Sprint 6 : les capsules de graines passent avant les animaux, puis la cabane, puis les animaux (zone de clic plus serrée).
+    const g = rendu.cibleSous(sx, sy, 30, c => c.k === 'graine');
+    if (g) return recolterAutour(g.tuile % N, (g.tuile / N) | 0, sx, sy);
+    if (t && Core.dansIle(etat, t.x, t.y) && etat.tuiles[Core.idx(t.x, t.y)].graines >= 1) return recolterAutour(t.x, t.y, sx, sy);
+    const c = rendu.cibleSous(sx, sy, 20);
     if (c && c.k === 'garde') return ouvrirMissions();
-    if (c) return photographier(c.esp, c.papier, sx, sy);
+    if (c && c.k !== 'graine') return photographier(c.esp, c.papier, sx, sy);
     if (!t || !Core.dansIle(etat, t.x, t.y)) { fermerPanneauTuile(); return; }
-    const tu = etat.tuiles[Core.idx(t.x, t.y)];
-    if (tu.graines >= 1) {
-      const r = Core.action(etat, data, 'recolter', t.x, t.y);
-      if (r.ok) { envol(sx, sy, '+' + r.graines, chips.graines); evenementTuto('recolte'); majHaut(); return; }
-    }
     ouvrirPanneauTuile(t.x, t.y, sx, sy);
+  }
+  // Récolte groupée (sprint 6) : toucher une capsule ramasse aussi les capsules mûres voisines (rayon 3) ;
+  // le bouton « Récolter » au-dessus de la barre ramasse toute l'île d'un coup.
+  function recolterListe(liste) {
+    let n = 0;
+    for (const i of liste) { const r = Core.action(etat, data, 'recolter', i % N, (i / N) | 0); if (r.ok) n += r.graines; }
+    return n;
+  }
+  const capsules = () => Core.tuilesIle(etat).filter(i => etat.tuiles[i].graines >= 1);
+  function recolterAutour(x, y, sx, sy) {
+    const n = recolterListe(capsules().filter(i => Math.hypot(i % N - x, ((i / N) | 0) - y) <= 3));
+    if (n) { envol(sx, sy, '+' + n, chips.graines); evenementTuto('recolte'); majHaut(); }
+  }
+  const boutonRecolte = el('button', 'recolte-tout', racine); boutonRecolte.type = 'button'; boutonRecolte.hidden = true;
+  boutonRecolte.onclick = () => {
+    const r = boutonRecolte.getBoundingClientRect(), n = recolterListe(capsules());
+    if (n) { envol(r.left + r.width / 2, r.top, '+' + n, chips.graines); evenementTuto('recolte'); majHaut(); }
+  };
+  function majRecolte() {
+    let n = 0; for (const i of capsules()) n += Math.floor(etat.tuiles[i].graines);
+    if (boutonRecolte.hidden !== !n) boutonRecolte.hidden = !n;
+    if (n) html(boutonRecolte, ICONES.graines + T('recolte.bouton', { nombre: n }));
   }
   function photographier(id, papier, sx, sy) {
     let r = Core.photographier(etat, data, id, papier || undefined);
@@ -1003,6 +1039,26 @@
     panneauTuile.style.left = Math.max(8, Math.min(w - pw - 8, sx + 14)) + 'px';
     panneauTuile.style.top = Math.max(60, Math.min(h - ph - 110, sy - ph / 2)) + 'px';
   }
+  // Croissance d'une plante pas encore adulte (sprint 6) : pourcentage, temps restant, ou ce qui la bloque.
+  function infoCroissance(x, y) {
+    const t = etat.tuiles[Core.idx(x, y)], f = t.e && data.especes[t.e];
+    if (!f || !f.croissance || f.croissance.jours_adulte <= 1 || t.age >= f.croissance.jours_adulte) return null;
+    const pct = Math.floor(t.age / f.croissance.jours_adulte * 100), h = Core.horloge(etat);
+    const bloque = bloquant(t, f, x, y);
+    if (bloque) return { arret: true, texte: T('tuile_croissance.arret', { manque: libelleCondition(bloque.c) + ' (' + valeurCondition(bloque.c, bloque.r) + ')' }) };
+    if (!Core.P.croissanceSaison[h.saison]) return { texte: T('tuile_croissance.hiver', { pct }) };
+    return { texte: T('tuile_croissance.pousse', { pct, min: tempsAdulte(t, f) }) };
+  }
+  function bloquant(t, f, x, y) {
+    const res = Core.besoinsEspece(etat, data, t.e, x, y);
+    const k = res.findIndex(r => !r.ok);
+    return k < 0 ? null : { c: f.besoins[k], r: res[k] };
+  }
+  // Minutes de jeu avant l'âge adulte, à la vitesse de la saison en cours (au moins celle de l'été).
+  function tempsAdulte(t, f) {
+    const v = Math.max(1, Core.P.croissanceSaison[Core.horloge(etat).saison] || 0);
+    return Math.max(1, Math.ceil((f.croissance.jours_adulte - t.age) / v * Core.P.dureeJour / 60));
+  }
   function majPanneauTuile() {
     if (!tuileOuverte) return;
     const { x, y } = tuileOuverte, t = etat.tuiles[Core.idx(x, y)];
@@ -1018,8 +1074,10 @@
     if (t.paillis > 0) extra.push(T('tuile.paillis'));
     if (t.champi) extra.push(nomEsp(t.champi));
     if (t.graines >= 1) extra.push(T('tuile.graines', { nombre: Math.floor(t.graines) }));
+    const pousse = infoCroissance(x, y);
     const stat = (k, v) => `<div class="stat"><span>${T('stats.' + k)}</span><i><b style="width:${Math.round(v)}%"></b></i><em>${Math.round(v)}</em></div>`;
     panneauTuile.innerHTML = `<button type="button" class="fermer">×</button><b>${echapper(nom.charAt(0).toUpperCase() + nom.slice(1))}</b>${extra.length ? '<small>' + extra.join(' · ') + '</small>' : ''}`
+      + (pousse ? `<p class="pousse${pousse.arret ? ' arret' : ''}">${echapper(pousse.texte)}</p>` : '')
       + stat('fertilite', t.f) + stat('humidite', t.h) + stat('ombre', t.o) + '<div class="gestes"></div>';
     panneauTuile.querySelector('.fermer').onclick = fermerPanneauTuile;
     const g = panneauTuile.querySelector('.gestes');
@@ -1043,11 +1101,14 @@
   panneau.querySelector('.fermer').onclick = () => fermerPanneau();
   panneau.addEventListener('pointerdown', ev => { if (ev.target === panneau) fermerPanneau(); });
   function ouvrirPanneau(maj, classe) {
-    panneauMaj = maj;
+    panneauMaj = maj; contenu._h = '';
     panneau.className = 'panneau ouvert ' + (classe || '');
     maj();
     contenu.scrollTop = 0;
   }
+  // Le panneau ouvert est redessiné toutes les 0,5 s : on ne touche à la page que si son contenu change,
+  // sinon un bouton remplacé entre l'appui et le relâchement ne reçoit jamais le clic (sprint 6).
+  function poserContenu(h) { if (contenu._h === h) return false; contenu._h = h; contenu.innerHTML = h; return true; }
   function fermerPanneau() { panneau.classList.remove('ouvert'); panneauMaj = null; }
 
   // ---------- Carnet ----------
@@ -1063,7 +1124,7 @@
     if (ongletCarnet === 'especes') corps = especeOuverte ? pageEspece(especeOuverte) : grilleEspeces();
     else if (ongletCarnet === 'collection') corps = pageCollection();
     else corps = pageJournal();
-    contenu.innerHTML = `<h2>${T('carnet.titre')}</h2><div class="onglets">${onglets}</div>${corps}`;
+    if (!poserContenu(`<h2>${T('carnet.titre')}</h2><div class="onglets">${onglets}</div>${corps}`)) return;
     contenu.querySelectorAll('.onglet').forEach(b => { b.onclick = () => { ongletCarnet = b.dataset.o; especeOuverte = null; dessinerCarnet(); }; });
     contenu.querySelectorAll('[data-esp]').forEach(b => { b.onclick = () => { especeOuverte = b.dataset.esp; dessinerCarnet(); contenu.scrollTop = 0; }; });
     const ret = contenu.querySelector('.retour'); if (ret) ret.onclick = () => { especeOuverte = null; dessinerCarnet(); };
@@ -1146,7 +1207,7 @@
         + `<div class="prog"><i><b style="width:${Math.min(100, a.n / o.nombre * 100)}%"></b></i><em>${T('missions.progression', { n: a.n, total: o.nombre })}</em></div>`
         + `<small>${T('missions.recompense', { liste: rec })}</small>${a.remplie ? `<button type="button" class="grand" data-m="${a.id}">${T('boutons.recevoir')}</button>` : ''}</div>`;
     }
-    contenu.innerHTML = h;
+    if (!poserContenu(h)) return;
     contenu.querySelectorAll('[data-m]').forEach(b => {
       b.onclick = () => {
         const id = b.dataset.m, r = Core.reclamerMission(etat, data, id);
@@ -1190,7 +1251,7 @@
       for (const k of ['equilibre', 'chaine', 'diversite', 'mosaique']) h += `<div class="stat"><span>${T('harmonie.' + k) !== 'harmonie.' + k ? T('harmonie.' + k) : k}</span><i><b style="width:${pct(hd[k])}%"></b></i><em>${pct(hd[k])}</em></div>`;
       h += '</div>';
     }
-    contenu.innerHTML = h;
+    if (!poserContenu(h)) return;
     const p = contenu.querySelector('.passer'); if (p) p.onclick = passerEtape;
   }
   function passerEtape() {
@@ -1255,7 +1316,7 @@
     items.push({ id: 'prolonger', titre: T('bonus.prolonger'), aide: T('bonus.prolonger_aide', { evenement: m.actif ? nomEv(m.actif.id) : '…' }), dispo: prolongeable && p.prolonge !== cleEv, etat: prolongeable ? (p.prolonge === cleEv ? T('bonus.indisponible') : '') : T('bonus.indisponible') });
     let h = `<h2>${T('bonus.titre')}</h2><p class="sous">${T('bonus.explication')}</p>`;
     for (const it of items) h += `<div class="bonus-item"><div><b>${it.titre}</b><p>${it.aide}</p>${it.etat ? `<small>${it.etat}</small>` : ''}</div><button type="button" class="petit" data-b="${it.id}"${it.dispo ? '' : ' disabled'}>${ICONES.bonus}${T('bonus.regarder')}</button></div>`;
-    contenu.innerHTML = h;
+    if (!poserContenu(h)) return;
     contenu.querySelectorAll('[data-b]').forEach(b => { b.onclick = () => bonus(b.dataset.b); });
   }
   function bonus(id) {
