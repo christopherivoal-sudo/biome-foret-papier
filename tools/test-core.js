@@ -90,9 +90,11 @@ console.log('Statistiques des tuiles');
   verifier('humidité normale hors de portée (hors humus)', Math.abs(horsPortee - 20) < 1, horsPortee);
   const t = tuile(e, C + 5, C + 2), f0 = t.f, h0 = t.hb;
   Core.action(e, data, 'paillis', C + 5, C + 2);
-  avancer(e, 120);
+  // L'herbe voisine s'étend (sprint 6 : plus vite) : on garde la tuile nue pour mesurer le seul effet du paillis.
+  const nue = s => { for (let k = 0; k < s; k++) { avancer(e, 1); if (t.c !== 'nu') Object.assign(t, { c: 'nu', e: '', age: 0 }); } };
+  nue(120);
   verifier('paillis : la moitié de l\'effet après ½ jour', Math.abs(t.f - f0 - 7.5) < 0.6 && t.paillis > 0, [t.f - f0]);
-  avancer(e, 130);
+  nue(130);
   verifier('paillis : +15 fertilité, +10 humidité après 1 jour, puis disparaît', Math.abs(t.f - f0 - 15) < 0.6 && Math.abs(t.hb - h0 - 10) < 0.01 && t.paillis === 0, [t.f - f0, t.hb - h0]);
 }
 
@@ -433,7 +435,11 @@ console.log('Floraison : graines ×2, mission « événement »');
 
 console.log('Orage : pluie, abri, foudre');
 {
-  const d2 = variante(d => { d.evenements.find(x => x.id === 'orage').effets.find(x => x.type === 'abattre_arbre').chance = 1; });
+  const d2 = variante(d => {
+    d.evenements.find(x => x.id === 'orage').effets.find(x => x.type === 'abattre_arbre').chance = 1;
+    // Aucun autre événement tiré ensuite (le test regarde le retour à la normale après cet orage-ci).
+    for (const ev of d.evenements) for (const k in ev.saisons) ev.saisons[k] = 0;
+  });
   const e = Core.creer(d2, { graine: 33 });
   e.etape = 'lisiere';
   e.temps = 720 + 30; e.saison = 'ete';
@@ -460,7 +466,11 @@ console.log('Orage : pluie, abri, foudre');
   verifier('3 jours plus tard, l\'humidité est revenue à la normale', Math.abs(e.meteo.humidite) < 1, e.meteo.humidite);
 }
 {
-  const d2 = variante(d => { d.evenements.find(x => x.id === 'orage').effets.find(x => x.type === 'abattre_arbre').chance = 1; });
+  const d2 = variante(d => {
+    d.evenements.find(x => x.id === 'orage').effets.find(x => x.type === 'abattre_arbre').chance = 1;
+    // Aucun autre événement tiré ensuite (le test regarde le retour à la normale après cet orage-ci).
+    for (const ev of d.evenements) for (const k in ev.saisons) ev.saisons[k] = 0;
+  });
   const e = Core.creer(d2, { graine: 34 });
   e.etape = 'lisiere'; e.temps = 750; e.saison = 'ete';
   const bi = Core.idx(C + 5, C - 3);

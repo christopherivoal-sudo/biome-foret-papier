@@ -48,16 +48,16 @@
   },
   "interactions": [],
   "production": {
-    "seve_par_s": 0.01,
+    "seve_par_s": 0.015,
     "pages_photo": 1
   },
   "depart_apres_jours": 1,
   "croissance": {
     "jours_adulte": 1,
-    "extension_par_jour": 0.15,
+    "extension_par_jour": 0.2,
     "ombre_projetee": 0,
     "rayon_ombre": 0,
-    "cout_seve": 5,
+    "cout_seve": 3,
     "cout_graines": 0
   },
   "modele": "herbe",

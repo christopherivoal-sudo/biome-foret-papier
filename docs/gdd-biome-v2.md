@@ -254,7 +254,7 @@ Le joueur **ne place jamais d'animal**. Il dispose de :
 
 | Action | Coût | Effet | Débloquée |
 |---|---|---|---|
-| Semer de l'herbe | 5 sève | tuile → herbe | Prairie |
+| Semer de l'herbe | 3 sève (5 avant le sprint 6) | tuile → herbe | Prairie |
 | Semer des fleurs | 10 sève + 1 graine | tuile → fleurs | Prairie |
 | Tas de pierres | 30 sève | abri (lapin) ; 1 tuile | Prairie |
 | Mare | 80 sève | 2×2 tuiles d'eau ; humidité +40 dans un rayon de 3, qui décroît avec la distance | Prairie |
@@ -720,6 +720,7 @@ Précisions du sprint 6 (retours de Christophe après ses premiers tests) :
 - **Guide des premières minutes** (remplace les bulles du tutoriel de la Prairie, 7 étapes) : accueil → semer 3 fleurs → hôtel à insectes → tas de pierres → mare → 3 paillis → jauge. À chaque étape, une main montre le bouton à toucher puis, sur l'île, les tuiles dorées où la pose marche (avec un geste de glissé pour les semis). Si la sève manque, le guide affiche « x / coût ». Les étapes se valident d'après l'état de l'île (on peut les faire dans le désordre) ; on peut passer le guide (×). Astuce unique de récolte quand la première capsule de graines est mûre.
 - **Montrer le résultat** : à la première venue d'une espèce, une étiquette s'affiche au-dessus d'elle sur l'île (« Nouvelle espèce : … » et, pour la sauterelle, l'abeille, le lapin, le ver et l'alouette, pourquoi elle est venue) ; pendant le guide, la caméra glisse jusqu'à elle.
 - **Graphismes** : herbe verte et dense (3 touffes par tuile, brins éclairés doucement), herbe sèche seulement quand le sol est vraiment sec, sol kraft plus chaud et moins tacheté, arêtes de pli légèrement plus sombres sur les modèles, grain de papier et halo doux sur le fond.
+- **Sève et herbe** (second retour du 31/10 : « la sève met trop de temps, on attend pour remplir la carte d'herbe ») : semer de l'herbe coûte 3 sève au lieu de 5, l'herbe produit 0,015 sève/s par tuile au lieu de 0,01, et s'étend seule un peu plus vite (0,2 par jour au lieu de 0,15). Un joueur qui ne sème que de l'herbe couvre 60 % de l'île en 3 min au lieu de 7. La Lisière reste à 16:17 en médiane (simulation de 20 parties), car elle dépend surtout des espèces et de l'harmonie. Le compteur de sève affiche son débit (« +1,0/s »).
 - Textes du guide écrits par Claude en français et en anglais (`interface-*.json`, rubriques `guide`, `camera`, `barre`, `arrivee`, `peinture`).
 - Tests : 167 (`core.js`), 542 (modèles), 41 vérifications dans le navigateur (dont semis en glissant, déplacement, guide, pince à deux doigts sans semer).
 

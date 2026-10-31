@@ -303,3 +303,7 @@ button.chip { border: 1px solid #d6c7a9; }
 .ligne.mesure { flex-wrap: wrap; }
 .ligne.mesure .fps { font-variant-numeric: tabular-nums; }
 .ligne.mesure small { flex-basis: 100%; }
+
+/* Sprint 6 : débit de sève sous le compteur. */
+.chip .debit { font-size: 10.5px; color: #8a7354; font-weight: normal; font-variant-numeric: tabular-nums; }
+@media (max-width: 700px) { .chip .debit { font-size: 9.5px; } }

@@ -611,6 +611,7 @@
     c.innerHTML = ICONES[r] + '<span></span>';
     chips[r] = c.querySelector('span');
   }
+  const debitSeve = el('small', 'debit', chips.seve.parentNode);
   const blocTemps = el('button', 'chip temps', haut); blocTemps.type = 'button';
   const blocMeteo = el('button', 'chip meteo', haut); blocMeteo.type = 'button';
   blocMeteo.onclick = () => ouvrirBonus();
@@ -632,6 +633,9 @@
 
   function majHaut() {
     texte(chips.seve, nombre(etat.seve));
+    // Sprint 6 : le débit de sève est affiché, pour savoir combien de temps attendre.
+    const debit = etat.seve >= Core.reserveMax(etat) ? 0 : Core.rendement(Core.productionSeve(etat, data)) * (0.5 + etat.harmonie) * (seveDoubleActive() ? 2 : 1);
+    texte(debitSeve, '+' + debit.toLocaleString(langue === 'fr' ? 'fr-FR' : 'en-US', { maximumFractionDigits: 1, minimumFractionDigits: 1 }) + '/s');
     // Réserve de sève plafonnée par étape (sprint 5 bis) : chip doré quand elle est pleine.
     const max = Core.reserveMax(etat), pleine = etat.seve >= max;
     const cs = chips.seve.parentNode, titre = T('ressources.reserve', { nombre: nombre(Math.floor(etat.seve)), max: nombre(max) });
