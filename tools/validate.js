@@ -3,6 +3,7 @@
 // Usage :
 //   node tools/validate.js                       vérifie data/
 //   node tools/validate.js --especes chatgpt/especes-prairie-lisiere.json --fr chatgpt/textes-fr.json [--en chatgpt/textes-en.json]
+//     [--garde-en chatgpt/garde-en.json] [--interface-en chatgpt/interface-en.json]
 // Sortie : une ligne par problème, en français. Code de sortie 1 s'il y a au moins une erreur bloquante.
 'use strict';
 const fs = require('fs');
@@ -599,15 +600,36 @@ function main() {
   else if (missionsData) erreur('missions', 'textes de la garde et des missions introuvables');
   const fichierEN = a.en || 'data/textes/en.json';
   const en = lireJSON(path.resolve(RACINE, fichierEN), !!a.en);
+  // Garde et missions en anglais livrées à part (consigne 05) : on les range dans en pour la comparaison.
+  if (en && a['garde-en']) { const g = lireJSON(path.resolve(RACINE, a['garde-en'])); if (g) { en.garde = g.garde; en.missions = g.missions; } }
   if (en) {
     verifierTextes(en, rel(fichierEN), especes, ctx);
     if (fr) {
       // La garde et les missions peuvent attendre leur traduction : simple avertissement.
       const frComp = Object.assign({}, fr);
+      if (a.garde && garde) { frComp.garde = garde.garde; frComp.missions = garde.missions; } // garde française livrée à part
       for (const k of ['garde', 'missions']) if (k in fr && !(k in en)) { avert('FR/EN', `rubrique « ${k} » pas encore traduite`); delete frComp[k]; }
       comparerLangues(frComp, en);
       if (en.garde) verifierGarde(en, rel(fichierEN), especes, idsMissions);
     }
+  }
+
+  // Textes de l'interface (sprint 5) : écrits par Claude en français, traduits par ChatGPT (consigne 05).
+  const ifr = lireJSON(path.join(RACINE, 'data/textes/interface-fr.json'), false);
+  const fichierIEN = a['interface-en'] || 'data/textes/interface-en.json';
+  const ien = lireJSON(path.resolve(RACINE, fichierIEN), !!a['interface-en']);
+  if (ifr && !ien) avert('interface', 'textes de l\'interface pas encore traduits en anglais');
+  if (ifr && ien) {
+    comparerLangues(ifr, ien, 'interface');
+    // Longueurs : l'anglais tient sur un téléphone (au plus 1,3 fois le français, avec un peu de marge pour les mots courts).
+    (function longueurs(f, e, ch) {
+      if (typeof f === 'string' && typeof e === 'string') {
+        if (e.length > Math.max(f.length * 1.3, f.length + 10)) avert(rel(fichierIEN), `${ch} : texte anglais trop long (${e.length} caractères pour ${f.length} en français)`);
+        if (!e.trim()) erreur(rel(fichierIEN), `${ch} : texte vide`);
+        return;
+      }
+      if (f && typeof f === 'object' && e && typeof e === 'object') for (const k of Object.keys(f)) longueurs(f[k], e[k], ch + '.' + k);
+    })(ifr, ien, 'interface');
   }
 
   // Rapport

@@ -1,6 +1,6 @@
 # Biome, la forêt de papier : document de conception v2
 
-Version 1.3, 31 octobre 2026 (précisions du sprint 3 en 5.1 et 8.5, du sprint 4 en 1.9 et 10.4). Rédigé par Claude, décisions de Christophe intégrées (section 11).
+Version 1.4, 31 octobre 2026 (précisions du sprint 3 en 5.1 et 8.5, du sprint 4 en 1.9 et 10.4, du sprint 5 en 10.4). Rédigé par Claude, décisions de Christophe intégrées (section 11).
 
 Repères de lecture :
 - **[PROTO]** : construit dans le prototype v2.
@@ -684,6 +684,21 @@ Précisions du sprint 4 (rendu, `engine.js`, `models.js`, `rendu.js`) :
 - **Papiers rares** : motif collé aux faces du spécimen (journal : papier gris et colonnes de texte ; washi : pastel, fibres, petites fleurs et points dorés), plus une petite étoile au-dessus de lui pour attirer l'œil.
 - **Performances** : le ciel, le sol, l'herbe et les fleurs sont dessinés dans une image mise en cache tant que la caméra ne bouge pas (rafraîchie toutes les 1,5 s) ; seuls les objets hauts et les animaux sont triés à chaque image. Si l'appareil peine (moins de 45 images/s), la définition baisse automatiquement.
 
+Précisions du sprint 5 (interface, `game.js`, `game.css`, `ads.js`) :
+- **Construction** : `node tools/construire.js` produit `dist/jeu.html` (le jeu) ; la vitrine du sprint 4 reste disponible avec `--vitrine`.
+- **Textes de l'interface** : `data/textes/interface-fr.json`, écrits par Claude ; l'anglais (`interface-en.json`) et celui de la garde et des missions viennent de ChatGPT (consigne 05). Tant qu'un texte anglais manque, le jeu affiche le français.
+- **Barre d'actions** : Observer, les 10 aménagements (vignettes origami, coût en sève et graines, cadenas jusqu'à l'étape), Retirer, Agrandir (visible quand l'agrandissement est possible). Une action choisie reste active pour poser plusieurs fois ; au survol, contour de la tuile (2×2 pour la mare), **rouge si la pose ne marcherait pas** (tuile occupée, sève, graines ou sol qui ne convient pas). Un refus est toujours expliqué (« Ça ne pousserait pas ici : fertilité moyenne d'au moins 20 (actuellement 12) »).
+- **Observer** : toucher un animal ou une nuée le photographie (flash) ; toucher la cabane ou Odile ouvre les missions ; toucher une tuile mûre récolte ses graines (bulle qui s'envole vers le compteur) ; sinon un petit panneau montre la tuile (fertilité, humidité, ombre) avec les gestes possibles : photographier la plante ou le champignon, récolter, poser un nichoir, retirer.
+- **Carnet** (3 onglets : espèces, collection, journal) : silhouettes des espèces pas encore venues. Un besoin se révèle quand il a été réuni une fois, quand l'espèce est venue, par un indice d'Odile ou par la pub « Indice du naturaliste ». Coche verte ou croix rouge selon l'état actuel de l'île, avec la valeur précise (le chiffre n'apparaît qu'une fois le besoin réuni ou l'espèce venue). Description à la venue, anecdote à la première photo, comportements, 2 cartes de spécimens rares par espèce ; chances affichées dans l'onglet collection.
+- **Comportements observés** (choix de Claude) : la première observation d'un comportement (repas, pollinisation, dispersion, hibernation ou migration, plante adulte, fructification) donne **1 page** et révèle un besoin caché d'une espèce qui dépend de celle observée (le ver mange → indice du hérisson). Aujourd'hui, le comportement est compté dès qu'il a lieu en jeu actif, même hors de l'écran.
+- **Odile** : bulle de 2 lignes au plus, toujours fermable, une à la fois (file d'attente). Tutoriel du 4.4 déclenché par l'état de l'île (pas par le temps seul), réaction à chaque première venue, annonce et fin des événements, départs (« il lui manquait… »), hiver, mission remplie. **Blocage** : 5 min sans nouvelle espèce → elle propose un indice gratuit sur l'espèce la plus proche de venir.
+- **Jauge de succession** : en haut à droite, nombre de conditions remplies ; elle s'illumine quand tout est prêt. Le passage reste un geste du joueur (« Passer à la Lisière »), suivi de la cinématique de papier qui se replie et se redéplie, puis d'une coupure pub. Le panneau détaille aussi l'harmonie en 4 parts. Après la Lisière : « La suite pousse… » (le chêne qui germe du 10.2 n'est pas encore fait).
+- **Météo** : pastille qui annonce l'événement 30 s avant, puis le temps restant.
+- **Pubs** (`ads.js`, simulateur de 3 s en attendant les kits des portails ; le jeu est en pause pendant la pub) : récompensées dans le panneau Bonus (pluie bienfaisante, sève double, prolonger l'événement), dans le carnet (indice du naturaliste, 3 par jour) et sur l'écran de retour (retour doublé). Pluie bienfaisante : humidité +30 sur les tuiles et dans l'air, qui revient à la normale en un jour environ. Prolonger : +1 jour, sans dépasser la fin de la saison. Coupures : au passage d'étape et au changement de saison, jamais dans les 2 premières minutes, au moins 3 min d'écart, jamais pendant une action choisie ou un panneau ouvert.
+- **Sauvegarde** : `localStorage` toutes les 10 s et quand la page se cache. Au retour (page rouverte, ou onglet caché plus d'une minute), la progression hors ligne est calculée et l'écran « Pendant ton absence » s'affiche.
+- **Téléphone** : mise en page portrait (menu en colonne à droite, barre d'actions qui défile), tactile (toucher pour agir, glisser pour tourner, pincer pour zoomer).
+- **Tests** : `tools/test-jeu.js` joue à la souris et au doigt dans Chromium (semer, refus, panneau de tuile, photo, carnet, mission, pub, passage à la Lisière, retour, sauvegarde, téléphone) : 25 vérifications, aucune erreur.
+
 ### 10.5 Ordre de travail (une conversation par sprint)
 
 | Sprint | Contenu | Qui |
@@ -693,7 +708,7 @@ Précisions du sprint 4 (rendu, `engine.js`, `models.js`, `rendu.js`) :
 | 2 | Arrivées, départs, capacités, chaîne alimentaire ; `sim-headless.js` ; premier équilibrage | Claude |
 | 3 | Temps, saisons, 3 événements, papiers rares ; textures journal et washi | Claude |
 | 4 | Modèles origami des 9 nouvelles espèces, rendu des tuiles (eau, ronce, paillis) ; textures journal et washi (fait le 31/10) | Claude |
-| 5 | Interface : carnet, photos, missions, barre d'actions, jauge de succession ; consigne 3 (anglais) | Claude, puis ChatGPT |
+| 5 | Interface : carnet, photos, missions, barre d'actions, jauge de succession ; consigne 05 (anglais de la garde, des missions et de l'interface) (fait le 31/10) | Claude, puis ChatGPT |
 | 6 | Test de jeu par Christophe et ses proches, retours, corrections | Christophe, puis Claude |
 
 ### 10.6 Critères de réussite (mesurés par simulation et par les tests)

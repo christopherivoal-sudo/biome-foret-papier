@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Test du rendu dans un vrai navigateur (Chromium, Playwright) : la vitrine s'ouvre sans erreur dans toutes
 // les combinaisons saison / moment / météo, et tient la cadence. Écrit des captures dans dist/captures/.
-// Usage : node tools/test-rendu.js [--perf]   (construire d'abord : node tools/construire.js)
+// Usage : node tools/test-rendu.js [--perf]   (construire d'abord : node tools/construire.js --vitrine)
 // --perf : mesure le temps par image sur un « téléphone moyen » (processeur ralenti ×4, écran 390×844, 30 animaux).
 'use strict';
 const path = require('path');

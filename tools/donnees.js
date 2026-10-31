@@ -15,6 +15,8 @@ module.exports = function chargerDonnees() {
     evenements: fs.existsSync(path.join(D, 'evenements.json')) ? lire('evenements.json') : [],
     rares: fs.existsSync(path.join(D, 'rares.json')) ? lire('rares.json') : [],
     equilibrage: fs.existsSync(path.join(D, 'equilibrage.json')) ? lire('equilibrage.json') : undefined,
-    textes: { fr: lire('textes/fr.json') },
+    textes: Object.assign({ fr: lire('textes/fr.json') }, fs.existsSync(path.join(D, 'textes/en.json')) ? { en: lire('textes/en.json') } : {}),
+    // Textes de l'interface (sprint 5) : écrits par Claude en français, traduits par ChatGPT.
+    interface: Object.assign({ fr: lire('textes/interface-fr.json') }, fs.existsSync(path.join(D, 'textes/interface-en.json')) ? { en: lire('textes/interface-en.json') } : {}),
   };
 };

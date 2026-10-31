@@ -1,8 +1,9 @@
 #!/usr/bin/env node
-// Construction en un seul fichier HTML, sans dépendance (GDD 10.4) : données + core.js + moteur + modèles + rendu.
-// Sprint 4 : produit la vitrine du rendu, dist/vitrine.html (scènes jouées par le joueur automatique).
-// Au sprint 5, la même construction produira le jeu (game.js à la place de vitrine.js).
-// Usage : node tools/construire.js [--graine 1]
+// Construction en un seul fichier HTML, sans dépendance (GDD 10.4) : données + core.js + moteur + modèles + rendu + interface.
+// Produit :
+//   dist/jeu.html     le jeu (sprint 5 : game.js, ads.js, game.css)
+//   dist/vitrine.html la vitrine du rendu du sprint 4 (avec --vitrine)
+// Usage : node tools/construire.js [--vitrine] [--graine 1]
 'use strict';
 const fs = require('fs');
 const path = require('path');
@@ -11,13 +12,38 @@ const lire = f => fs.readFileSync(path.join(R, f), 'utf8');
 const args = process.argv.slice(2);
 const k = args.indexOf('--graine');
 const graine = k >= 0 ? Number(args[k + 1]) : 1;
-
-const data = require('./donnees.js')();
-const scenes = require('./scenes.js')(graine).map(s => ({ id: s.id, nom: s.nom, etat: s.etat }));
 // Un </script> dans une chaîne casserait la page : on échappe le chevron.
 const json = o => JSON.stringify(o).replace(/</g, '\\u003c');
+const data = require('./donnees.js')();
+fs.mkdirSync(path.join(R, 'dist'), { recursive: true });
 
-const html = `<!DOCTYPE html>
+const jeu = `<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>Biome, la forêt de papier</title>
+<style>${lire('src/game.css')}</style>
+</head>
+<body>
+<canvas id="scene"></canvas>
+<div id="jeu"></div>
+<script>window.BIOME_DATA = ${json(data)};</script>
+<script>${lire('src/core.js')}</script>
+<script>${lire('src/engine.js')}</script>
+<script>${lire('src/models.js')}</script>
+<script>${lire('src/rendu.js')}</script>
+<script>${lire('src/ads.js')}</script>
+<script>${lire('src/game.js')}</script>
+</body>
+</html>
+`;
+fs.writeFileSync(path.join(R, 'dist', 'jeu.html'), jeu);
+console.log(`dist/jeu.html : ${(jeu.length / 1024).toFixed(0)} Ko.`);
+
+if (args.includes('--vitrine')) {
+  const scenes = require('./scenes.js')(graine).map(s => ({ id: s.id, nom: s.nom, etat: s.etat }));
+  const vitrine = `<!DOCTYPE html>
 <html lang="fr">
 <head>
 <meta charset="utf-8">
@@ -54,6 +80,6 @@ const html = `<!DOCTYPE html>
 </body>
 </html>
 `;
-fs.mkdirSync(path.join(R, 'dist'), { recursive: true });
-fs.writeFileSync(path.join(R, 'dist', 'vitrine.html'), html);
-console.log(`dist/vitrine.html : ${(html.length / 1024).toFixed(0)} Ko, ${scenes.length} scènes (graine ${graine}).`);
+  fs.writeFileSync(path.join(R, 'dist', 'vitrine.html'), vitrine);
+  console.log(`dist/vitrine.html : ${(vitrine.length / 1024).toFixed(0)} Ko, ${scenes.length} scènes (graine ${graine}).`);
+}

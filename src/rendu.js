@@ -34,6 +34,8 @@
     const lisses = {}, effets = [], particules = [];
     let dernierJournal = -1, eclair = 0, eclairCible = null, prochainEclair = 4;
     const odile = { a: 0, x: 0, z: 0, dir: 0, pause: 0, jumelles: false };
+    // Cibles cliquables de l'image en cours (sprint 5) : animaux, nuées, garde et cabane.
+    let cibles = [];
 
     // ---------- Terrain ----------
     function rayonBord(etat) { return Math.sqrt(etat.rayon * etat.rayon + etat.rayon) + 0.35; }
@@ -278,6 +280,7 @@
       for (const a of etat.agents) {
         const p = suivre(a, dt), papier = rares.agent[a.id] || '', o = papier ? { papier } : {};
         if (a.m === 'dort') { zzz.push(p); continue; }
+        cibles.push({ k: 'agent', agent: a.id, esp: a.esp, papier, x: p.x, y: (p.haut || 0) + 0.3, z: p.z });
         const bouge = p.vit > 0.15;
         if (bouge) p.ph += dt * (a.esp === 'lapin' ? 11 : 9);
         switch (a.esp) {
@@ -354,6 +357,7 @@
               if (ph < dehors) {
                 const hy = Math.sin(Math.PI * ph / dehors);
                 R3.add(M.ver[Math.floor(temps * 2 + s) % 2], px, 0, pz, hash(z, s + 2) * 6, 1.4, 1.4 * hy, s === 0 && papierZone ? { papier: papierZone } : undefined);
+                cibles.push({ k: 'pop', esp: id, zone: z, papier: s === 0 ? papierZone : '', x: px, y: 0.15, z: pz });
               }
             }
             continue;
@@ -371,6 +375,7 @@
               const px = a0[0] + (a1[0] - a0[0]) * sautT, pz = a0[1] + (a1[1] - a0[1]) * sautT;
               const dir = Math.atan2(a1[0] - a0[0], a1[1] - a0[1]);
               R3.add(sautT > 0 ? M.sauterelle.saut : M.sauterelle.pose, px, Math.sin(Math.PI * sautT) * 0.45, pz, dir, 1.1, 1.1, s === 0 && papierZone ? { papier: papierZone } : undefined);
+              cibles.push({ k: 'pop', esp: id, zone: z, papier: s === 0 ? papierZone : '', x: px, y: Math.sin(Math.PI * sautT) * 0.45 + 0.1, z: pz });
             }
           } else if (id === 'abeille' || id === 'tircis') {
             const pl = places(etat, id, z, ['fleurs']), k = Math.min(id === 'abeille' ? 5 : 3, 1 + Math.floor(n / (id === 'abeille' ? 6 : 5)));
@@ -387,6 +392,7 @@
               const o = s === 0 && papierZone ? { papier: papierZone } : undefined;
               if (id === 'abeille') R3.add(Math.floor(temps * 30 + s) % 2 ? M.abeille.haut : M.abeille.bas, px, py, pz, dir, 1.5, 1.5, o);
               else R3.add(M.tircis[Math.floor(temps * (ph < 0.35 ? 4 : 9) + s) % 3], px, py, pz, dir, 1.6, 1.6, o);
+              cibles.push({ k: 'pop', esp: id, zone: z, papier: s === 0 ? papierZone : '', x: px, y: py, z: pz });
             }
           }
         }
@@ -416,6 +422,7 @@
       }
       ombre(odile.x, odile.z, 0.14, 0.2);
       R3.add(odile.jumelles ? M.odileJumelles : M.odile, odile.x, bouge ? Math.abs(Math.sin(temps * 8)) * 0.025 : 0, odile.z, odile.dir, 1.2);
+      cibles.push({ k: 'garde', x: cb.x, y: 0.6, z: cb.z, r: 1.3 }, { k: 'garde', x: odile.x, y: 0.4, z: odile.z });
     }
 
     // ---------- Météo et particules ----------
@@ -619,6 +626,7 @@
       const A = ambiance(etat, opts);
       R3.teinte = teinte(A);
       lireJournal(etat);
+      cibles = [];
       const liste = Core.tuilesIle(etat), rares = indexRares(etat);
 
       // 1. Ciel, tranche de l'îlot, sol plié, décors plats et ombres fixes : « fond » mis en cache
@@ -641,8 +649,10 @@
       }
       dessinerEffetsSol(dt);
       if (opts.survol && Core.dansIle(etat, opts.survol.x, opts.survol.y)) {
-        const x = opts.survol.x - C, z = opts.survol.y - C;
-        R3.groundPoly([x - 0.5, z - 0.5, x + 0.5, z - 0.5, x + 0.5, z + 0.5, x - 0.5, z + 0.5], 'rgba(255,248,221,0.18)', 'rgba(255,248,221,0.95)', 2, 0.04);
+        // taille : 2 pour la mare (2×2) ; refus : contour rouge (la pose ne marcherait pas ici).
+        const x = opts.survol.x - C, z = opts.survol.y - C, k = (opts.survol.taille || 1) - 0.5;
+        const ok = !opts.survol.refus, c1 = ok ? 'rgba(255,248,221,0.18)' : 'rgba(200,70,50,0.16)', c2 = ok ? 'rgba(255,248,221,0.95)' : 'rgba(205,80,60,0.95)';
+        R3.groundPoly([x - 0.5, z - 0.5, x + k, z - 0.5, x + k, z + k, x - 0.5, z + k], c1, c2, 2, 0.04);
       }
       // 4. Objets triés par profondeur.
       R3.begin();
@@ -674,7 +684,24 @@
       cam.dist = Math.max(12, Math.min(52, Re * (asp < 0.8 ? 3.1 : 2.6)));
     }
 
-    const api = { dessiner, tuileSous, cadrer, camera: cam, moteur: R3, modeles: M, dprMax: 2 };
+    // Cible cliquable la plus proche d'un point de l'écran (à moins de rayon pixels), ou null.
+    function cibleSous(sx, sy, rayon) {
+      rayon = rayon || 26;
+      const tmp = [0, 0, 0];
+      let best = null, bd = 1e9;
+      for (const c of cibles) {
+        cam.project(c.x, c.y, c.z, tmp);
+        // Le rayon grandit quand on zoome (objet plus gros à l'écran) ; la cabane a une zone plus large.
+        const lim = rayon * (c.r || 1) * Math.max(0.7, Math.min(2, 20 / tmp[2]));
+        const d = Math.hypot(tmp[0] - sx, tmp[1] - sy) / lim;
+        if (d < 1 && d < bd) { bd = d; best = Object.assign({ sx: tmp[0], sy: tmp[1] }, c); }
+      }
+      return best;
+    }
+    // Position à l'écran d'un point du monde exprimé en tuiles (pour les bulles et les effets de l'interface).
+    function ecran(tx, ty, hauteur) { const o = cam.project(tx - C, hauteur || 0, ty - C, [0, 0, 0]); return { x: o[0], y: o[1] }; }
+    function ecranCabane() { if (!terrain) return null; const o = cam.project(terrain.cabane.x, 1.6, terrain.cabane.z, [0, 0, 0]); return { x: o[0], y: o[1] }; }
+    const api = { dessiner, tuileSous, cadrer, cibleSous, ecran, ecranCabane, get cibles() { return cibles; }, camera: cam, moteur: R3, modeles: M, dprMax: 2 };
     return api;
   }
 

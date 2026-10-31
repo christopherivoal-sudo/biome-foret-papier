@@ -1,0 +1,253 @@
+/* Biome, la forêt de papier : interface (sprint 5). Papier crème, kraft et vert prairie. */
+html, body { margin: 0; height: 100%; background: #efe7d6; overflow: hidden; font-family: Georgia, 'Times New Roman', serif; color: #3d3226;
+  -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent; }
+#scene { position: fixed; inset: 0; width: 100%; height: 100%; touch-action: none; cursor: grab; }
+#jeu { position: fixed; inset: 0; pointer-events: none; }
+#jeu > * { pointer-events: auto; }
+[hidden] { display: none !important; }
+button { font: inherit; color: inherit; cursor: pointer; }
+button:disabled { cursor: default; opacity: 0.5; }
+svg { display: block; }
+.papier, .chip, .jauge, .barre, .panneau-tuile, .odile, .toast, .fil > div, .aide-action {
+  background: rgba(251, 247, 238, 0.94); border: 1px solid #d6c7a9; box-shadow: 0 2px 8px rgba(60, 45, 25, 0.14); }
+
+/* ---------- Barre du haut ---------- */
+.haut { position: fixed; top: 8px; left: 8px; right: 8px; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; pointer-events: none; }
+.haut > * { pointer-events: auto; }
+.ressources { display: flex; gap: 6px; }
+.chip { display: flex; align-items: center; gap: 5px; height: 34px; padding: 0 10px; border-radius: 17px; font-size: 14px; white-space: nowrap; }
+.chip svg { width: 20px; height: 20px; flex: none; }
+.chip span { font-variant-numeric: tabular-nums; font-weight: 600; }
+button.chip { border: 1px solid #d6c7a9; }
+.temps .vitesse { font-size: 11px; color: #fff; background: #8a7354; border-radius: 8px; padding: 1px 5px; }
+.meteo { font-size: 13px; color: #5d4d3b; }
+.meteo.annonce { background: #fff3d4; }
+.meteo.orage { background: #dfe3ea; color: #34404f; }
+.meteo.floraison { background: #fbe4ec; }
+.meteo.secheresse { background: #f6e1bf; }
+.harmonie { padding: 0 10px 0 4px; }
+.harmonie svg { width: 28px; height: 28px; }
+.menu { margin-left: auto; display: flex; gap: 6px; }
+.rond { position: relative; width: 46px; height: 46px; border-radius: 50%; border: 1px solid #cdbb98; background: #fbf7ee; color: #5a4a38;
+  display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 8px rgba(60, 45, 25, 0.16); padding: 0; }
+.rond svg { width: 24px; height: 24px; }
+.rond img { width: 40px; height: 40px; }
+.rond .etiquette { position: absolute; bottom: -15px; font-size: 10px; color: #5a4a38; text-shadow: 0 0 3px #fbf7ee, 0 0 3px #fbf7ee; white-space: nowrap; }
+.pastille { position: absolute; top: -3px; right: -3px; min-width: 18px; height: 18px; border-radius: 9px; background: #c0573a; color: #fff;
+  font-size: 11px; font-weight: 700; display: flex; align-items: center; justify-content: center; animation: battre 1.2s infinite; }
+@keyframes battre { 50% { transform: scale(1.2); } }
+
+/* ---------- Jauge de succession ---------- */
+.jauge { position: fixed; top: 74px; right: 8px; width: 210px; padding: 6px 10px; border-radius: 10px; text-align: left; font-size: 12px; display: grid;
+  grid-template-columns: 1fr auto; gap: 3px 8px; align-items: center; }
+.jauge span { grid-column: 1 / 3; font-weight: 600; }
+.jauge i { display: block; height: 7px; background: #e3d8c2; border-radius: 4px; overflow: hidden; }
+.jauge i b { display: block; height: 100%; background: #6f8f4e; border-radius: 4px; transition: width 0.6s; }
+.jauge em { font-style: normal; color: #7a6a55; }
+.jauge.prete { background: #6f8f4e; color: #fff; border-color: #5b7a3f; animation: lueur 1.6s infinite; }
+.jauge.prete i b { background: #f1c75b; }
+.jauge.prete em { color: #e8f2dc; }
+@keyframes lueur { 50% { box-shadow: 0 0 0 5px rgba(241, 199, 91, 0.45); } }
+
+/* ---------- Barre d'actions ---------- */
+.barre { position: fixed; left: 8px; right: 8px; bottom: 8px; display: flex; gap: 4px; padding: 5px; border-radius: 14px; overflow-x: auto; scrollbar-width: thin; }
+.action { position: relative; flex: none; width: 74px; padding: 4px 2px 3px; border: 1px solid transparent; border-radius: 10px; background: transparent;
+  display: flex; flex-direction: column; align-items: center; gap: 1px; }
+.action:hover { background: #f2ead9; }
+.action .ic { width: 38px; height: 38px; display: flex; align-items: center; justify-content: center; color: #5a4a38; }
+.action .ic img { width: 42px; height: 42px; }
+.action .ic svg { width: 30px; height: 30px; }
+.action .nom { font-size: 11px; line-height: 1.1; text-align: center; }
+.action .cout { display: flex; align-items: center; gap: 1px; font-size: 11px; color: #7a6a55; font-variant-numeric: tabular-nums; }
+.action .cout svg { width: 12px; height: 12px; }
+.action .verrou { display: none; position: absolute; top: 4px; right: 8px; }
+.action .verrou svg { width: 14px; height: 14px; }
+.action.choisie { background: #6f8f4e; border-color: #5b7a3f; color: #fff; }
+.action.choisie .cout { color: #e8f2dc; }
+.action.choisie .ic { color: #fff; }
+.action.cher .cout { color: #c0573a; }
+.action.verrouille { opacity: 0.45; }
+.action.verrouille .verrou { display: block; }
+.aide-action { position: fixed; left: 50%; bottom: 96px; transform: translate(-50%, 10px); max-width: min(90vw, 520px); padding: 6px 12px; border-radius: 10px;
+  font-size: 13px; opacity: 0; transition: opacity 0.25s, transform 0.25s; pointer-events: none; text-align: center; }
+.aide-action.visible { opacity: 1; transform: translate(-50%, 0); }
+
+/* ---------- Fil du journal, toasts ---------- */
+.fil { position: fixed; left: 8px; bottom: 96px; max-width: 320px; display: flex; flex-direction: column; gap: 3px; pointer-events: none; }
+.fil > div { font-size: 12px; padding: 3px 8px; border-radius: 8px; opacity: 0.85; }
+.fil > div.important { font-weight: 600; }
+.fil.frais > div:last-child { animation: entrer 0.4s; }
+@keyframes entrer { from { transform: translateX(-12px); opacity: 0; } }
+.toasts { position: fixed; top: 112px; left: 50%; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 6px; pointer-events: none; width: min(92vw, 460px); }
+.toast { display: flex; align-items: center; gap: 8px; padding: 7px 14px; border-radius: 12px; font-size: 14px; animation: tomber 0.35s; transition: opacity 0.4s, transform 0.4s; }
+.toast img { width: 34px; height: 34px; }
+.toast.or { background: #fff3d4; border-color: #e3c37a; }
+.toast.refus { background: #fbe9e2; border-color: #e0a58f; }
+.toast.meteo { background: #e8eef5; }
+.toast.sort { opacity: 0; transform: translateY(-8px); }
+@keyframes tomber { from { transform: translateY(-14px) rotate(-2deg); opacity: 0; } }
+
+/* ---------- Odile ---------- */
+.odile { position: fixed; left: 8px; bottom: 96px; width: min(92vw, 380px); display: flex; gap: 8px; align-items: flex-start; padding: 8px 30px 8px 8px; border-radius: 14px;
+  transform: translateY(20px) scale(0.96); opacity: 0; pointer-events: none; transition: opacity 0.3s, transform 0.3s; z-index: 3; }
+.odile.ouverte { opacity: 1; transform: none; pointer-events: auto; }
+.odile img { width: 56px; height: 56px; flex: none; background: #efe4cc; border-radius: 50%; }
+.odile b { font-size: 13px; color: #8a6a3f; }
+.odile p { margin: 2px 0 0; font-size: 14px; line-height: 1.35; }
+.odile-boutons { display: flex; gap: 6px; margin-top: 6px; flex-wrap: wrap; }
+.odile-boutons:empty { display: none; }
+.fermer { position: absolute; top: 4px; right: 6px; width: 26px; height: 26px; border: none; background: none; font-size: 20px; line-height: 1; color: #8a7354; padding: 0; }
+.odile-ouverte .fil { opacity: 0; }
+.pastille[hidden] { display: none; }
+
+/* ---------- Boutons ---------- */
+.petit { display: inline-flex; align-items: center; gap: 5px; padding: 5px 11px; border: 1px solid #cdbb98; border-radius: 8px; background: #fbf7ee; font-size: 13px; }
+.petit svg { width: 16px; height: 16px; }
+.petit.actif { background: #6f8f4e; color: #fff; border-color: #5b7a3f; }
+.grand { display: block; margin: 12px auto 0; padding: 10px 22px; border: 1px solid #5b7a3f; border-radius: 10px; background: #6f8f4e; color: #fff; font-size: 16px; font-weight: 600; }
+
+/* ---------- Panneau d'une tuile ---------- */
+.panneau-tuile { position: fixed; width: 220px; padding: 9px 11px; border-radius: 12px; font-size: 13px; display: none; z-index: 2; }
+.panneau-tuile.ouvert { display: block; }
+.panneau-tuile > b { display: block; font-size: 15px; padding-right: 20px; }
+.panneau-tuile > small { display: block; color: #7a6a55; margin-bottom: 4px; }
+.stat { display: grid; grid-template-columns: 76px 1fr 26px; gap: 6px; align-items: center; font-size: 12px; margin-top: 3px; }
+.stat i { display: block; height: 6px; background: #e3d8c2; border-radius: 3px; overflow: hidden; }
+.stat i b { display: block; height: 100%; background: #8aa86a; }
+.stat em { font-style: normal; text-align: right; font-variant-numeric: tabular-nums; }
+.gestes { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 8px; }
+.gestes:empty { display: none; }
+
+/* ---------- Grand panneau ---------- */
+.panneau { position: fixed; inset: 0; background: rgba(60, 45, 25, 0.28); display: none; align-items: center; justify-content: center; z-index: 5; }
+.panneau.ouvert { display: flex; }
+.feuille { position: relative; width: min(94vw, 620px); max-height: 86vh; display: flex; flex-direction: column; background: #fbf7ee; border-radius: 6px 16px 10px 14px;
+  box-shadow: 0 10px 30px rgba(50, 35, 20, 0.35), inset 0 0 0 1px #e3d6bc; animation: deplier 0.3s; }
+@keyframes deplier { from { transform: perspective(800px) rotateX(-18deg) scale(0.96); opacity: 0; } }
+.feuille > .fermer { top: 8px; right: 10px; font-size: 26px; width: 34px; height: 34px; z-index: 1; }
+.contenu { overflow-y: auto; padding: 16px 18px 20px; -webkit-user-select: text; user-select: text; }
+.contenu h2 { margin: 0 34px 8px 0; font-size: 21px; font-weight: normal; color: #4d3f30; }
+.contenu h3 { margin: 0; font-size: 19px; }
+.contenu h4 { margin: 16px 0 6px; font-size: 14px; text-transform: uppercase; letter-spacing: 0.05em; color: #8a7354; font-weight: normal; }
+.sous { color: #7a6a55; font-size: 13px; margin: 4px 0 8px; }
+.onglets { display: flex; gap: 4px; border-bottom: 1px solid #e3d6bc; margin-bottom: 10px; }
+.onglet { border: none; background: none; padding: 6px 12px; border-radius: 8px 8px 0 0; font-size: 14px; color: #8a7354; }
+.onglet.actif { background: #efe4cc; color: #3d3226; }
+.grille { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 8px; }
+.grille.petite { grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); margin: 8px 0; }
+.carte-esp { position: relative; border: 1px solid #e3d6bc; background: #f6efe0; border-radius: 10px; padding: 6px 4px; display: flex; flex-direction: column; align-items: center; gap: 1px; text-align: center; }
+.carte-esp img { width: 70px; height: 70px; }
+.carte-esp b { font-size: 13px; font-weight: 600; line-height: 1.15; }
+.carte-esp small { font-size: 11px; color: #7a6a55; }
+.carte-esp.venue { background: #fffdf7; }
+.carte-esp.presente { border-color: #9cbb7c; }
+.carte-esp.verrouillee { opacity: 0.55; }
+.photo-ok { position: absolute; top: 4px; right: 7px; font-style: normal; color: #6f8f4e; font-size: 11px; }
+.retour { border: none; background: none; color: #6f8f4e; font-size: 14px; padding: 0 0 8px; }
+.fiche { display: flex; gap: 12px; align-items: flex-start; }
+.fiche img { width: 110px; height: 110px; flex: none; background: #f2e9d6; border-radius: 12px; }
+.fiche i { color: #7a6a55; }
+.fiche p { margin: 6px 0 0; font-size: 14px; line-height: 1.4; }
+.anecdote { font-style: italic; color: #5d4d3b; }
+.parti { background: #fbe9e2; border-radius: 8px; padding: 6px 10px; font-size: 13px; }
+.besoins, .comportements, .journal { list-style: none; margin: 0; padding: 0; }
+.besoins li { display: flex; gap: 8px; padding: 6px 0; border-bottom: 1px dashed #e3d6bc; font-size: 14px; }
+.besoins li > span { flex: none; width: 22px; height: 22px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 13px; }
+.besoins li.ok > span { background: #dfead2; color: #4f6a37; }
+.besoins li.non > span { background: #f6e1d8; color: #a2492f; }
+.besoins small { display: block; color: #7a6a55; font-size: 12px; margin-top: 2px; }
+.besoins li.cache, .comportements li.cache { color: #a8977c; font-style: italic; }
+.comportements li { padding: 4px 0; font-size: 14px; border-bottom: 1px dashed #e3d6bc; }
+.cartes { display: flex; gap: 8px; }
+.carte-rare { width: 86px; border: 1px dashed #d6c7a9; border-radius: 8px; padding: 4px; text-align: center; opacity: 0.6; }
+.carte-rare img { width: 64px; height: 64px; }
+.carte-rare small { display: block; font-size: 11px; }
+.carte-rare.acquise { opacity: 1; border-style: solid; border-color: #e3c37a; background: #fff8e6; }
+.grille.collection .carte-rare { width: auto; }
+.chances { font-size: 13px; display: grid; gap: 4px; margin-bottom: 10px; }
+.journal li { font-size: 14px; padding: 4px 0; border-bottom: 1px dashed #e3d6bc; }
+.journal li small { display: inline-block; min-width: 82px; color: #a8977c; font-size: 11px; }
+.journal li.important { font-weight: 600; }
+.odile-tete { display: flex; align-items: center; gap: 10px; }
+.odile-tete img { width: 64px; height: 64px; background: #efe4cc; border-radius: 50%; }
+.mission { border: 1px solid #e3d6bc; border-radius: 10px; padding: 9px 12px; margin-top: 10px; background: #fffdf7; }
+.mission p { margin: 3px 0 6px; font-size: 14px; }
+.mission small { color: #7a6a55; }
+.mission.remplie { border-color: #9cbb7c; background: #f1f7e9; }
+.prog { display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: center; font-size: 12px; }
+.prog i { display: block; height: 8px; background: #e3d8c2; border-radius: 4px; overflow: hidden; }
+.prog i b { display: block; height: 100%; background: #6f8f4e; }
+.prog em { font-style: normal; }
+.harmo .stat { grid-template-columns: 180px 1fr 30px; }
+.bonus-item { display: flex; gap: 12px; align-items: center; border-bottom: 1px dashed #e3d6bc; padding: 9px 0; }
+.bonus-item > div { flex: 1; }
+.bonus-item p { margin: 2px 0; font-size: 13px; }
+.bonus-item small { color: #a2492f; font-size: 12px; }
+.ligne { display: flex; gap: 8px; align-items: center; margin: 10px 0; flex-wrap: wrap; }
+.ligne > span { min-width: 80px; }
+.gros { font-size: 22px; display: flex; align-items: center; gap: 6px; }
+.gros svg { width: 26px; height: 26px; }
+.boutons { display: flex; gap: 10px; align-items: center; justify-content: center; flex-wrap: wrap; margin-top: 10px; }
+.boutons .grand { margin: 0; }
+
+/* ---------- Effets ---------- */
+.flash { position: fixed; inset: 0; background: #fff; opacity: 0; pointer-events: none !important; }
+.flash.on { animation: flash 0.35s; }
+@keyframes flash { 10% { opacity: 0.55; } }
+.envol { position: fixed; z-index: 4; padding: 2px 8px; border-radius: 10px; background: #fff3d4; border: 1px solid #e3c37a; font-weight: 700; font-size: 14px;
+  pointer-events: none !important; transition: transform 0.8s cubic-bezier(.5, -0.3, .7, 1), opacity 0.8s; }
+.cinematique { position: fixed; inset: 0; z-index: 6; display: flex; align-items: center; justify-content: center; perspective: 1200px; }
+.cinematique .pli { position: absolute; left: 0; right: 0; height: 50%; background: #e9dcc0; transition: transform 0.9s cubic-bezier(.6, 0, .3, 1);
+  background-image: repeating-linear-gradient(90deg, rgba(0,0,0,0.025) 0 2px, transparent 2px 9px); }
+.cinematique .haut-pli { top: 0; transform-origin: top; transform: rotateX(90deg); box-shadow: inset 0 -20px 30px rgba(60, 45, 25, 0.15); }
+.cinematique .bas-pli { bottom: 0; transform-origin: bottom; transform: rotateX(-90deg); box-shadow: inset 0 20px 30px rgba(60, 45, 25, 0.15); }
+.cinematique.pliee .pli { transform: none; }
+.cinematique.depliee .haut-pli { transform: rotateX(90deg); }
+.cinematique.depliee .bas-pli { transform: rotateX(-90deg); }
+.titre-etape { position: relative; text-align: center; max-width: min(88vw, 520px); opacity: 0; transition: opacity 0.6s 0.8s; }
+.cinematique.pliee .titre-etape { opacity: 1; }
+.cinematique.depliee .titre-etape { opacity: 0; transition-delay: 0s; }
+.titre-etape small { text-transform: uppercase; letter-spacing: 0.2em; color: #8a7354; }
+.titre-etape h2 { font-size: 30px; font-weight: normal; margin: 8px 0; }
+.titre-etape p { font-size: 16px; line-height: 1.5; }
+
+/* ---------- Pub simulée (src/ads.js) ---------- */
+.pub-voile { position: fixed; inset: 0; z-index: 10; background: rgba(30, 24, 18, 0.82); display: flex; align-items: center; justify-content: center; }
+.pub-cadre { width: min(80vw, 360px); padding: 26px; border-radius: 12px; background: #2f2a24; color: #f3ead7; text-align: center; border: 2px dashed #8a7354; }
+.pub-titre { font-size: 15px; }
+.pub-compte { font-size: 48px; margin: 12px 0; font-variant-numeric: tabular-nums; }
+.pub-passer { padding: 8px 26px; border-radius: 8px; border: none; background: #6f8f4e; color: #fff; font-size: 18px; }
+
+/* ---------- Téléphone ---------- */
+@media (max-width: 700px) {
+  .haut { gap: 5px; }
+  .chip { height: 30px; padding: 0 8px; font-size: 13px; }
+  .chip svg { width: 17px; height: 17px; }
+  .harmonie svg { width: 24px; height: 24px; }
+  .meteo { font-size: 12px; }
+  .menu { position: fixed; top: 84px; right: 8px; flex-direction: column; gap: 8px; margin: 0; }
+  .rond { width: 42px; height: 42px; }
+  .rond img { width: 36px; height: 36px; }
+  .rond .etiquette { display: none; }
+  .jauge { top: 84px; right: auto; left: 8px; width: 170px; }
+  .odile { left: 8px; right: 8px; width: auto; bottom: 94px; }
+  .odile img { width: 44px; height: 44px; }
+  .odile p { font-size: 13px; }
+  .fil { display: none; }
+  .aide-action { bottom: 94px; font-size: 12px; }
+  .toasts { top: 136px; left: 8px; right: 60px; width: auto; transform: none; }
+  .toast { font-size: 13px; padding: 5px 10px; }
+  .toast img { width: 26px; height: 26px; }
+  .toast:nth-last-child(n+3) { display: none; }
+  .action { width: 62px; }
+  .action .ic { width: 34px; height: 34px; }
+  .action .ic img { width: 38px; height: 38px; }
+  .harmo .stat { grid-template-columns: 120px 1fr 30px; }
+  .fiche img { width: 84px; height: 84px; }
+  .feuille { max-height: 90vh; }
+}
+@media (max-height: 520px) and (orientation: landscape) {
+  .menu { flex-direction: row; position: static; }
+  .jauge { top: 50px; bottom: auto; right: 8px; left: auto; }
+  .odile { bottom: 90px; }
+}
