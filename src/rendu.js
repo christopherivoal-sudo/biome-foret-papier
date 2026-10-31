@@ -742,10 +742,35 @@
     function cadrer(etat) {
       const Re = Math.sqrt(etat.rayon * etat.rayon + etat.rayon), asp = canvas.clientWidth / Math.max(1, canvas.clientHeight);
       const portrait = asp < 0.8;
-      cam.pitch = portrait ? 0.9 : 0.72;
-      cam.dist = Math.max(9, Math.min(40, Re * (portrait ? 1.9 : 1.95)));
+      // Retours 4 : l'île est centrée dans l'espace libre entre la barre du haut et celle du bas (plus derrière le menu).
+      cam.dist = Math.max(9, Math.min(40, Re * (portrait ? 1.9 : 1.7)));
+      cam.pitch = penteAuto(cam.dist) + (portrait ? 0.12 : 0);
       cam.tx = 0; cam.tz = 0;
-      cam.decalY = portrait ? -0.07 : 0.02;
+      cam.decalY = portrait ? -0.07 : -0.04;
+    }
+    // Inclinaison qui suit le zoom : de près, vue rasante (on voit les animaux de face) ; de loin, vue plus plongeante (l'île tient à l'écran, moins fouillis).
+    function penteAuto(d) { const t = Math.max(0, Math.min(1, (d - 7) / 30)); return 0.6 + t * 0.38; }
+    // Zoom vers un point de l'écran (molette sur le curseur, pince entre les doigts) : le point du sol visé reste sous le curseur.
+    function zoomer(facteur, sx, sy, etat) {
+      cam.update(canvas.clientWidth, canvas.clientHeight);
+      const avant = sx !== undefined ? cam.groundAt(sx, sy, 0) : null;
+      const ancien = cam.dist;
+      cam.dist = Math.max(5, Math.min(45, cam.dist * facteur));
+      cam.pitch += penteAuto(cam.dist) - penteAuto(ancien);
+      cam.pitch = Math.max(0.4, Math.min(1.35, cam.pitch));
+      if (!avant) return;
+      cam.update(canvas.clientWidth, canvas.clientHeight);
+      const apres = cam.groundAt(sx, sy, 0);
+      if (!apres) return;
+      cam.tx += avant.x - apres.x; cam.tz += avant.z - apres.z;
+      // En reculant au-delà de la vue d'ensemble, l'île revient doucement au centre.
+      const Re = etat ? Math.sqrt(etat.rayon * etat.rayon + etat.rayon) : 10;
+      if (facteur > 1 && cam.dist > Re * 2) { const k = Math.min(0.5, (cam.dist - Re * 2) / (Re * 2.5)); cam.tx *= 1 - k; cam.tz *= 1 - k; }
+      borner(etat);
+    }
+    function borner(etat) {
+      const lim = etat ? Math.sqrt(etat.rayon * etat.rayon + etat.rayon) + 1.5 : 10, d = Math.hypot(cam.tx, cam.tz);
+      if (d > lim) { cam.tx *= lim / d; cam.tz *= lim / d; }
     }
     // Déplacement de la caméra en pixels d'écran ; la cible reste au-dessus de l'île.
     function deplacer(dx, dy, etat) {
@@ -753,8 +778,7 @@
       const k = cam.dist / cam.focal, fx = -Math.sin(cam.yaw), fz = -Math.cos(cam.yaw), sp = Math.max(0.5, Math.sin(cam.pitch));
       cam.tx += -cam.r[0] * dx * k + fx * dy * k / sp;
       cam.tz += -cam.r[2] * dx * k + fz * dy * k / sp;
-      const lim = etat ? Math.sqrt(etat.rayon * etat.rayon + etat.rayon) * 0.9 : 10, d = Math.hypot(cam.tx, cam.tz);
-      if (d > lim) { cam.tx *= lim / d; cam.tz *= lim / d; }
+      borner(etat);
     }
 
     // Cible cliquable la plus proche d'un point de l'écran (à moins de rayon pixels), ou null.
@@ -775,7 +799,7 @@
     // Position à l'écran d'un point du monde exprimé en tuiles (pour les bulles et les effets de l'interface).
     function ecran(tx, ty, hauteur) { const o = cam.project(tx - C, hauteur || 0, ty - C, [0, 0, 0]); return { x: o[0], y: o[1] }; }
     function ecranCabane() { if (!terrain) return null; const o = cam.project(terrain.cabane.x, 1.6, terrain.cabane.z, [0, 0, 0]); return { x: o[0], y: o[1] }; }
-    const api = { dessiner, tuileSous, cadrer, deplacer, grossir: 1.35, cibleSous, ecran, ecranCabane, get cibles() { return cibles; }, camera: cam, moteur: R3, modeles: M, dprMax: 2 };
+    const api = { dessiner, tuileSous, cadrer, deplacer, zoomer, penteAuto, grossir: 1.35, cibleSous, ecran, ecranCabane, get cibles() { return cibles; }, camera: cam, moteur: R3, modeles: M, dprMax: 2 };
     return api;
   }
 

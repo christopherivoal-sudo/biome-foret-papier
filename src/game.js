@@ -9,7 +9,7 @@
   const N = Core.N;
   const CLE_SAUVEGARDE = 'biome-foret-papier-v2', CLE_LANGUE = 'biome-langue';
   // Version affichée dans les réglages et annoncée au premier lancement après une mise à jour (sprint 6).
-  const VERSION = '6.3';
+  const VERSION = '6.4';
   const ETAPES_PROTO = data.etapes.map(e => e.id);
   const ORDRE_ESPECES = data.etapes.flatMap(e => e.debloque.especes).filter(id => data.especes[id]);
   const ACTIONS = ['semer_herbe', 'semer_fleurs', 'tas_pierres', 'mare', 'hotel_insectes', 'paillis', 'semer_ronce', 'planter_bouleau', 'tas_bois', 'nichoir'];
@@ -876,13 +876,14 @@
   }
   canvas.addEventListener('contextmenu', ev => ev.preventDefault());
   canvas.addEventListener('pointerdown', ev => {
+    inertie = null; anim = null;
     try { canvas.setPointerCapture(ev.pointerId); } catch (e) { /* pointeur synthétique */ }
     pointeurs[ev.pointerId] = { x: ev.clientX, y: ev.clientY };
     const n = Object.keys(pointeurs).length;
     if (n === 2) {
       if (geste && geste.mode === 'peint') { clearTimeout(geste.minuteur); if (geste.actif && geste.poses) majHaut(); }
       geste = Object.assign({ mode: 'pince', dist: cam.dist, yaw: cam.yaw }, infoPince());
-      geste.d0 = geste.d; geste.ang0 = geste.ang;
+      geste.d0 = geste.d; geste.ang0 = geste.ang; geste.dPrec = Math.max(10, geste.d); geste.angPrec = geste.ang;
       appui = null; return;
     }
     if (n > 2) return;
@@ -906,15 +907,22 @@
     if (geste.mode === 'pince') {
       if (Object.keys(pointeurs).length < 2) return;
       const i = infoPince();
-      cam.dist = Math.max(6, Math.min(45, geste.dist * geste.d0 / Math.max(10, i.d)));
-      cam.yaw = geste.yaw - (i.ang - geste.ang0);
+      // Pince : zoom vers le point entre les doigts, rotation, déplacement.
+      const r = canvas.getBoundingClientRect();
+      rendu.zoomer(geste.dPrec / Math.max(10, i.d), i.mx - r.left, i.my - r.top, etat);
+      geste.dPrec = Math.max(10, i.d);
+      cam.yaw += -(i.ang - geste.angPrec); geste.angPrec = i.ang;
       rendu.deplacer(i.mx - geste.mx, i.my - geste.my, etat);
       geste.mx = i.mx; geste.my = i.my;
     } else if (geste.mode === 'rot') {
       cam.yaw = geste.yaw - (ev.clientX - geste.x) * 0.008;
       cam.pitch = Math.max(0.4, Math.min(1.35, geste.pitch + (ev.clientY - geste.y) * 0.006));
     } else if (geste.mode === 'pan') {
-      if (!appui) rendu.deplacer(dx, dy, etat);
+      if (!appui) {
+        rendu.deplacer(dx, dy, etat);
+        const now = performance.now(), dt2 = Math.max(1, now - (geste.t || now - 16));
+        geste.vx = 0.6 * (geste.vx || 0) + 0.4 * dx / dt2; geste.vy = 0.6 * (geste.vy || 0) + 0.4 * dy / dt2; geste.t = now;
+      }
     } else if (geste.mode === 'peint') {
       if (!geste.actif && !appui) { clearTimeout(geste.minuteur); debutPeinture(); }
       if (geste.actif) peindre(ev.clientX, ev.clientY);
@@ -925,7 +933,13 @@
     const n = Object.keys(pointeurs).length;
     if (geste && n === 1 && ev.type === 'pointerup') {
       if (geste.mode === 'peint') { clearTimeout(geste.minuteur); finPeinture(); }
-      else if (geste.mode === 'pan' && appui) { const r = canvas.getBoundingClientRect(); clic(ev.clientX - r.left, ev.clientY - r.top); }
+      else if (geste.mode === 'pan' && appui) {
+        const r = canvas.getBoundingClientRect(), sx = ev.clientX - r.left, sy = ev.clientY - r.top, now = Date.now();
+        // Double toucher : zoom vers ce point (seulement en observation, sans cible ni capsule dessous).
+        if (dernierToucher && now - dernierToucher.t < 320 && Math.hypot(sx - dernierToucher.x, sy - dernierToucher.y) < 30) { dernierToucher = null; fermerPanneauTuile(); doubleToucher(sx, sy); }
+        else { dernierToucher = { t: now, x: sx, y: sy }; clic(sx, sy); }
+      }
+      else if (geste.mode === 'pan' && geste.t && performance.now() - geste.t < 60 && Math.hypot(geste.vx || 0, geste.vy || 0) > 0.15) inertie = { vx: geste.vx, vy: geste.vy };
     }
     delete pointeurs[ev.pointerId];
     if (geste && geste.mode === 'pince' && n === 2) {
@@ -937,7 +951,20 @@
   };
   canvas.addEventListener('pointerup', finPointeur); canvas.addEventListener('pointercancel', finPointeur);
   canvas.addEventListener('pointerleave', () => { survol = null; });
-  canvas.addEventListener('wheel', ev => { ev.preventDefault(); cam.dist = Math.max(6, Math.min(45, cam.dist * (ev.deltaY > 0 ? 1.1 : 0.9))); }, { passive: false });
+  // Molette : zoom vers le curseur (retours 4). Le pavé tactile envoie de petits pas : zoom proportionnel.
+  canvas.addEventListener('wheel', ev => {
+    ev.preventDefault(); anim = null; inertie = null;
+    const r = canvas.getBoundingClientRect(), d = Math.max(-120, Math.min(120, ev.deltaMode === 1 ? ev.deltaY * 30 : ev.deltaY));
+    rendu.zoomer(Math.exp(d * 0.0016), ev.clientX - r.left, ev.clientY - r.top, etat);
+  }, { passive: false });
+  // Double-clic ou double toucher sur l'île : on plonge vers ce point (ou on recule si on est déjà très près).
+  let dernierToucher = null;
+  function doubleToucher(sx, sy) {
+    const p = cam.groundAt(sx, sy, 0);
+    if (!p) return;
+    if (cam.dist < 9) return animerCamera({ dist: Math.min(45, cam.dist * 2.2) }, 0.5);
+    animerCamera({ tx: p.x, tz: p.z, dist: Math.max(6, cam.dist * 0.5) }, 0.5);
+  }
   window.addEventListener('keydown', ev => {
     if (ev.key === 'Escape') { if (panneau.classList.contains('ouvert')) fermerPanneau(); else if (actionChoisie !== 'observer') choisirAction(actionChoisie); fermerPanneauTuile(); }
     if (panneau.classList.contains('ouvert')) return;
@@ -960,7 +987,14 @@
   function animerCamera(cible, duree) {
     anim = { de: { yaw: cam.yaw, tx: cam.tx, tz: cam.tz, dist: cam.dist }, vers: Object.assign({ yaw: cam.yaw, tx: cam.tx, tz: cam.tz, dist: cam.dist }, cible), t: 0, duree: duree || 1 };
   }
+  let inertie = null;
   function avancerCamera(dt) {
+    // Glissé lancé : la vue continue sur sa lancée puis ralentit.
+    if (inertie && !geste) {
+      rendu.deplacer(inertie.vx * dt * 1000, inertie.vy * dt * 1000, etat);
+      const k = Math.exp(-dt * 5); inertie.vx *= k; inertie.vy *= k;
+      if (Math.hypot(inertie.vx, inertie.vy) < 0.02) inertie = null;
+    } else if (geste) inertie = null;
     if (!anim) return;
     if (geste) { anim = null; return; } // le joueur reprend la main
     anim.t += dt / anim.duree;
