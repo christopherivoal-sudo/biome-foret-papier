@@ -255,5 +255,106 @@
       "titre_passage": "At the edge of a new page",
       "texte_passage": "The first brambles and birches create new shelters. Welcome their visitors, and keep some room for the meadow too."
     }
+  },
+  "garde": {
+    "nom": "Odile",
+    "tutoriel": {
+      "accueil": "Welcome to your island! Make room for life, and it will find its way here.",
+      "carnet": "Open your field journal: each silhouette holds clues to a future neighbor.",
+      "sauterelles": "Look, grasshoppers! The grass offers them food, no invitation needed.",
+      "semer_fleurs": "Sow 4 flowers: their seeds will soon bring more variety to your meadow.",
+      "besoin_partiel": "The bee likes your flowers, but still needs a place to nest.",
+      "hotel": "A bug hotel has cozy nooks for wild bees. Keep an eye on the flowers!",
+      "alouette": "The skylark follows the grasshoppers. Keep some open space for it.",
+      "abri_lapin": "A rock pile near the grass gives rabbits a place to hide.",
+      "premiere_nuit": "Night is falling. Some neighbors rest while others stir.",
+      "mare_paillis": "A pond moistens the soil; mulch feeds it. Earthworms love both.",
+      "harmonie": "Harmony measures your island's balance, not how many trees it has.",
+      "lisiere": "The forest edge opens up! Keep some meadow for lovers of open skies."
+    },
+    "reactions": {
+      "herbe": "Grass is taking root: the meadow's first meals are served.",
+      "fleurs": "Flowers! Their nectar draws some very helpful visitors.",
+      "sauterelle": "A grasshopper! Its long legs carry it between the blades.",
+      "abeille": "A wild bee! This solitary bee nests in small hollow spaces.",
+      "ver": "An earthworm! Its tunnels let air into the soil and mix plant remains.",
+      "lapin": "Ears on the horizon! The rabbit always keeps a refuge nearby.",
+      "alouette": "The skylark is here! It nests on the ground in open spaces.",
+      "ronce": "Bramble is growing: a thorny shelter, and soon blackberries for the birds.",
+      "bouleau": "A birch! This pioneer loves the light and casts a gentle shade.",
+      "herisson": "A hedgehog! At night, it searches the soil for little creatures.",
+      "merle": "The blackbird is here! It can spread seeds after eating blackberries.",
+      "renard": "A red fox! This quiet hunter helps keep the rabbits in balance.",
+      "tircis": "A speckled wood! Its caterpillars feed on grasses.",
+      "coulemelle": "A parasol mushroom! Its threads break down organic matter in the soil."
+    },
+    "alertes": {
+      "floraison": "The flowers are waking! A lovely seed harvest is on its way.",
+      "orage": "The sky rumbles. Rain nourishes the soil; keep an eye on the trees.",
+      "secheresse": "The soil is drying. Damp corners become precious refuges.",
+      "fin_evenement": "Calm returns. Let's see what has changed on your island.",
+      "nouvelle_mission": "I have a new lead for you. Stop by my cabin!",
+      "mission_reussie": "Well done! A new page in our story is taking shape.",
+      "depart_espece": "A neighbor left: it needed {manque}. It can return.",
+      "nuit": "Night is coming. Look closely: some neighbors prefer the dark.",
+      "hiver": "Winter slows new growth. Some animals migrate or hibernate.",
+      "retour_hors_ligne": "While you were away, {nombre} species came to visit your island."
+    },
+    "indices": {
+      "blocage": "No new arrivals? I can offer a free hint about a need you could meet.",
+      "pub_naturaliste": "An optional ad can reveal a hidden need. You can also find it yourself."
+    }
+  },
+  "missions": {
+    "premiers_semis": {
+      "titre": "Four splashes of color",
+      "texte": "Sow 4 flower tiles: their nectar will soon draw pollinators.",
+      "reussite": "Your meadow is getting a lovely feast ready!"
+    },
+    "abri_des_lapins": {
+      "titre": "A shelter of stones",
+      "texte": "Place 1 rock pile near the grass to give rabbits a shelter.",
+      "reussite": "A little shelter can make a big difference."
+    },
+    "hotel_des_abeilles": {
+      "titre": "A room for a wild bee",
+      "texte": "Build 1 bug hotel: solitary bees like hollow spaces.",
+      "reussite": "A tiny roof, a big helping hand for the flowers!"
+    },
+    "premieres_photos": {
+      "titre": "Two pages full of life",
+      "texte": "Photograph 2 residents: observation helps your field journal grow.",
+      "reussite": "Two encounters to keep in your pages!"
+    },
+    "graines_de_prairie": {
+      "titre": "The flower harvest",
+      "texte": "Harvest 5 ripe seeds: pollinated flowers produce more.",
+      "reussite": "Patience bears seeds!"
+    },
+    "ronces_refuges": {
+      "titre": "A hedge that shelters",
+      "texte": "Plant 3 brambles: they will offer shelter and blackberries to forest edge residents.",
+      "reussite": "The best hiding places sometimes have thorns."
+    },
+    "bois_pour_herisson": {
+      "titre": "The hedgehog's refuge",
+      "texte": "Place 1 log pile: the hedgehog can shelter there near the brambles.",
+      "reussite": "A pile of branches, and a whole world finds shelter."
+    },
+    "visiteurs_de_lisiere": {
+      "titre": "Two new neighbors",
+      "texte": "Welcome 2 species that have never visited your island.",
+      "reussite": "The forest edge is drawing curious newcomers!"
+    },
+    "portrait_du_merle": {
+      "titre": "A blackbird portrait",
+      "texte": "Photograph 1 blackbird: this bird can spread bramble seeds.",
+      "reussite": "A portrait, and perhaps some future brambles!"
+    },
+    "floraison_traversee": {
+      "titre": "In time with the flowers",
+      "texte": "Stay through 1 full spring bloom: flowers produce more seeds during it.",
+      "reussite": "You watched the meadow make the most of spring!"
+    }
   }
 }
