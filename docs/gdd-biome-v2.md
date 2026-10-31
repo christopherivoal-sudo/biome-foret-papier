@@ -105,7 +105,7 @@ Objectif de rythme : au moins **un événement visible toutes les 30 à 60 secon
 
 ### 1.9 Le garde forestier (personnage)
 
-Validé par Christophe le 30/10. **Odile, la garde forestière** (nom provisoire) : une figurine origami en papier kraft, chapeau à large bord, jumelles autour du cou, un carnet sous le bras. Elle vit dans une petite **cabane** posée au bord de l'île (1 tuile, non déplaçable).
+Validé par Christophe le 30/10. **Odile, la garde forestière** (nom provisoire) : une figurine origami en papier kraft, chapeau à large bord, jumelles autour du cou, un carnet sous le bras. Elle vit dans une petite **cabane** posée au bord de l'île (non déplaçable ; voir « Rendu » ci-dessous).
 
 Rôle :
 - **Tutoriel** : c'est elle qui parle pendant les 15 premières minutes (bulles courtes, jamais plus de 2 lignes, toujours fermables).
@@ -357,7 +357,7 @@ Règles :
 - Récompenses : 3 pages, une carte de collection, et sur Roblox une **figurine échangeable** (section 7). Aucun avantage de jeu important : c'est de la collection pure.
 - Collection complète : 34 espèces × 4 papiers = 136 cartes. Prototype : 14 × 2 (journal, washi) = 28.
 
-Rendu : le moteur Canvas 2D remplit des faces planes ; on remplace la couleur unie par un motif (`createPattern`) ou un dégradé par face. C'est peu coûteux, à confirmer dans le premier sprint.
+Rendu : le moteur Canvas 2D remplit des faces planes ; on remplace la couleur unie par un motif (`createPattern`) ou un dégradé par face. C'est peu coûteux : confirmé au sprint 4 (motif collé à chaque face, voir 10.4).
 
 ---
 
