@@ -1,5 +1,7 @@
 # Biome : idées pour que le joueur agisse vraiment (31/10)
 
+**Statut (31/10, 18 h)** : pistes 1, 2, 3, 4 et 5 validées par Christophe et faites au sprint 7 (détail dans le GDD, section 12). La piste 6 est en partie couverte (ronces contre prairie de l'alouette, voisinages) ; à reprendre avec la Jeune forêt.
+
 Copie de la note `claude/idees-gameplay-agir.md` du projet claude.ai (pour les sessions qui n'ont accès qu'au dépôt).
 
 Constat de Christophe après le sprint 6 : « il suffit d'ajouter les éléments au fur et à mesure et d'attendre ». Aujourd'hui, l'île ne se dérègle presque jamais, et le joueur ne voit pas l'effet de ses choix de placement. Le problème : chaque action est un achat qui coche une case, il n'y a ni décision à prendre ni problème à régler.

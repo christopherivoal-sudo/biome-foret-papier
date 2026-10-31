@@ -1,6 +1,6 @@
 # Biome, la forêt de papier : document de conception v2
 
-Version 1.6, 31 octobre 2026 (précisions du sprint 3 en 5.1 et 8.5, du sprint 4 en 1.9 et 10.4, du sprint 5 en 10.4, du sprint 5 bis en 4.3, 5.1, 6.2 et 10.4, du sprint 6 en 10.4). Rédigé par Claude, décisions de Christophe intégrées (section 11).
+Version 1.7, 31 octobre 2026 (précisions du sprint 3 en 5.1 et 8.5, du sprint 4 en 1.9 et 10.4, du sprint 5 en 10.4, du sprint 5 bis en 4.3, 5.1, 6.2 et 10.4, du sprint 6 en 10.4 ; gameplay actif du sprint 7 en section 12). Rédigé par Claude, décisions de Christophe intégrées (section 11).
 
 Repères de lecture :
 - **[PROTO]** : construit dans le prototype v2.
@@ -741,6 +741,8 @@ Précisions du sprint 6 (retours de Christophe après ses premiers tests) :
 | 5 | Interface : carnet, photos, missions, barre d'actions, jauge de succession ; consigne 05 (anglais de la garde, des missions et de l'interface) (fait le 31/10) | Claude, puis ChatGPT |
 | 5 bis | Économie de la sève, sécheresse, chêne teaser, images/s (fait le 31/10) | Claude |
 | 6 | Test de jeu par Christophe et ses proches, retours, corrections (première série de corrections faite le 31/10 : barre, bord de l'île, pose en glissant, guide, caméra, graphismes) | Christophe, puis Claude |
+| 7 | Gameplay actif : l'île se dérègle, coups de pouce, voisinages et carte des habitats, demandes des habitants, effets visibles (fait le 31/10, section 12) | Claude |
+| 8 | Rendu WebGL avec Three.js (environ 3 sprints) | Claude |
 
 ### 10.6 Critères de réussite (mesurés par simulation et par les tests)
 - Première arrivée d'espèce en moins de 30 s ; un événement visible toutes les 60 s au moins.
@@ -766,8 +768,79 @@ Précisions du sprint 6 (retours de Christophe après ses premiers tests) :
    2. **L'endroit où l'on pose compte** : carte des habitats quand on choisit un aménagement, voisinages qui changent la taille des populations ;
    3. **Les habitants demandent** : bulles de besoin avec délai, récompense si on répond à temps, départ expliqué sinon ;
    4. **Voir l'effet de chaque geste** (piste 5), au fil de l'eau.
-   Section 12 (sprint 7) pour le détail.
+   Voir la section 12 (sprint 7) pour le détail.
 7. **Choix de Claude du sprint 6 validés** : textes du guide et des aides écrits directement par Claude en français et en anglais ; réactions d'Odile aux espèces rangées dans le journal du carnet.
 8. **Graphismes** : passage du rendu en **WebGL avec Three.js** juste après le sprint 7. D'ici là, aucune retouche graphique.
 
 Aucune question ouverte pour le moment.
+
+---
+
+## 12. Gameplay actif (sprint 7)
+
+Réponse au constat de Christophe après le sprint 6 (« on ajoute les éléments et on attend »). Principe : l'île vit et se dérègle ; le joueur observe, comprend et répond. On ne place toujours jamais d'animal. Code : `src/core.js` (section « Sprint 7 », réglages dans `P.vie`), interface dans `src/game.js`, textes dans `data/textes/interface-*.json` (écrits par Claude en français et en anglais).
+
+### 12.1 L'île se dérègle (piste 1)
+Cinq problèmes, détectés toutes les 5 s. Un problème est annoncé après 2 constats de suite et réglé après 3 absences de suite (pas de clignotement). Il apparaît comme un **repère « ! »** sur l'île (orange, rouge s'il est grave) ; la première fois, Odile l'explique.
+
+| Problème | Quand | Ce qui se passe si on ne fait rien | Solutions proposées |
+|---|---|---|---|
+| **Trop de lapins ici** (surpâturage) | moins de 5 tuiles d'herbe par lapin autour du terrier (rayon 3) : l'herbe s'use, jaunit (usure ≥ 0,35), puis devient du sol nu | l'herbe disparaît par plaques, les lapins finissent par partir | semer de l'herbe autour, retirer un abri ; en Lisière le renard régule |
+| **Les ronces envahissent la prairie** (Lisière) | ronces ≥ 8 % de l'île (elles gagnent maintenant l'herbe, 0,12 tuile par jour, et le merle en sème) | la prairie d'un seul tenant rétrécit, l'alouette perd sa place | tailler |
+| **Le sol sèche** | au moins 3 fleurs ou zones de vers à moins de 3 points de leur seuil d'humidité, ou une plante déjà en souffrance | fleurs qui reculent, vers qui partent | arroser, pailler, creuser une mare |
+| **Un hérisson sans abri d'hiver** | en automne, plus de hérissons que de places d'hibernation (1 par tas de bois, 2 si au moins 2 ronces l'entourent) ; délai affiché jusqu'à l'hiver | au premier jour d'hiver, les hérissons en trop partent (« pas de place pour hiberner ») | ajouter un tas de bois |
+| **Le renard vide le terrier** | renard présent, 4 lapins ou moins (hors hiver) | le renard n'a plus rien à chasser et part | éloigner le renard, un abri de plus, plus d'herbe |
+
+Un problème réglé après au moins 20 s, avec un geste du joueur depuis son début, rapporte 1 page et 15 sève (au plus une fois par jour de jeu et par type).
+
+### 12.2 Coups de pouce (piste 4)
+Quatre gestes dans la barre, à côté des aménagements :
+
+| Geste | Coût | Effet | Débloqué |
+|---|---|---|---|
+| **Arroser** (en glissant possible) | 8 sève | humidité +30 dans un rayon de 1,5, puis +25 sur l'équilibre pendant 1 jour | Prairie |
+| **Graines au sol** | 2 graines | pendant 1 jour, merles et alouettes à moins de 7 tuiles viennent picorer (photos, demande « les merles ont faim ») | Prairie |
+| **Tailler** (en glissant possible) | 2 sève | une ronce redevient de l'herbe (1 graine toutes les 2 tailles) | Lisière |
+| **Éloigner le renard** | 20 sève, recharge 1 jour | pendant 1 jour, le renard ne chasse plus dans un rayon de 5 (cercle pointillé sur l'île) et s'installe ailleurs | Lisière |
+
+### 12.3 L'endroit où l'on pose compte (piste 2)
+**Voisinages qui changent les populations** :
+- Tas de pierres : 1 place de lapin + 1 par 4 tuiles d'herbe dans un rayon de 2 (4 au plus) ; une tuile de ronce abrite 1 lapin. Au printemps, ×1,5 (les portées). L'herbe n'est plus un plafond global : c'est le surpâturage qui sanctionne.
+- Hôtel à insectes : +20 % de pollinisateurs, jusqu'à +80 % avec 6 fleurs dans un rayon de 3.
+- « Coin à vers » : capacité des vers ×0,7 de base, +0,4 près de l'eau, +0,3 avec 2 tuiles paillées, +0,2 avec 2 tuiles à mi-ombre.
+- Alouettes : 1 par 25 tuiles de la plus grande prairie d'un seul tenant (herbe et fleurs reliées).
+- Hérisson : places d'hiver (voir 12.1).
+
+**Carte des habitats** : quand on choisit un aménagement ou un geste, chaque tuile où la pose est possible se colore (vert : la pose y sert beaucoup ; jaune : un peu ; gris : peu). Une légende dit pour quelles espèces et ce qui compte (« Plus il y a d'herbe tout près, plus le tas abrite de lapins »). Au survol, la valeur précise (« 4 places pour les lapins »). Pendant le guide, la carte reste cachée (les tuiles dorées suffisent).
+
+### 12.4 Les habitants demandent (piste 3)
+Une espèce présente peut faire une demande, avec un délai. Au plus 2 à la fois, pas avant 6 min de jeu, une occasion par minute (une chance sur deux), jamais pendant un événement ; une même demande ne revient pas avant 2 jours. Elle apparaît comme un **repère « ? »** vert sur l'île, avec un cercle qui se vide.
+
+| Demande | Saison | Délai | Satisfaite quand | Sinon |
+|---|---|---|---|---|
+| Les merles cherchent où nicher | printemps | 2 jours | un nichoir de plus | un merle part |
+| Les abeilles manquent de fleurs | printemps, été | 1,5 jour | 3 fleurs de plus autour de l'hôtel | la nuée fond de moitié |
+| Les lapins cherchent un abri | printemps, été | 2 jours | un tas de pierres de plus | un lapin part |
+| Les merles ont faim | hiver | 1,5 jour | un merle a picoré des graines au sol | un merle part |
+| Les vers ont soif | été | 1 jour | humidité +12 sur leur coin | la population fond de moitié |
+
+Récompense : 2 pages, 25 sève, 2 petits pour les merles et les lapins (+3 pour les nuées), et une chance sur trois qu'un individu prenne un papier rare (journal ou washi). Une demande dont l'espèce a quitté l'île est annulée.
+
+### 12.5 Voir l'effet de chaque geste (piste 5)
+- À la pose, un chiffre s'envole au-dessus de la tuile (« +3 places pour les lapins », « Humidité +30 », « Pollinisées : graines ×2 »).
+- Au survol d'un animal, et quand on le photographie de nouveau : « Lapins : 4 / 6 · limité par les abris ».
+- Le carnet affiche la même ligne pour une espèce présente.
+- Le panneau d'une tuile dit si l'herbe est usée, si la tuile est arrosée ou porte des graines au sol.
+- Un bouton **« À faire »** (en haut, avec le nombre) liste problèmes et demandes, avec leurs solutions et « Voir » (la caméra y va).
+
+### 12.6 Mesures (joueur automatique, 20 parties de 60 min)
+- Lisière en 16:49 en médiane (cible 12 à 20 min, inchangée) ; les 14 espèces venues dans 19 parties sur 20.
+- Joueur attentif (répond après 20 s) : surpâturage 2,1 fois par partie, réglé en 4:35 ; sol sec 8,8 fois, réglé en 0:35 ; hérisson sans abri 1 fois, réglé en 2:40 ; demandes toutes satisfaites (environ 7 par heure).
+- Joueur passif : surpâturage réglé seul en 10 à 12 min (l'herbe disparaît, les lapins partent) ; hérisson parti à l'hiver ; la plupart des demandes échouent.
+- Les ronces envahissantes arrivent vers 60 à 70 min (3,8 fois en 90 min chez le joueur attentif, qui taille).
+
+### 12.7 Choix de Claude (à valider en jouant)
+- Les gestes « Arroser » et « Graines au sol » sont disponibles dès la Prairie ; « Tailler » et « Éloigner le renard » en Lisière.
+- La carte des habitats colore aussi les gestes, et reste cachée pendant le guide.
+- Réglages de départ (tous dans `P.vie`, faciles à changer) : seuils, délais, récompenses et coûts ci-dessus.
+- Barre d'actions : 11 boutons visibles en Prairie (au lieu de 9) ; elle défile sur téléphone.
