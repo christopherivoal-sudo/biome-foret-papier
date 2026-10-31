@@ -8,6 +8,8 @@
   const DATA = window.BIOME_DATA, data = Core.preparer(DATA);
   const N = Core.N;
   const CLE_SAUVEGARDE = 'biome-foret-papier-v2', CLE_LANGUE = 'biome-langue';
+  // Version affichée dans les réglages et annoncée au premier lancement après une mise à jour (sprint 6).
+  const VERSION = '6.3';
   const ETAPES_PROTO = data.etapes.map(e => e.id);
   const ORDRE_ESPECES = data.etapes.flatMap(e => e.debloque.especes).filter(id => data.especes[id]);
   const ACTIONS = ['semer_herbe', 'semer_fleurs', 'tas_pierres', 'mare', 'hotel_insectes', 'paillis', 'semer_ronce', 'planter_bouleau', 'tas_bois', 'nichoir'];
@@ -1373,6 +1375,7 @@
     contenu.innerHTML = `<h2>${T('boutons.reglages')}</h2>`
       + `<div class="ligne"><span>${T('boutons.langue')}</span><button type="button" class="petit${langue === 'fr' ? ' actif' : ''}" data-l="fr">Français</button><button type="button" class="petit${langue === 'en' ? ' actif' : ''}" data-l="en">English</button></div>`
       + `<div class="ligne"><span>${T('boutons.vitesse')}</span><button type="button" class="petit${vitesse === 1 ? ' actif' : ''}" data-v="1">×1</button><button type="button" class="petit${vitesse === 3 ? ' actif' : ''}" data-v="3">×3</button></div>`
+      + `<div class="ligne"><span>Version</span><b>${VERSION}</b></div>`
       + `<div class="ligne mesure"><span>${T('mesure.titre')}</span><b class="fps"></b><small class="sous">${T('mesure.aide')}</small></div>`
       + `<div class="ligne"><button type="button" class="petit nouvelle">${T('boutons.nouvelle_partie')}</button></div>`;
     majFps();
@@ -1478,6 +1481,11 @@
   majFil();
   majHaut();
   majGuide();
+  try {
+    const vu = localStorage.getItem('biome-version');
+    if (vu && vu !== VERSION) toast((langue === 'fr' ? 'Nouvelle version chargée : ' : 'New version loaded: ') + VERSION, { classe: 'or', duree: 4000 });
+    localStorage.setItem('biome-version', VERSION);
+  } catch (e) { /* stockage indisponible */ }
   saisonVue = Core.horloge(etat).saison;
   // Accès pour les tests automatiques (tools/test-jeu.js).
   window.BIOME_JEU = {
