@@ -1,6 +1,6 @@
 # Biome, la forêt de papier : état du projet
 
-Copie de la note `claude/etat-du-projet.md` du projet claude.ai, pour les sessions Claude qui n'ont accès qu'au dépôt. **Règle** : une session qui ne voit pas le projet claude.ai lit et met à jour ce fichier ; Christophe recopie au besoin. Les deux doivent rester identiques.
+Une copie de cette note est dans le dépôt GitHub (`docs/etat-du-projet.md`, avec `docs/idees-gameplay-agir.md`), pour les sessions Claude qui n'ont pas accès au projet claude.ai. Toute session met à jour les deux quand elle le peut ; une session sans accès au projet met à jour la copie du dépôt et le signale à Christophe.
 
 Dernière mise à jour : 31 octobre 2026 (16 h 55, sprint 6, quatre séries de corrections faites)
 
@@ -58,7 +58,7 @@ Christophe a un abonnement Claude Pro (quota limité) et un abonnement ChatGPT. 
 Rien.
 
 ## Questions ouvertes
-- **Gameplay** (retour de Christophe : « on ajoute les éléments et on attend ») : 6 pistes dans **`docs/idees-gameplay-agir.md`**. Proposition de Claude pour le sprint 7 : 1) l'île se dérègle (problèmes visibles à régler), 2) vue des habitats et voisinages qui comptent, 3) demandes des habitants avec délai. À choisir par Christophe (sa décision arrive dans le message qui lance le sprint 7).
+- **Gameplay** (retour de Christophe : « on ajoute les éléments et on attend ») : 6 pistes dans **`claude/idees-gameplay-agir.md`** (copie : `docs/idees-gameplay-agir.md`). Proposition de Claude pour le sprint 7 : 1) l'île se dérègle (problèmes visibles à régler), 2) vue des habitats et voisinages qui comptent, 3) demandes des habitants avec délai. À choisir par Christophe (sa décision arrive dans le message qui lance le sprint 7).
 - Graphismes : continuer par petites touches en Canvas 2D, ou lancer un chantier WebGL ?
 
 ## Prochaines étapes, dans l'ordre
