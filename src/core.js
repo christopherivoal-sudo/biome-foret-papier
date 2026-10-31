@@ -910,7 +910,8 @@
       // (si des besoins manquent, c'est le départ ci-dessus qui s'applique, avec sa vraie raison).
       const cap = Math.max(1, capacite(etat, data, id)), n = liste.length;
       const enTrop = liste.filter(a => a.m === 'vit' && a.mal === 0);
-      if (n > cap && enTrop.length) {
+      // Sprint 7 : juste après un retour hors ligne, personne ne part « faute de place » (la minute de grâce).
+      if (n > cap && enTrop.length && !(etat.vie && etat.temps < (etat.vie.grace || 0))) {
         st.surcap += dt;
         if (st.surcap >= P.delaiSurcapacite) { st.surcap = 0; fairePartir(etat, enTrop[enTrop.length - 1], 'place', -1); continue; }
       } else st.surcap = 0;
@@ -1446,6 +1447,7 @@
     for (const a of etat.agents) a.mal = 0;
     etat.popMal = {};
     for (const st of Object.values(etat.esp)) st.surcap = 0;
+    completer(etat).vie.grace = etat.temps + 120;
     // Arrivées : chaque espèce absente dont les besoins sont réunis vient (sans attendre le bon moment de la journée).
     for (const id of especesDebloquees(etat, data)) {
       const f = data.especes[id];

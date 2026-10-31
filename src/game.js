@@ -9,10 +9,13 @@
   const N = Core.N;
   const CLE_SAUVEGARDE = 'biome-foret-papier-v2', CLE_LANGUE = 'biome-langue';
   // Version affichée dans les réglages et annoncée au premier lancement après une mise à jour (sprint 6).
-  const VERSION = '6.4';
+  const VERSION = '7.0';
   const ETAPES_PROTO = data.etapes.map(e => e.id);
   const ORDRE_ESPECES = data.etapes.flatMap(e => e.debloque.especes).filter(id => data.especes[id]);
   const ACTIONS = ['semer_herbe', 'semer_fleurs', 'tas_pierres', 'mare', 'hotel_insectes', 'paillis', 'semer_ronce', 'planter_bouleau', 'tas_bois', 'nichoir'];
+  // Sprint 7 : coups de pouce sur le vivant (piste 4), à côté des aménagements.
+  const GESTES = ['arroser', 'mangeoire', 'tailler', 'effaroucher'];
+  const GESTE = id => Core.P.vie.gestes[id];
   const sessionDebut = Date.now();
 
   // =====================================================================
@@ -111,6 +114,12 @@
     crepuscule: '<svg viewBox="0 0 24 24"><path d="M5 16a7 7 0 0 1 14 0z" fill="#efa45f"/><path d="M2 17h20" stroke="#a5653a" stroke-width="2"/></svg>',
     cadenas: '<svg viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="2" fill="#a8977c"/><path d="M8 11V8a4 4 0 0 1 8 0v3" fill="none" stroke="#a8977c" stroke-width="2.2"/></svg>',
     etoile: '<svg viewBox="0 0 24 24"><path d="M12 3l2.4 5.6 6 .6-4.6 4 1.4 5.9L12 16l-5.2 3.1 1.4-5.9-4.6-4 6-.6z" fill="#f1c75b"/></svg>',
+    // Sprint 7 : coups de pouce et alertes
+    arroser: '<svg viewBox="0 0 24 24"><path d="M5 10h10v8a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2z" fill="#7aa6c2" stroke="#3f6f8f" stroke-width="1.2"/><path d="M15 12l5-4" stroke="#3f6f8f" stroke-width="2" stroke-linecap="round"/><path d="M7 10a3 3 0 0 1 6 0" fill="none" stroke="#3f6f8f" stroke-width="1.4"/><path d="M21 11v2M19.5 13.5v2M22 14.5v2" stroke="#68a0c4" stroke-width="1.4" stroke-linecap="round"/></svg>',
+    mangeoire: '<svg viewBox="0 0 24 24"><path d="M3 18c3-2 15-2 18 0" stroke="#8a6a48" stroke-width="2" fill="none"/><ellipse cx="8" cy="15" rx="1.6" ry="1.1" fill="#b88b53"/><ellipse cx="12" cy="14" rx="1.6" ry="1.1" fill="#d9b867"/><ellipse cx="16" cy="15.2" rx="1.6" ry="1.1" fill="#b88b53"/><ellipse cx="10.5" cy="16.4" rx="1.5" ry="1" fill="#cfa36a"/><path d="M14 4c2 0 4 1.5 4 4l-3 1-2-2z" fill="#3b3430"/><path d="M18 7l2 .6-2 .8" fill="#e0a43c"/></svg>',
+    tailler: '<svg viewBox="0 0 24 24"><circle cx="7" cy="17" r="3" fill="none" stroke="#5a4a38" stroke-width="2"/><circle cx="7" cy="7" r="3" fill="none" stroke="#5a4a38" stroke-width="2"/><path d="M9.5 15.5L20 6M9.5 8.5L20 18" stroke="#8a8f96" stroke-width="2.2" stroke-linecap="round"/></svg>',
+    effaroucher: '<svg viewBox="0 0 24 24"><path d="M4 9l3-5 3 4h4l3-4 3 5-2 7-6 4-6-4z" fill="#d07a3a" stroke="#8a4a20" stroke-width="1.1" stroke-linejoin="round"/><path d="M9 14l3 2 3-2" fill="#fff6e8"/><path d="M2 3l20 18" stroke="#c0573a" stroke-width="2.4" stroke-linecap="round"/></svg>',
+    alerte: '<svg viewBox="0 0 24 24"><path d="M12 3l10 18H2z" fill="#f1c75b" stroke="#a3701d" stroke-width="1.3" stroke-linejoin="round"/><path d="M12 9v6" stroke="#5a3a10" stroke-width="2.2" stroke-linecap="round"/><circle cx="12" cy="18" r="1.3" fill="#5a3a10"/></svg>',
   };
   const ICONE_ACTION = { semer_herbe: 'herbe', semer_fleurs: 'fleurs', tas_pierres: 'tas_pierres', hotel_insectes: 'hotel_insectes', semer_ronce: 'ronce', planter_bouleau: 'bouleau', tas_bois: 'tas_bois', nichoir: 'nichoir' };
   function iconeAction(id) {
@@ -369,7 +378,13 @@
           break;
         case 'renfort': break;
         case 'naissance': ajouterFil(T('journal.naissance', { espece: nom })); break;
-        case 'depart': ajouterFil(T('journal.depart', { espece: nom })); break;
+        case 'depart':
+          if (j.raison === 'hiver') { ajouterFil(T('journal.depart_hiver', { espece: nom }), true); odile(T('odile.depart_hiver'), { priorite: 1 }); }
+          else if (j.raison === 'demande') ajouterFil(T('journal.depart_demande', { espece: nom }), true);
+          else ajouterFil(T('journal.depart', { espece: nom }));
+          break;
+        // Sprint 7 : problèmes et demandes des habitants
+        case 'probleme': case 'probleme_regle': case 'demande': case 'demande_ok': case 'demande_echec': case 'demande_annulee': lireVie(j); break;
         case 'parti': {
           const f = data.especes[j.id], b = f && f.besoins[j.manque];
           const manque = b ? libelleCondition(b) : '?';
@@ -702,6 +717,7 @@
   let actionChoisie = 'observer';
   const boutonsActions = {};
   function coutAction(id) {
+    if (GESTE(id)) return { seve: GESTE(id).cout_seve || 0, graines: GESTE(id).cout_graines || 0 };
     const a = data.actions[id];
     if (!a) return { seve: 0, graines: 0 };
     if (a.type === 'semis') { const c = data.especes[a.espece].croissance; return { seve: c.cout_seve, graines: c.cout_graines }; }
@@ -709,13 +725,14 @@
   }
   function construireBarre() {
     barre.innerHTML = '';
-    const liste = ['observer', ...ACTIONS, 'retirer', 'agrandir'];
+    const liste = ['observer', ...ACTIONS, ...GESTES, 'retirer', 'agrandir'];
     for (const id of liste) {
       const b = el('button', 'action', barre); b.type = 'button'; b.dataset.id = id;
       const c = coutAction(id);
       let cout = '';
       if (id === 'agrandir') cout = `<small class="cout">${ICONES.seve}<span class="cs"></span></small>`;
       else if (c.seve) cout = `<small class="cout">${ICONES.seve}${c.seve}${c.graines ? ' ' + ICONES.graines + c.graines : ''}</small>`;
+      else if (c.graines) cout = `<small class="cout">${ICONES.graines}${c.graines}</small>`;
       b.innerHTML = `<span class="ic">${iconeAction(id)}</span><span class="nom">${T('actions.' + id)}</span>${cout}<span class="verrou">${ICONES.cadenas}</span>`;
       b.onclick = () => choisirAction(id);
       boutonsActions[id] = b;
@@ -723,17 +740,18 @@
     // Sprint 6 : les aménagements encore verrouillés sont rangés derrière un seul bouton (barre plus courte).
     const bientot = el('button', 'action bientot', barre); bientot.type = 'button';
     bientot.innerHTML = `<span class="ic">${ICONES.cadenas}</span><span class="nom">${T('barre.bientot')}</span><small class="cout"><span class="nb"></span></small>`;
-    bientot.onclick = () => { const n = ACTIONS.filter(a => !actionDebloquee(a)).length; toast(T('barre.bientot_aide', { nombre: n }), { duree: 3200 }); };
+    bientot.onclick = () => { const n = [...ACTIONS, ...GESTES].filter(a => !actionDebloquee(a)).length; toast(T('barre.bientot_aide', { nombre: n }), { duree: 3200 }); };
     boutonsActions._bientot = bientot;
     majBarre();
   }
   function actionDebloquee(id) {
-    const a = data.actions[id];
+    const a = data.actions[id] || GESTE(id);
     return !a || ETAPES_PROTO.indexOf(etat.etape) >= ETAPES_PROTO.indexOf(a.etape);
   }
+  const etapeAction = id => (data.actions[id] || GESTE(id) || {}).etape;
   function majBarre() {
     const et = data.etapes.find(e => e.id === etat.etape);
-    const verrouillees = ACTIONS.filter(a => !actionDebloquee(a)).length, bt = boutonsActions._bientot;
+    const verrouillees = [...ACTIONS, ...GESTES].filter(a => !actionDebloquee(a)).length, bt = boutonsActions._bientot;
     if (bt) { if (bt.hidden !== !verrouillees) bt.hidden = !verrouillees; texte(bt.querySelector('.nb'), '+' + verrouillees); }
     for (const [id, b] of Object.entries(boutonsActions)) {
       if (id === '_bientot') continue;
@@ -748,16 +766,17 @@
         const cher = etat.seve < et.debloque.agrandissement_cout;
         if (b.classList.contains('cher') !== cher) b.classList.toggle('cher', cher);
       } else { const cher = ok && (etat.seve < c.seve || etat.graines < c.graines); if (b.classList.contains('cher') !== cher) b.classList.toggle('cher', cher); }
-      const titre = !ok ? T('actions.verrouille', { etape: nomEtape(data.actions[id].etape) }) : T('aides.' + id) !== 'aides.' + id ? T('aides.' + id) : T('actions.' + id + '_aide');
+      const titre = !ok ? T('actions.verrouille', { etape: nomEtape(etapeAction(id)) }) : T('aides.' + id) !== 'aides.' + id ? T('aides.' + id) : T('actions.' + id + '_aide');
       if (b.title !== titre) b.title = titre;
     }
   }
   function choisirAction(id) {
     fermerPanneauTuile();
     if (id === 'agrandir') return agrandir();
-    if (!actionDebloquee(id)) { toast(T('refus.verrouille', { etape: nomEtape(data.actions[id].etape) })); return; }
+    if (!actionDebloquee(id)) { toast(T('refus.verrouille', { etape: nomEtape(etapeAction(id)) })); return; }
     actionChoisie = actionChoisie === id ? 'observer' : id;
     majBarre();
+    majLegende();
     if (actionChoisie === 'observer') { aideAction.classList.remove('visible'); majGuide(); return; }
     aideAction.innerHTML = `<b>${T('actions.' + id)}</b> · ${T('aides.' + id) !== 'aides.' + id ? T('aides.' + id) : T('actions.' + id + '_aide')}${PEINTURE.has(id) ? ' ' + T('peinture.aide') : ''}`;
     // Sprint 6 : l'aide s'efface seule (et ne s'affiche pas pendant le guide, qui explique déjà).
@@ -781,6 +800,7 @@
     }
     if (r.raison === 'seve' || r.raison === 'graines') t = T('refus.' + r.raison, { nombre: Math.ceil(r.details.manque) });
     else if (r.raison === 'verrouille') t = T('refus.verrouille', { etape: nomEtape(r.details.etape) });
+    else if (r.raison === 'recharge') t = T('refus.recharge', { minutes: Math.max(1, Math.ceil(r.details.secondes / 60)) });
     else if (r.raison === 'besoins') {
       const k = r.details.besoins.findIndex(b => !b.ok), fiche = r.fiche;
       const c = fiche && fiche.besoins[k];
@@ -794,6 +814,14 @@
     if (!Core.dansIle(etat, x, y)) return false;
     const t = etat.tuiles[Core.idx(x, y)], a = data.actions[id];
     if (id === 'retirer') return !!(t.a || t.e || t.c === 'roche');
+    if (GESTE(id)) {
+      const c = coutAction(id);
+      if (!sansCout && (etat.seve < c.seve || etat.graines < c.graines)) return false;
+      if (id === 'arroser') return t.c !== 'eau' && t.c !== 'roche';
+      if (id === 'tailler') return t.c === 'ronce';
+      if (id === 'mangeoire') return !(t.a || t.c === 'eau' || t.c === 'roche' || t.c === 'arbre' || t.mg > 0);
+      if (id === 'effaroucher') return etat.agents.some(b => b.esp === 'renard' && b.m !== 'part') && !(etat.vie.effroi && etat.temps < etat.vie.effroi.recharge);
+    }
     if (!a) return true;
     const c = coutAction(id);
     if (!sansCout && (etat.seve < c.seve || etat.graines < c.graines)) return false;
@@ -812,7 +840,9 @@
     return true;
   }
   function poser(id, x, y, silence) {
+    const qAvant = Core.dansIle(etat, x, y) ? Core.qualitePose(etat, data, id, Core.idx(x, y)) : null;
     const r = Core.action(etat, data, id, x, y);
+    if (r.ok) effetVisible(id, x, y, qAvant, r, silence);
     if (!r.ok) {
       if (silence) return r;
       if (r.raison === 'besoins') r.fiche = data.especes[data.actions[id].espece];
@@ -822,7 +852,7 @@
     if (id === 'retirer') { if (!silence) toast(T('reussites.retire', { nombre: r.rendu }), { duree: 1600 }); }
     else {
       const a = data.actions[id];
-      if (a.type === 'semis') { observer(a.espece, 'pousse'); reconnaitrePlantes(false); }
+      if (a && a.type === 'semis') { observer(a.espece, 'pousse'); reconnaitrePlantes(false); }
     }
     evenementTuto('pose', id, x, y);
     if (!silence) majHaut();
@@ -834,7 +864,7 @@
   // =====================================================================
   // Sprint 6 : glisser déplace la caméra ; avec une action de semis choisie, maintenir et glisser sème à la chaîne.
   // Souris : clic droit + glisser pour tourner, molette pour zoomer. Doigts : deux doigts pour zoomer, tourner, déplacer.
-  const PEINTURE = new Set(['semer_herbe', 'semer_fleurs', 'paillis', 'semer_ronce', 'retirer']);
+  const PEINTURE = new Set(['semer_herbe', 'semer_fleurs', 'paillis', 'semer_ronce', 'retirer', 'arroser', 'tailler']);
   const pointeurs = {};
   let geste = null, survol = null, appui = null;
   const posEcran = ev => { const r = canvas.getBoundingClientRect(); return { sx: ev.clientX - r.left, sy: ev.clientY - r.top }; };
@@ -966,7 +996,7 @@
     animerCamera({ tx: p.x, tz: p.z, dist: Math.max(6, cam.dist * 0.5) }, 0.5);
   }
   window.addEventListener('keydown', ev => {
-    if (ev.key === 'Escape') { if (panneau.classList.contains('ouvert')) fermerPanneau(); else if (actionChoisie !== 'observer') choisirAction(actionChoisie); fermerPanneauTuile(); }
+    if (ev.key === 'Escape') { fermerRepere(); if (panneau.classList.contains('ouvert')) fermerPanneau(); else if (actionChoisie !== 'observer') choisirAction(actionChoisie); fermerPanneauTuile(); }
     if (panneau.classList.contains('ouvert')) return;
     const pas = 40, k = ev.key.toLowerCase();
     if (k === 'arrowleft' || k === 'a' || k === 'q') rendu.deplacer(pas, 0, etat);
@@ -1005,6 +1035,7 @@
 
   let dernierTap = null;
   function clic(sx, sy) {
+    if (repereOuvert) fermerRepere();
     const t = rendu.tuileSous(sx, sy);
     if (actionChoisie !== 'observer') {
       if (t) { poser(actionChoisie, t.x, t.y); dernierTap = { x: t.x, y: t.y, fin: Date.now() + 600 }; }
@@ -1049,6 +1080,7 @@
     flash();
     if (r.carte) toast(T('reussites.carte', { espece: nomEsp(id), papier: T('papiers.' + papier) }), { icone: vignette(id, papier), classe: 'or', duree: 5000 });
     else if (r.premiere) toast(T('reussites.photo_premiere', { espece: nomEsp(id) }), { icone: vignette(id), classe: 'or' });
+    else { const li = texteLimite(id); if (li) toast(li, { icone: vignette(id), duree: 3800 }); } // piste 5 : ce qui limite l'espèce
     if (sx !== undefined && r.premiere) envol(sx, sy, '+1', chips.pages);
     majHaut();
   }
@@ -1110,6 +1142,9 @@
     if (t.paillis > 0) extra.push(T('tuile.paillis'));
     if (t.champi) extra.push(nomEsp(t.champi));
     if (t.graines >= 1) extra.push(T('tuile.graines', { nombre: Math.floor(t.graines) }));
+    if (t.c === 'herbe' && t.use >= Core.P.vie.seuilJauni) extra.push(T('tuile.usee'));
+    if (t.ar > 0) extra.push(T('tuile.arrosee'));
+    if (t.mg > 0) extra.push(T('tuile.mangeoire'));
     const pousse = infoCroissance(x, y);
     const stat = (k, v) => `<div class="stat"><span>${T('stats.' + k)}</span><i><b style="width:${Math.round(v)}%"></b></i><em>${Math.round(v)}</em></div>`;
     panneauTuile.innerHTML = `<button type="button" class="fermer">×</button><b>${echapper(nom.charAt(0).toUpperCase() + nom.slice(1))}</b>${extra.length ? '<small>' + extra.join(' · ') + '</small>' : ''}`
@@ -1187,6 +1222,7 @@
       + `<h3>${v ? echapper(tx.nom) : T('carnet.inconnue')}</h3>${v ? `<i>${echapper(tx.nom_latin)}</i>` : ''}`
       + `<p>${v ? echapper(tx.description) : ''}</p>${ca.photo ? `<p class="anecdote">${echapper(tx.anecdote)}</p>` : v ? `<p class="sous">${T('carnet.photo_a_faire')}</p>` : ''}</div></div>`;
     if (v && !present && ca.departs > 0 && ca.manque >= 0) h += `<p class="parti">${T('carnet.partie', { manque: libelleCondition(f.besoins[ca.manque]) })}</p>`;
+    if (present) { const li = texteLimite(id); if (li) h += `<p class="limite">${echapper(li)}</p>`; }
     h += `<h4>${T('carnet.besoins')}</h4><ul class="besoins">`;
     f.besoins.forEach((c, k) => {
       if (!ind[k]) { h += `<li class="cache">${T('carnet.besoin_cache')}</li>`; return; }
@@ -1449,6 +1485,256 @@
   }
 
   // =====================================================================
+  // Sprint 7 : l'île vit et se dérègle, le joueur répond (pistes 1 à 5 de docs/idees-gameplay-agir.md)
+  // Repères sur l'île (problèmes et demandes), panneau « À faire », carte des habitats, effet de chaque geste.
+  // =====================================================================
+  const CARTE = new Set([...ACTIONS, ...GESTES]);
+  const nomAction = id => T('actions.' + id);
+  // ---------- Carte des habitats (piste 2) ----------
+  let carteCache = { cle: '', l: null };
+  function carteActuelle() {
+    const id = actionChoisie;
+    if (!CARTE.has(id) || guideVisible()) return null;
+    const cle = id + ':' + Math.floor(etat.temps / 2) + ':' + etat.seve.toFixed(0).length;
+    if (carteCache.cle !== cle) {
+      carteCache = { cle, l: Core.carteHabitat(etat, data, id).filter(([i]) => apercu(id, i % N, (i / N) | 0, true)) };
+    }
+    return carteCache.l;
+  }
+  const legende = el('div', 'legende-carte', racine);
+  function majLegende() {
+    const id = actionChoisie;
+    if (!CARTE.has(id)) { legende.classList.remove('visible'); return; }
+    const q = Core.qualitePose(etat, data, id, Core.idx(Core.CENTRE, Core.CENTRE)) || { especes: [] };
+    const icones = (q.especes || []).filter(e => data.especes[e]).map(e => `<img alt="" title="${echapper(nomEsp(e))}" src="${vignette(e, venu(e) ? '' : 'silhouette')}">`).join('');
+    legende.innerHTML = `<span class="pour">${icones}</span><span>${T('carte.' + id)}</span><span class="cles"><i class="v"></i>${T('carte.bien')}<i class="j"></i>${T('carte.moyen')}<i class="g"></i>${T('carte.peu')}</span>`;
+    legende.classList.add('visible');
+  }
+  // ---------- Effet de chaque geste (piste 5) ----------
+  let dernierEffet = 0;
+  function effetVisible(id, x, y, q, r, silence) {
+    if (silence && Date.now() - dernierEffet < 900) return; // pose en glissant : un seul chiffre par instant
+    let t = '';
+    const v = (q && q.v) || {};
+    switch (id) {
+      case 'tas_pierres': t = T('effet.tas_pierres', { places: v.places }); break;
+      case 'hotel_insectes': t = T('effet.hotel_insectes', { bonus: v.bonus }); break;
+      case 'mare': t = v.n ? T('effet.mare', { n: v.n }) : ''; break;
+      case 'paillis': t = T('effet.paillis'); break;
+      case 'semer_fleurs': t = v.hotel ? T('effet.fleurs_hotel') : ''; break;
+      case 'tas_bois': t = T('effet.tas_bois', { places: Core.placesHibernation(etat) }); break;
+      case 'nichoir': t = T('effet.nichoir'); break;
+      case 'arroser': t = T('effet.arroser', { h: r.humidite }); break;
+      case 'tailler': t = T('effet.tailler') + (r.graines ? ' · +' + r.graines + ' ' + T('ressources.graines').toLowerCase() : ''); break;
+      case 'mangeoire': t = T('effet.mangeoire'); break;
+      case 'effaroucher': t = T('effet.effaroucher'); break;
+    }
+    if (!t) return;
+    dernierEffet = Date.now();
+    const o = rendu.ecran(x, y, 0.6);
+    flotter(o.x, o.y, t);
+  }
+  function flotter(sx, sy, texte) {
+    const b = el('div', 'flotte', racine); b.textContent = texte;
+    b.style.left = sx + 'px'; b.style.top = sy + 'px';
+    requestAnimationFrame(() => b.classList.add('monte'));
+    setTimeout(() => b.remove(), 2300);
+  }
+  // Ce qui limite une espèce : « Lapins : 4 / 6 · limité par les abris ».
+  function texteLimite(id) {
+    const l = Core.limite(etat, data, id);
+    if (!l || !l.cap) return '';
+    const raison = T('limite.' + l.raison) !== 'limite.' + l.raison ? T('limite.' + l.raison) : '';
+    return T('limite.texte', { espece: nomEsp(id), n: l.n, cap: l.cap }) + (raison ? ' · ' + raison : '');
+  }
+  // Survol : effet de la pose sur la tuile visée, ou population de l'animal sous la souris.
+  const infoSurvol = el('div', 'info-survol', racine);
+  let infoCle = '';
+  function majInfoSurvol(sv) {
+    let txt = '', x = 0, y = 0;
+    if (survol && sv && CARTE.has(actionChoisie) && Core.dansIle(etat, sv.x, sv.y) && survolOk) {
+      const q = Core.qualitePose(etat, data, actionChoisie, Core.idx(sv.x, sv.y));
+      if (q) { txt = T('survol.' + actionChoisie, q.v); if (txt === 'survol.' + actionChoisie) txt = ''; }
+      x = survol.sx; y = survol.sy;
+    } else if (survol && actionChoisie === 'observer') {
+      const c = rendu.cibleSous(survol.sx, survol.sy, 20);
+      if (c && c.esp && data.especes[c.esp] && data.especes[c.esp].mode !== 'tuile' && venu(c.esp)) {
+        const cle = c.esp + ':' + Math.floor(etat.temps);
+        txt = cle === infoCle ? infoSurvol.textContent : texteLimite(c.esp); infoCle = cle;
+        x = survol.sx; y = survol.sy;
+      }
+    }
+    if (!txt) { if (infoSurvol.classList.contains('visible')) infoSurvol.classList.remove('visible'); return; }
+    texte(infoSurvol, txt);
+    const r = canvas.getBoundingClientRect();
+    infoSurvol.style.transform = `translate(${Math.round(r.left + x + 16)}px, ${Math.round(r.top + y + 14)}px)`;
+    if (!infoSurvol.classList.contains('visible')) infoSurvol.classList.add('visible');
+  }
+
+  // ---------- Repères sur l'île : problèmes (piste 1) et demandes (piste 3) ----------
+  let listeReperes = [];
+  const elsReperes = {};
+  function itemsVie() {
+    const l = [];
+    for (const p of Core.problemesActifs(etat, data)) l.push({ cle: 'pb:' + p.id, type: 'pb', id: p.id, x: p.x, y: p.y, gravite: p.gravite, esp: p.especes[0], valeurs: p.valeurs, solutions: p.solutions, delai: p.delai });
+    for (const d of etat.vie.demandes) {
+      const r = Core.DEMANDES[d.id];
+      l.push({ cle: 'dem:' + d.id, type: 'dem', id: d.id, x: d.x, y: d.y, esp: d.esp, reste: d.fin - etat.temps, duree: d.fin - d.debut, solutions: r.solutions, base: d.base });
+    }
+    return l;
+  }
+  const boutonVie = el('button', 'chip alertes', haut); boutonVie.type = 'button'; boutonVie.hidden = true;
+  boutonVie.onclick = () => ouvrirVie();
+  haut.insertBefore(boutonVie, menu);
+  function majReperes() {
+    listeReperes = itemsVie();
+    const vus = new Set();
+    for (const it of listeReperes) {
+      vus.add(it.cle);
+      let e = elsReperes[it.cle];
+      if (!e) {
+        e = elsReperes[it.cle] = el('button', 'repere ' + it.type, racine);
+        e.type = 'button';
+        e.innerHTML = `<img alt="" src="${vignette(it.esp)}"><b>${it.type === 'pb' ? '!' : '?'}</b><i></i>`;
+        e.onclick = ev => { ev.stopPropagation(); ouvrirRepere(it.cle); };
+      }
+      e._it = it;
+      e.classList.toggle('grave', it.gravite === 2 || (it.type === 'dem' && it.reste < 60));
+      const p = it.type === 'dem' ? Math.max(0, it.reste / it.duree) : it.delai ? Math.min(1, it.delai / (Core.P.joursParSaison * Core.P.dureeJour)) : 1;
+      e.style.setProperty('--p', (p * 100).toFixed(0));
+      e.title = titreVie(it);
+    }
+    for (const [cle, e] of Object.entries(elsReperes)) if (!vus.has(cle)) { e.remove(); delete elsReperes[cle]; if (repereOuvert === cle) fermerRepere(); }
+    const n = listeReperes.length;
+    if (boutonVie.hidden !== !n) boutonVie.hidden = !n;
+    if (n) html(boutonVie, ICONES.alerte + `<span>${n}</span>`);
+    if (boutonVie.classList.contains('grave') !== listeReperes.some(it => it.gravite === 2)) boutonVie.classList.toggle('grave');
+    if (repereOuvert) majCarteRepere();
+  }
+  function placerReperes() {
+    for (const e of Object.values(elsReperes)) {
+      const it = e._it, o = rendu.ecran(it.x, it.y, 1.3);
+      e.style.transform = `translate(${Math.round(o.x)}px, ${Math.round(o.y)}px) translate(-50%, -100%)`;
+    }
+    if (repereOuvert && elsReperes[repereOuvert]) {
+      const r = elsReperes[repereOuvert].getBoundingClientRect(), w = racine.clientWidth, pw = carteRepere.offsetWidth, ph = carteRepere.offsetHeight;
+      carteRepere.style.left = Math.max(8, Math.min(w - pw - 8, r.left + r.width / 2 - pw / 2)) + 'px';
+      carteRepere.style.top = Math.max(56, r.top - ph - 8) + 'px';
+    }
+  }
+  const titreVie = it => it.type === 'pb' ? T('problemes.' + it.id + '.titre') : T('demandes.' + it.id + '.titre', { espece: nomEsp(it.esp) });
+  function texteVie(it) {
+    const v = Object.assign({ espece: nomEsp(it.esp) }, it.valeurs || {});
+    let t = it.type === 'pb' ? T('problemes.' + it.id + '.texte', v) : T('demandes.' + it.id + '.texte', v);
+    if (it.type === 'dem') t += ' ' + T('vie.reste', { temps: tempsJeu(it.reste) });
+    else if (it.delai) t += ' ' + T('vie.avant_hiver', { temps: tempsJeu(it.delai) });
+    return t;
+  }
+  const tempsJeu = s => s >= 90 ? T('duree.minutes', { n: Math.round(s / 60) }) : T('vie.secondes', { n: Math.max(1, Math.round(s)) });
+  function boutonsSolutions(it) {
+    return it.solutions.map(sol => {
+      const ok = actionDebloquee(sol);
+      return `<button type="button" class="petit sol" data-sol="${sol}"${ok ? '' : ' disabled'}><span class="ic">${iconeAction(sol)}</span>${echapper(T('solutions.' + it.id + '.' + sol) !== 'solutions.' + it.id + '.' + sol ? T('solutions.' + it.id + '.' + sol) : nomAction(sol))}</button>`;
+    }).join('');
+  }
+  function brancherSolutions(racineEl, it) {
+    racineEl.querySelectorAll('[data-sol]').forEach(b => {
+      b.onclick = () => {
+        fermerRepere(); fermerPanneau();
+        if (actionChoisie !== b.dataset.sol) choisirAction(b.dataset.sol);
+        animerCamera({ tx: it.x - Core.CENTRE, tz: it.y - Core.CENTRE, dist: Math.min(cam.dist, 16) }, 0.8);
+      };
+    });
+  }
+  const carteRepere = el('div', 'carte-repere', racine);
+  let repereOuvert = null;
+  function ouvrirRepere(cle) {
+    fermerPanneauTuile();
+    repereOuvert = cle;
+    carteRepere._h = '';
+    majCarteRepere();
+    carteRepere.classList.add('ouvert');
+  }
+  function fermerRepere() { repereOuvert = null; carteRepere.classList.remove('ouvert'); }
+  function majCarteRepere() {
+    const e = elsReperes[repereOuvert];
+    if (!e) return fermerRepere();
+    const it = e._it;
+    const h = `<button type="button" class="fermer">×</button><div class="tete"><img alt="" src="${vignette(it.esp)}"><b>${echapper(titreVie(it))}</b></div><p>${echapper(texteVie(it))}</p>`
+      + (it.type === 'dem' ? `<small class="recompense">${T('vie.recompense')}</small>` : '') + `<div class="gestes">${boutonsSolutions(it)}</div>`;
+    if (carteRepere._h === h) return;
+    carteRepere._h = h; carteRepere.innerHTML = h;
+    carteRepere.querySelector('.fermer').onclick = fermerRepere;
+    brancherSolutions(carteRepere, it);
+  }
+  function montrerRepere(cle) {
+    majReperes();
+    const it = listeReperes.find(x => x.cle === cle);
+    if (!it) return;
+    animerCamera({ tx: it.x - Core.CENTRE, tz: it.y - Core.CENTRE, dist: Math.min(cam.dist, 16) }, 0.8);
+    setTimeout(() => ouvrirRepere(cle), 850);
+  }
+  // ---------- Panneau « À faire sur l'île » ----------
+  function ouvrirVie() { fermerRepere(); ouvrirPanneau(dessinerVie, 'vie'); }
+  function dessinerVie() {
+    const l = itemsVie();
+    let h = `<div class="odile-tete"><img alt="" src="${vignette('odile')}"><h2>${T('vie.titre')}</h2></div>`;
+    if (!l.length) h += `<p class="sous">${T('vie.rien')}</p>`;
+    for (const it of l) {
+      h += `<div class="mission vie-item ${it.type}${it.gravite === 2 ? ' grave' : ''}"><div class="tete"><img alt="" src="${vignette(it.esp)}"><b>${echapper(titreVie(it))}</b></div><p>${echapper(texteVie(it))}</p>`
+        + (it.type === 'dem' ? `<small>${T('vie.recompense')}</small>` : '')
+        + `<div class="gestes">${boutonsSolutions(it)}<button type="button" class="petit voir" data-voir="${it.cle}">${T('vie.voir')}</button></div></div>`;
+    }
+    h += `<p class="sous">${T('vie.aide')}</p>`;
+    if (!poserContenu(h)) return;
+    for (const it of l) { const bloc = contenu.querySelector(`[data-voir="${it.cle}"]`).parentNode; brancherSolutions(bloc, it); }
+    contenu.querySelectorAll('[data-voir]').forEach(b => { b.onclick = () => { fermerPanneau(); montrerRepere(b.dataset.voir); }; });
+  }
+  // ---------- Journal : problèmes et demandes ----------
+  function lireVie(j) {
+    const nom = j.id && data.especes[j.id] ? nomEsp(j.id) : '';
+    switch (j.type) {
+      case 'probleme': {
+        const titre = T('problemes.' + j.id + '.titre');
+        ajouterFil(T('journal.probleme', { titre }), true);
+        // La première fois, Odile explique ; ensuite, un bandeau suffit (le repère est sur l'île).
+        if (!etat.ui.tuto['pb_' + j.id]) { etat.ui.tuto['pb_' + j.id] = 1; odile(T('problemes.' + j.id + '.odile'), { priorite: 1, boutons: [[T('vie.voir'), () => montrerRepere('pb:' + j.id)], [T('boutons.plus_tard'), () => {}]] }); }
+        else toast(T('journal.probleme', { titre }), { classe: 'alerte', duree: 3500 });
+        break;
+      }
+      case 'probleme_regle': {
+        const titre = T('problemes.' + j.id + '.titre');
+        ajouterFil(T('journal.probleme_regle', { titre }), true);
+        toast(j.pages ? T('reussites.probleme_regle', { titre, pages: j.pages, seve: j.seve }) : T('journal.probleme_regle', { titre }), { classe: 'or', duree: 3500 });
+        break;
+      }
+      case 'demande': {
+        const titre = T('demandes.' + j.demande + '.titre', { espece: nom });
+        ajouterFil(T('journal.demande', { titre }), true);
+        if (!etat.ui.tuto.demande) { etat.ui.tuto.demande = 1; odile(T('odile.premiere_demande'), { priorite: 1, boutons: [[T('vie.voir'), () => montrerRepere('dem:' + j.demande)], [T('boutons.plus_tard'), () => {}]] }); }
+        else toast(titre, { icone: vignette(j.id), duree: 3800 });
+        break;
+      }
+      case 'demande_ok': {
+        const titre = T('demandes.' + j.demande + '.titre', { espece: nom });
+        let t = T('reussites.demande', { pages: j.pages, seve: j.seve });
+        if (j.naissances) t += ' ' + T('reussites.demande_naissances', { n: j.naissances, espece: nom.toLowerCase() });
+        if (j.rare) t += ' ' + T('reussites.demande_rare', { papier: T('papiers.' + j.rare) });
+        ajouterFil(T('journal.demande_ok', { titre }) + ' ' + t, true);
+        toast(t, { icone: vignette(j.id), classe: 'or', duree: 5000 });
+        break;
+      }
+      case 'demande_echec': {
+        const titre = T('demandes.' + j.demande + '.titre', { espece: nom });
+        ajouterFil(T('journal.demande_echec', { titre }), true);
+        odile(T('demandes.' + j.demande + '.echec', { espece: nom }), { priorite: 0 });
+        break;
+      }
+      case 'demande_annulee': ajouterFil(T('journal.demande_annulee', { espece: nom })); break;
+    }
+  }
+
+  // =====================================================================
   // Boucle
   // =====================================================================
   let lents = 0;
@@ -1481,14 +1767,18 @@
       survolTuile = { x: sv.x, y: sv.y, taille: a && a.taille > 1 ? a.taille : 1, refus: !survolOk };
     } else survolTuile = null;
     avancerCamera(dt);
-    rendu.dessiner(etat, dt, { survol: survolTuile, guides: guideTuiles });
+    const ef = etat.vie && etat.vie.effroi && etat.temps < etat.vie.effroi.fin ? { x: etat.vie.effroi.x, y: etat.vie.effroi.y, r: GESTE('effaroucher').rayon } : null;
+    rendu.dessiner(etat, dt, { survol: survolTuile, guides: guideTuiles, carte: carteActuelle(), effroi: ef });
     placerMain();
     majEtiquettes();
+    placerReperes();
+    majInfoSurvol(sv);
     if (survol) canvas.style.cursor = actionChoisie !== 'observer' ? 'crosshair' : rendu.cibleSous(survol.sx, survol.sy) ? 'pointer' : 'grab';
     if (now - dernierLent > 500) {
       dernierLent = now;
       lents++;
       if (lents % 2 === 0) { reconnaitrePlantes(false); tutoriel(); majGuide(); }
+      majReperes();
       if (lents % 10 === 0) observerPlantes();
       majHaut();
       majPanneauTuile();
@@ -1527,6 +1817,8 @@
     rendu, clic, choisirAction, poser, photographier, ouvrirCarnet, ouvrirMissions, ouvrirSuccession, ouvrirBonus, ouvrirReglages, fermerPanneau,
     passerEtape, retourHorsLigne, changerLangue, sauver, vignette, majIndices, majGuide, get guide() { return etat.ui.guide; },
     get vitesse() { return vitesse; }, set vitesse(v) { vitesse = v; },
+    // Sprint 7
+    carteActuelle, majReperes, ouvrirVie, ouvrirRepere, get reperes() { return listeReperes; },
   };
   requestAnimationFrame(boucle);
 })();

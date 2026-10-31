@@ -129,6 +129,8 @@
       let vert = HERBE[A.saison];
       if (A.saison === 'printemps' && A.meteo === 'floraison') vert = [160, 204, 110];
       vert = mel(vert, HERBE_SECHE, A.meteo === 'secheresse' ? lisse(34, 12, hv) : lisse(16, 6, hv));
+      // Sprint 7 : herbe usée par les lapins (surpâturage), qui jaunit avant de disparaître.
+      if (t.use > 0.1) vert = mel(vert, HERBE_SECHE, Math.min(1, t.use * 1.3));
       const neige = A.saison === 'hiver' ? lisse(0.05, 0.4, A.finSaison) * 0.9 + 0.1 : 0;
       switch (t.c) {
         case 'herbe': c = mel(c, vert, 0.55 + 0.4 * Math.min(1, t.age + 0.3)); break;
@@ -699,6 +701,27 @@
         ctx.drawImage(fond, 0, 0, w, h);
       }
       dessinerEffetsSol(dt);
+      // Sprint 7 : graines laissées au sol pour les oiseaux (petits grains dorés).
+      for (const i of liste) {
+        const t = etat.tuiles[i];
+        if (!(t.mg > 0)) continue;
+        const x = (i % N) - C, z = ((i / N) | 0) - C;
+        for (let k = 0; k < 7; k++) { const a = k * 2.4, r = 0.12 + (k % 3) * 0.1, px = x + Math.cos(a) * r, pz = z + Math.sin(a) * r; R3.groundPoly([px - 0.05, pz, px, pz - 0.035, px + 0.05, pz, px, pz + 0.035], k % 2 ? '#d9b867' : '#b88b53', null, 0, 0.04); }
+      }
+      // Sprint 7 : carte des habitats quand un aménagement est choisi (vert : la pose y sert beaucoup, jaune : un peu, gris : peu).
+      if (opts.carte && opts.carte.length) {
+        for (const [i, q] of opts.carte) {
+          const x = (i % N) - C, z = ((i / N) | 0) - C;
+          const col = q >= 0.66 ? 'rgba(92,168,74,0.38)' : q >= 0.33 ? 'rgba(236,188,60,0.34)' : 'rgba(120,108,96,0.2)';
+          R3.groundPoly([x - 0.47, z - 0.47, x + 0.47, z - 0.47, x + 0.47, z + 0.47, x - 0.47, z + 0.47], col, null, 0, 0.035);
+        }
+      }
+      // Sprint 7 : coin où le renard a été éloigné (cercle pointillé tant que dure l'effet).
+      if (opts.effroi) {
+        const pts = [], r = opts.effroi.r;
+        for (let k = 0; k < 28; k++) { const a = k / 28 * Math.PI * 2; pts.push(opts.effroi.x - C + Math.cos(a) * r, opts.effroi.y - C + Math.sin(a) * r); }
+        R3.groundPoly(pts, 'rgba(240,160,80,0.08)', 'rgba(200,110,50,0.55)', 1.5, 0.05);
+      }
       if (opts.guides && opts.guides.length) {
         // Tuiles conseillées par le tutoriel (sprint 6) : contour doré qui respire.
         const al = 0.7 + 0.3 * Math.sin(temps * 4);

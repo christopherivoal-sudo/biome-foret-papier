@@ -72,8 +72,8 @@ function prairiePrete() {
   await p.waitForTimeout(1500);
   verifier(await p.locator('.guide.ouverte').count() === 1, 'le guide accueille le joueur (sprint 6)');
   verifier(await p.locator('.odile.ouverte').count() === 0, 'une seule bulle à la fois : pas de bulle d\'Odile en même temps');
-  verifier(await p.locator('.barre .action:visible').count() === 9, 'barre compacte : 9 boutons visibles (observer, 6 aménagements, retirer, « à débloquer »)');
-  verifier(await p.locator('.action.verrouille').count() === 4 && await p.locator('.action.verrouille:visible').count() === 0, '4 actions de la Lisière rangées derrière « à débloquer »');
+  verifier(await p.locator('.barre .action:visible').count() === 11, 'barre : 11 boutons visibles (observer, 6 aménagements, arroser, graines au sol, retirer, « à débloquer »)');
+  verifier(await p.locator('.action.verrouille').count() === 6 && await p.locator('.action.verrouille:visible').count() === 0, '6 actions de la Lisière (dont tailler et éloigner le renard) rangées derrière « à débloquer »');
   const hBarre = await p.evaluate(() => document.querySelector('.barre').getBoundingClientRect().height);
   verifier(hBarre < 72, `barre du bas basse (${Math.round(hBarre)} px)`);
   await capture(p, '1-debut');
@@ -305,6 +305,64 @@ function prairiePrete() {
   await p.close();
 
   // ---------- 4. Retour après une absence, sauvegarde ----------
+  // ---------- Sprint 7 : l'île se dérègle, le joueur répond ----------
+  console.log('Sprint 7 : problèmes, demandes, carte des habitats, coups de pouce');
+  {
+    // Île en Lisière : 12 lapins sur un terrier (surpâturage) et une demande des abeilles.
+    const e = Core.creer(data, { graine: 7 });
+    e.etape = 'lisiere'; e.seve = 2000; e.graines = 40;
+    for (const i of Core.tuilesCercle(e, Core.CENTRE, Core.CENTRE, 8)) Object.assign(e.tuiles[i], { f: 40, hb: 45, h: 45 });
+    for (const i of Core.tuilesCercle(e, Core.CENTRE - 3, Core.CENTRE, 3)) Object.assign(e.tuiles[i], { c: 'herbe', e: 'herbe', age: 2 });
+    Core.action(e, data, 'tas_pierres', Core.CENTRE - 3, Core.CENTRE);
+    for (let k = 0; k < 12; k++) Core.ajouterAgent(e, 'lapin', Core.CENTRE - 3 + (k % 3) - 1, Core.CENTRE + ((k / 3) | 0) - 1);
+    Core.action(e, data, 'hotel_insectes', Core.CENTRE + 4, Core.CENTRE);
+    for (const [dx, dy] of [[2, 3], [3, 3], [2, 4], [6, 4], [6, 3], [5, 4], [6, 5]]) Object.assign(e.tuiles[Core.idx(Core.CENTRE + dx, Core.CENTRE + dy)], { c: 'fleurs', e: 'fleurs', age: 3 });
+    Core.fixerPopulation(e, 'abeille', Core.CENTRE + 4, Core.CENTRE, 5);
+    for (const [dx, dy] of [[5, -3], [6, -3], [5, -4]]) Object.assign(e.tuiles[Core.idx(Core.CENTRE + dx, Core.CENTRE + dy)], { c: 'ronce', e: 'ronce', age: 4 });
+    for (let k = 0; k < 200 && !(e.vie.pb.surpaturage && e.vie.pb.surpaturage.annonce); k++) Core.tick(e, data, 1);
+    e.vie.demandes.push({ id: 'abeille_fleurs', esp: 'abeille', debut: e.temps, fin: e.temps + 360, i: Core.idx(Core.CENTRE + 4, Core.CENTRE), x: Core.CENTRE + 4, y: Core.CENTRE, base: 1 });
+    e.ui = { guide: { k: 7, ferme: true, attendus: {} }, tuto: { pb_surpaturage: 1, demande: 1 } };
+    for (const j of e.journal) j.vu = 1;
+    const ctx = await nav.newContext({ viewport: { width: 1280, height: 800 } });
+    p = await ctx.newPage(); suivre(p);
+    await p.goto(URL + '?nouvelle=1&langue=fr');
+    await p.waitForTimeout(500);
+    await charger(p, e);
+    await p.evaluate(() => { window.BIOME_JEU.vitesse = 0; window.BIOME_JEU.majReperes(); });
+    await p.waitForTimeout(700);
+    verifier(await p.locator('.repere.pb').count() === 1 && await p.locator('.repere.dem').count() === 1, 'un repère « ! » (surpâturage) et un repère « ? » (demande des abeilles) sur l\'île');
+    verifier(await p.locator('.chip.alertes:visible').count() === 1 && (await p.locator('.chip.alertes').innerText()).includes('2'), 'le bouton « À faire » compte 2 choses à faire');
+    await capture(p, '14-sprint7-reperes');
+    await p.click('.repere.pb', { force: true });
+    await p.waitForTimeout(300);
+    verifier(await p.locator('.carte-repere.ouvert [data-sol="semer_herbe"]').count() === 1, 'toucher le repère : explication et solutions (semer de l\'herbe, retirer un abri)');
+    await capture(p, '15-sprint7-probleme');
+    await p.click('.carte-repere.ouvert [data-sol="semer_herbe"]');
+    await p.waitForTimeout(1200);
+    verifier(await p.evaluate(() => window.BIOME_JEU.etat && document.querySelector('.action.choisie').dataset.id) === 'semer_herbe', 'la solution choisit l\'action correspondante');
+    await p.click('.action[data-id="tas_pierres"]');
+    await p.waitForTimeout(4200);
+    const carte = await p.evaluate(() => window.BIOME_JEU.carteActuelle());
+    verifier(carte && carte.length > 20 && carte.some(c => c[1] >= 0.66) && carte.some(c => c[1] < 0.33), `carte des habitats du tas de pierres : ${carte ? carte.length : 0} tuiles en vert, jaune ou gris`);
+    verifier(await p.locator('.legende-carte.visible').count() === 1, 'légende de la carte affichée (pour qui, et ce qui compte)');
+    await capture(p, '16-sprint7-carte');
+    await p.click('.action[data-id="arroser"]');
+    const nu = await p.evaluate(() => { const E = window.BIOME_JEU.etat, C = 15; for (let dy = -6; dy <= 6; dy++) for (let dx = -6; dx <= 6; dx++) { const t = E.tuiles[(C + dy) * 31 + C + dx]; if (t && t.c === 'nu' && Math.hypot(dx, dy) > 4 && Math.hypot(dx, dy) < 7) return [C + dx, C + dy, t.h]; } return null; });
+    if (nu) {
+      await clicTuile(p, nu[0], nu[1]);
+      await p.waitForTimeout(300);
+      const h = await p.evaluate(([x, y]) => window.BIOME_JEU.etat.tuiles[y * 31 + x].h, nu);
+      verifier(h >= nu[2] + 25 && await p.locator('.flotte').count() >= 1, `arroser : humidité ${Math.round(nu[2])} → ${Math.round(h)}, effet affiché sur l'île`);
+    } else verifier(false, 'une tuile nue à arroser');
+    verifier(await p.locator('.action[data-id="tailler"]:visible').count() === 1 && await p.locator('.action[data-id="effaroucher"]:visible').count() === 1, 'en Lisière : « Tailler » et « Éloigner le renard » dans la barre');
+    await p.click('.action[data-id="arroser"]');
+    await p.click('.chip.alertes', { force: true });
+    await p.waitForTimeout(300);
+    verifier(await p.locator('.panneau.ouvert .vie-item').count() === 2, 'panneau « À faire » : le problème et la demande, avec leurs solutions');
+    await capture(p, '17-sprint7-a-faire');
+    await p.close(); await ctx.close();
+  }
+
   console.log('Absence et sauvegarde');
   p = await ctx.newPage(); suivre(p);
   await p.goto(URL + '?nouvelle=1&langue=fr');

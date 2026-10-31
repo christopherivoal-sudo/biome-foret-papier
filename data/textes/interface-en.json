@@ -45,7 +45,8 @@
     "nouvelle_partie": "New game",
     "confirmer_nouvelle": "Erase this island and start over?",
     "oui": "Yes",
-    "non": "No"
+    "non": "No",
+    "alertes": "To do"
   },
   "actions": {
     "observer": "Observe",
@@ -64,7 +65,15 @@
     "retirer_aide": "Clears the tile and refunds half the cost.",
     "agrandir": "Expand island",
     "verrouille": "Unlocks at the {etape}",
-    "choisi": "{action}: tap an island tile. Tap \"Observe\" to stop."
+    "choisi": "{action}: tap an island tile. Tap \"Observe\" to stop.",
+    "arroser": "Water",
+    "mangeoire": "Scatter seeds",
+    "tailler": "Prune",
+    "effaroucher": "Shoo the fox",
+    "arroser_aide": "Moisture +30 around the tile, held for a day.",
+    "mangeoire_aide": "Two seeds on the ground draw nearby birds for a day.",
+    "tailler_aide": "Cuts back a bramble: the meadow opens up again.",
+    "effaroucher_aide": "The fox stops hunting in this spot for a day."
   },
   "aides": {
     "semer_herbe": "A grass tile: the foundation of your meadow and sap supply.",
@@ -77,7 +86,11 @@
     "planter_bouleau": "A pioneer tree: light shade and leaves that feed the soil.",
     "tas_bois": "Deadwood: a hedgehog's shelter and winter bed.",
     "nichoir": "Place on a mature birch: more room for blackbirds.",
-    "agrandir": "Adds 2 tiles to the island's radius."
+    "agrandir": "Adds 2 tiles to the island's radius.",
+    "arroser": "Tap or drag: moisture +30 around, held for a day (8 sap).",
+    "mangeoire": "Scatter 2 seeds: blackbirds and skylarks come to peck.",
+    "tailler": "Tap or drag over brambles: they turn back into grass.",
+    "effaroucher": "Tap a spot: the fox keeps away and won't hunt there for a day."
   },
   "refus": {
     "seve": "You need {nombre} more sap.",
@@ -91,7 +104,11 @@
     "rayon_max": "The island is at its maximum size for this stage.",
     "besoins": "It wouldn't grow here: {manque}.",
     "absente": "This species is no longer here.",
-    "autre": "Not possible here."
+    "autre": "Not possible here.",
+    "rien_a_arroser": "Nothing to water here.",
+    "pas_de_ronce": "There's no bramble to prune here.",
+    "pas_de_renard": "There's no fox on the island.",
+    "recharge": "The fox is still wary: try again in {minutes} min."
   },
   "reussites": {
     "pose": "Placed: {action}.",
@@ -102,7 +119,11 @@
     "photo_premiere": "New field journal page: {espece}! +1 page, +10 sap.",
     "carte": "Collection card: {espece} in {papier}! +3 pages.",
     "comportement": "Observed: {texte}",
-    "mission": "Mission complete: {titre}. Visit Odile!"
+    "mission": "Mission complete: {titre}. Visit Odile!",
+    "probleme_regle": "Solved: {titre} · +{pages} page, +{seve} sap",
+    "demande": "Thank you! +{pages} pages, +{seve} sap.",
+    "demande_naissances": "{n} young were born.",
+    "demande_rare": "A {papier} paper specimen appeared!"
   },
   "couverts": {
     "nu": "bare",
@@ -254,7 +275,15 @@
     "etape": "The island reaches the {etape}.",
     "hibernation": "{espece} hibernates.",
     "migration": "{espece} migrates for winter.",
-    "reveil": "{espece} wakes up."
+    "reveil": "{espece} wakes up.",
+    "probleme": "Problem: {titre}.",
+    "probleme_regle": "Solved: {titre}.",
+    "demande": "Request: {titre}.",
+    "demande_ok": "Request met: {titre}.",
+    "demande_echec": "Request left unanswered: {titre}.",
+    "demande_annulee": "{espece}: the request no longer applies.",
+    "depart_hiver": "{espece}: no place to hibernate, it left.",
+    "depart_demande": "{espece}: one left, with no answer to its request."
   },
   "tuile": {
     "graines": "Harvest: {nombre} seeds",
@@ -262,7 +291,10 @@
     "paillis": "mulch",
     "jeune": "young",
     "adulte": "mature",
-    "foudroye": "lightning-struck birch (deadwood)"
+    "foudroye": "lightning-struck birch (deadwood)",
+    "usee": "grass worn down by rabbits",
+    "arrosee": "watered",
+    "mangeoire": "seeds on the ground"
   },
   "duree": {
     "minutes": "{n} min",
@@ -275,7 +307,9 @@
     "mosaique": "Habitat mosaic"
   },
   "odile": {
-    "reserve_pleine": "Your sap reserve is overflowing! Build or plant and it will fill up again."
+    "reserve_pleine": "Your sap reserve is overflowing! Build or plant and it will fill up again.",
+    "premiere_demande": "The residents have requests! The \"?\" marker on the island says what they need, and the circle how long is left.",
+    "depart_hiver": "A hedgehog found no log pile for winter. It will come back if the shelter is there."
   },
   "mesure": {
     "titre": "Frames per second",
@@ -336,5 +370,168 @@
     "bouleau_ombre": "This young birch has stopped growing: too much shade. Plant birches at least 2 tiles apart.",
     "graines": "Grown flowers make seeds. You need seeds to sow flowers, brambles and birches."
   },
-  "refus_nichoir": "Nest boxes go on a grown birch. The furthest along will be ready in ~{min} min."
+  "refus_nichoir": "Nest boxes go on a grown birch. The furthest along will be ready in ~{min} min.",
+  "carte": {
+    "bien": "a lot",
+    "moyen": "some",
+    "peu": "little",
+    "semer_herbe": "Skylarks like one unbroken meadow.",
+    "semer_fleurs": "Near the bug hotel, flowers give twice as many seeds.",
+    "tas_pierres": "The more grass close by, the more rabbits the pile shelters.",
+    "mare": "Green where the pond will make the most ground damp enough for earthworms.",
+    "hotel_insectes": "The more flowers around, the more bees.",
+    "paillis": "On ground that's already damp, mulch makes a worm corner.",
+    "semer_ronce": "On the edge of the meadow, not the middle: the skylark keeps its ground.",
+    "planter_bouleau": "Next to brambles: a real forest edge for the blackbird.",
+    "tas_bois": "Surrounded by brambles, the pile shelters two hedgehogs for winter.",
+    "nichoir": "Near brambles, the blackbird can feed its brood.",
+    "arroser": "Green where plants are thirsty.",
+    "tailler": "Green where brambles eat into the meadow.",
+    "effaroucher": "Green where the rabbits live.",
+    "mangeoire": "Green where birds pass by."
+  },
+  "survol": {
+    "tas_pierres": "{places} spots for rabbits",
+    "hotel_insectes": "{fleurs} flowers around · bees +{bonus}%",
+    "mare": "{n} tiles would turn damp",
+    "paillis": "Moisture here: {h}",
+    "semer_herbe": "{voisines} meadow neighbours",
+    "semer_ronce": "Meadow around: {prairie}%",
+    "planter_bouleau": "{ronce} brambles close by",
+    "tas_bois": "{ronce} brambles around",
+    "nichoir": "{ronce} brambles around",
+    "arroser": "Plant moisture: {h}",
+    "tailler": "Meadow around: {prairie}%",
+    "effaroucher": "{lapins} rabbits protected",
+    "mangeoire": "{oiseaux} birds close by"
+  },
+  "effet": {
+    "tas_pierres": "+{places} spots for rabbits",
+    "hotel_insectes": "Bees +{bonus}% here",
+    "mare": "+{n} damp tiles",
+    "paillis": "Fertility +15, moisture +10 (one day)",
+    "fleurs_hotel": "Pollinated: seeds ×2",
+    "tas_bois": "{places} winter spots for hedgehogs",
+    "nichoir": "+2 spots for blackbirds",
+    "arroser": "Moisture +{h}",
+    "tailler": "Meadow reopened",
+    "mangeoire": "Birds will come and peck",
+    "effaroucher": "The fox moves away (one day)"
+  },
+  "limite": {
+    "texte": "{espece}: {n} / {cap}",
+    "abris": "limited by shelters",
+    "herbe_usee": "grass worn thin",
+    "prairie": "limited by unbroken meadow",
+    "espece_sauterelle": "limited by grasshoppers",
+    "ronce_nichoir": "limited by brambles and nest boxes",
+    "espece_lapin": "limited by rabbits",
+    "amenagement_tas_bois": "limited by log piles",
+    "couvert_fleurs": "limited by flowers",
+    "couvert_herbe": "limited by grass",
+    "couvert_vegetal": "limited by grass and flowers",
+    "max": "at the maximum"
+  },
+  "problemes": {
+    "surpaturage": {
+      "titre": "Too many rabbits here",
+      "texte": "The grass is yellowing around the burrow ({n} tiles): {lapins} rabbits graze faster than it grows back.",
+      "odile": "The grass is yellowing by the burrow: too many rabbits for so little grass. Sow around it, or move a shelter."
+    },
+    "ronces": {
+      "titre": "Brambles are taking over the meadow",
+      "texte": "Brambles cover {part}% of the island and are spreading into the grass: the skylark needs open meadow.",
+      "odile": "The brambles are creeping into the grass! Prune the ones biting into the meadow, or the skylark will leave."
+    },
+    "sec": {
+      "titre": "Dry ground",
+      "texte": "Some flowers or earthworms are running out of water (moisture {h} here).",
+      "odile": "The ground is drying out over here. A splash of water, some mulch or a pond, and everyone breathes again."
+    },
+    "hiver_herisson": {
+      "titre": "A hedgehog with no winter shelter",
+      "texte": "{herissons} hedgehogs for {places} spot(s) in log piles: {manque} short.",
+      "odile": "Winter is coming and a hedgehog has nowhere to sleep. One more log pile, near the brambles, and it will stay."
+    },
+    "renard": {
+      "titre": "The fox is emptying the burrow",
+      "texte": "Only {lapins} rabbits left: if the fox keeps going, it'll have nothing to hunt and will leave.",
+      "odile": "The fox is overhunting: hardly any rabbits left. Shoo it away from the burrow for a while."
+    }
+  },
+  "solutions": {
+    "surpaturage": {
+      "semer_herbe": "Sow grass around",
+      "retirer": "Remove a shelter"
+    },
+    "ronces": {
+      "tailler": "Prune the brambles"
+    },
+    "sec": {
+      "arroser": "Water",
+      "paillis": "Mulch",
+      "mare": "Dig a pond"
+    },
+    "hiver_herisson": {
+      "tas_bois": "Add a log pile"
+    },
+    "renard": {
+      "effaroucher": "Shoo the fox",
+      "tas_pierres": "One more shelter",
+      "semer_herbe": "More grass"
+    },
+    "merle_nid": {
+      "nichoir": "Put up a nest box"
+    },
+    "abeille_fleurs": {
+      "semer_fleurs": "Sow flowers near the hotel"
+    },
+    "lapin_abri": {
+      "tas_pierres": "A rock pile a bit further away"
+    },
+    "merle_faim": {
+      "mangeoire": "Scatter seeds"
+    },
+    "ver_sec": {
+      "arroser": "Water",
+      "paillis": "Mulch"
+    }
+  },
+  "demandes": {
+    "merle_nid": {
+      "titre": "The blackbirds are looking for a nest",
+      "texte": "The blackbirds would like a nest box on a grown birch.",
+      "echec": "No nest box: a blackbird went to nest elsewhere."
+    },
+    "abeille_fleurs": {
+      "titre": "The bees need more flowers",
+      "texte": "They'd like 3 more flowers around their hotel.",
+      "echec": "Too few flowers by the hotel: the bee swarm has shrunk by half."
+    },
+    "lapin_abri": {
+      "titre": "The rabbits need shelter",
+      "texte": "The burrow is full. A new rock pile, a little further away and in the grass, would take the young ones.",
+      "echec": "With no shelter, a rabbit went elsewhere."
+    },
+    "merle_faim": {
+      "titre": "The blackbirds are hungry",
+      "texte": "In winter there are no worms or berries: a few seeds on the ground would help.",
+      "echec": "Nothing to peck this winter: a blackbird left the island."
+    },
+    "ver_sec": {
+      "titre": "The earthworms are thirsty",
+      "texte": "The soil is drying out above the worms (moisture {base}). Water or mulch this spot.",
+      "echec": "The soil stayed dry: the worms burrowed deeper, only half are left."
+    }
+  },
+  "vie": {
+    "titre": "To do on the island",
+    "rien": "All is well for now. Keep watching: the island changes with the seasons.",
+    "voir": "Show",
+    "reste": "{temps} left.",
+    "avant_hiver": "Winter arrives in {temps}.",
+    "secondes": "{n} s",
+    "recompense": "In time: pages, sap, young ones and a better chance of a rare specimen.",
+    "aide": "The ! (problem) and ? (request) markers sit on the island. Tap them to see what to do; the emptying circle shows the time left."
+  }
 }

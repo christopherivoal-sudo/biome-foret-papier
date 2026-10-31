@@ -45,7 +45,8 @@
     "nouvelle_partie": "Nouvelle partie",
     "confirmer_nouvelle": "Effacer cette île et recommencer ?",
     "oui": "Oui",
-    "non": "Non"
+    "non": "Non",
+    "alertes": "À faire"
   },
   "actions": {
     "observer": "Observer",
@@ -64,7 +65,15 @@
     "retirer_aide": "Remet la tuile à nu et rend la moitié du coût.",
     "agrandir": "Agrandir l'île",
     "verrouille": "Débloqué à la {etape}",
-    "choisi": "{action} : touche une tuile de l'île. Touche « Observer » pour arrêter."
+    "choisi": "{action} : touche une tuile de l'île. Touche « Observer » pour arrêter.",
+    "arroser": "Arroser",
+    "mangeoire": "Graines au sol",
+    "tailler": "Tailler",
+    "effaroucher": "Éloigner le renard",
+    "arroser_aide": "Humidité +30 autour de la tuile, tenue un jour.",
+    "mangeoire_aide": "Deux graines au sol attirent les oiseaux des environs pendant un jour.",
+    "tailler_aide": "Rabat une ronce : la prairie se rouvre aussitôt.",
+    "effaroucher_aide": "Le renard ne chasse plus dans ce coin pendant un jour."
   },
   "aides": {
     "semer_herbe": "Une tuile d'herbe : la base de la prairie et de la sève.",
@@ -77,7 +86,11 @@
     "planter_bouleau": "Un arbre pionnier : ombre légère et feuilles qui nourrissent le sol.",
     "tas_bois": "Bois mort : abri et lit d'hiver du hérisson.",
     "nichoir": "Se pose sur un bouleau adulte : plus de place pour les merles.",
-    "agrandir": "L'île gagne 2 tuiles de rayon."
+    "agrandir": "L'île gagne 2 tuiles de rayon.",
+    "arroser": "Touche ou glisse : humidité +30 autour, tenue un jour (8 sève).",
+    "mangeoire": "Pose 2 graines au sol : les merles et les alouettes viennent picorer.",
+    "tailler": "Touche ou glisse sur les ronces : elles redeviennent de l'herbe.",
+    "effaroucher": "Touche un coin : le renard s'en éloigne et n'y chasse plus pendant un jour."
   },
   "refus": {
     "seve": "Il te manque {nombre} sève.",
@@ -91,7 +104,11 @@
     "rayon_max": "L'île a déjà sa taille maximale pour cette étape.",
     "besoins": "Ça ne pousserait pas ici : {manque}.",
     "absente": "Cette espèce n'est plus là.",
-    "autre": "Impossible ici."
+    "autre": "Impossible ici.",
+    "rien_a_arroser": "Rien à arroser ici.",
+    "pas_de_ronce": "Il n'y a pas de ronce à tailler ici.",
+    "pas_de_renard": "Aucun renard sur l'île.",
+    "recharge": "Le renard se méfie encore : réessaie dans {minutes} min."
   },
   "reussites": {
     "pose": "{action} posé(e).",
@@ -102,7 +119,11 @@
     "photo_premiere": "Nouvelle page du carnet : {espece} ! +1 page, +10 sève.",
     "carte": "Carte de collection : {espece} en papier {papier} ! +3 pages.",
     "comportement": "Observé : {texte}",
-    "mission": "Mission accomplie : {titre}. Passe voir Odile !"
+    "mission": "Mission accomplie : {titre}. Passe voir Odile !",
+    "probleme_regle": "Réglé : {titre} · +{pages} page, +{seve} sève",
+    "demande": "Merci ! +{pages} pages, +{seve} sève.",
+    "demande_naissances": "{n} petits sont nés.",
+    "demande_rare": "Un spécimen en papier {papier} est apparu !"
   },
   "couverts": {
     "nu": "sol nu",
@@ -254,7 +275,15 @@
     "etape": "L'île passe à la {etape}.",
     "hibernation": "{espece} hiberne.",
     "migration": "{espece} migre pour l'hiver.",
-    "reveil": "{espece} se réveille."
+    "reveil": "{espece} se réveille.",
+    "probleme": "Problème : {titre}.",
+    "probleme_regle": "Réglé : {titre}.",
+    "demande": "Demande : {titre}.",
+    "demande_ok": "Demande satisfaite : {titre}.",
+    "demande_echec": "Demande restée sans réponse : {titre}.",
+    "demande_annulee": "{espece} : la demande n'a plus lieu d'être.",
+    "depart_hiver": "{espece} : pas de place pour hiberner, il est parti.",
+    "depart_demande": "{espece} : un individu est parti, faute de réponse."
   },
   "tuile": {
     "graines": "{nombre} graine(s) à récolter",
@@ -262,7 +291,10 @@
     "paillis": "paillis",
     "jeune": "jeune",
     "adulte": "adulte",
-    "foudroye": "bouleau foudroyé (bois mort)"
+    "foudroye": "bouleau foudroyé (bois mort)",
+    "usee": "herbe usée par les lapins",
+    "arrosee": "arrosée",
+    "mangeoire": "graines au sol"
   },
   "duree": {
     "minutes": "{n} min",
@@ -275,7 +307,9 @@
     "mosaique": "Mosaïque des habitats"
   },
   "odile": {
-    "reserve_pleine": "Ta réserve de sève déborde ! Aménage ou sème : elle se remplira de nouveau."
+    "reserve_pleine": "Ta réserve de sève déborde ! Aménage ou sème : elle se remplira de nouveau.",
+    "premiere_demande": "Les habitants ont des demandes ! Le repère « ? » sur l'île dit ce qu'il leur faut, et le cercle le temps qui reste.",
+    "depart_hiver": "Un hérisson n'a pas trouvé de tas de bois pour l'hiver. Il reviendra si l'abri est là."
   },
   "mesure": {
     "titre": "Images par seconde",
@@ -336,5 +370,168 @@
     "bouleau_ombre": "Ce jeune bouleau ne pousse plus : trop d'ombre. Plante les bouleaux à 2 cases d'écart au moins.",
     "graines": "Les fleurs adultes font des graines. Il en faut pour semer fleurs, ronces et bouleaux."
   },
-  "refus_nichoir": "Le nichoir se pose sur un bouleau adulte. Le plus avancé le sera dans ~{min} min."
+  "refus_nichoir": "Le nichoir se pose sur un bouleau adulte. Le plus avancé le sera dans ~{min} min.",
+  "carte": {
+    "bien": "beaucoup",
+    "moyen": "un peu",
+    "peu": "peu",
+    "semer_herbe": "Une prairie d'un seul tenant plaît aux alouettes.",
+    "semer_fleurs": "Près de l'hôtel à insectes, les fleurs donnent deux fois plus de graines.",
+    "tas_pierres": "Plus il y a d'herbe tout près, plus le tas abrite de lapins.",
+    "mare": "Vert là où la mare rendra le plus de sol assez humide pour les vers.",
+    "hotel_insectes": "Plus il y a de fleurs autour, plus les abeilles sont nombreuses.",
+    "paillis": "Sur un sol déjà frais, le paillis fait un coin à vers.",
+    "semer_ronce": "Au bord de la prairie plutôt qu'au milieu : l'alouette garde son terrain.",
+    "planter_bouleau": "À côté des ronces : une vraie lisière pour le merle.",
+    "tas_bois": "Entouré de ronces, le tas abrite deux hérissons pour l'hiver.",
+    "nichoir": "Près des ronces, le merle a de quoi nourrir sa nichée.",
+    "arroser": "Vert là où les plantes ont soif.",
+    "tailler": "Vert là où la ronce mange la prairie.",
+    "effaroucher": "Vert là où vivent les lapins.",
+    "mangeoire": "Vert là où des oiseaux passent."
+  },
+  "survol": {
+    "tas_pierres": "{places} places pour les lapins",
+    "hotel_insectes": "{fleurs} fleurs autour · abeilles +{bonus} %",
+    "mare": "{n} tuiles deviendraient humides",
+    "paillis": "Humidité ici : {h}",
+    "semer_herbe": "{voisines} voisines en prairie",
+    "semer_ronce": "Prairie autour : {prairie} %",
+    "planter_bouleau": "{ronce} ronces tout près",
+    "tas_bois": "{ronce} ronces autour",
+    "nichoir": "{ronce} ronces autour",
+    "arroser": "Humidité des plantes : {h}",
+    "tailler": "Prairie autour : {prairie} %",
+    "effaroucher": "{lapins} lapins protégés",
+    "mangeoire": "{oiseaux} oiseaux tout près"
+  },
+  "effet": {
+    "tas_pierres": "+{places} places pour les lapins",
+    "hotel_insectes": "Abeilles +{bonus} % ici",
+    "mare": "+{n} tuiles humides",
+    "paillis": "Fertilité +15, humidité +10 (un jour)",
+    "fleurs_hotel": "Pollinisées : graines ×2",
+    "tas_bois": "{places} places d'hiver pour les hérissons",
+    "nichoir": "+2 places pour les merles",
+    "arroser": "Humidité +{h}",
+    "tailler": "Prairie rouverte",
+    "mangeoire": "Les oiseaux vont venir picorer",
+    "effaroucher": "Le renard s'éloigne (un jour)"
+  },
+  "limite": {
+    "texte": "{espece} : {n} / {cap}",
+    "abris": "limité par les abris",
+    "herbe_usee": "l'herbe s'use",
+    "prairie": "limité par la prairie d'un seul tenant",
+    "espece_sauterelle": "limité par les sauterelles",
+    "ronce_nichoir": "limité par les ronces et les nichoirs",
+    "espece_lapin": "limité par les lapins",
+    "amenagement_tas_bois": "limité par les tas de bois",
+    "couvert_fleurs": "limité par les fleurs",
+    "couvert_herbe": "limité par l'herbe",
+    "couvert_vegetal": "limité par l'herbe et les fleurs",
+    "max": "au maximum"
+  },
+  "problemes": {
+    "surpaturage": {
+      "titre": "Trop de lapins ici",
+      "texte": "L'herbe jaunit autour du terrier ({n} tuiles) : {lapins} lapins la broutent plus vite qu'elle ne repousse.",
+      "odile": "L'herbe jaunit près du terrier : trop de lapins pour si peu d'herbe. Sème autour, ou éloigne un abri."
+    },
+    "ronces": {
+      "titre": "Les ronces envahissent la prairie",
+      "texte": "Les ronces couvrent {part} % de l'île et gagnent l'herbe : l'alouette a besoin d'une prairie ouverte.",
+      "odile": "Les ronces avancent dans l'herbe ! Taille celles qui mordent sur la prairie, sinon l'alouette partira."
+    },
+    "sec": {
+      "titre": "Le sol sèche",
+      "texte": "Des fleurs ou des vers arrivent au bout de leur eau (humidité {h} ici).",
+      "odile": "Le sol se dessèche par ici. Un coup d'arrosoir, du paillis ou une mare, et tout le monde respire."
+    },
+    "hiver_herisson": {
+      "titre": "Un hérisson sans abri d'hiver",
+      "texte": "{herissons} hérissons pour {places} place(s) dans les tas de bois : il en manque {manque}.",
+      "odile": "L'hiver approche et un hérisson n'a pas où dormir. Un tas de bois de plus, près des ronces, et il restera."
+    },
+    "renard": {
+      "titre": "Le renard vide le terrier",
+      "texte": "Plus que {lapins} lapins : si le renard continue, il n'aura plus rien à chasser et partira.",
+      "odile": "Le renard chasse trop : il ne reste presque plus de lapins. Éloigne-le du terrier un moment."
+    }
+  },
+  "solutions": {
+    "surpaturage": {
+      "semer_herbe": "Semer de l'herbe autour",
+      "retirer": "Retirer un abri"
+    },
+    "ronces": {
+      "tailler": "Tailler les ronces"
+    },
+    "sec": {
+      "arroser": "Arroser",
+      "paillis": "Pailler",
+      "mare": "Creuser une mare"
+    },
+    "hiver_herisson": {
+      "tas_bois": "Ajouter un tas de bois"
+    },
+    "renard": {
+      "effaroucher": "Éloigner le renard",
+      "tas_pierres": "Un abri de plus",
+      "semer_herbe": "Plus d'herbe"
+    },
+    "merle_nid": {
+      "nichoir": "Poser un nichoir"
+    },
+    "abeille_fleurs": {
+      "semer_fleurs": "Semer des fleurs près de l'hôtel"
+    },
+    "lapin_abri": {
+      "tas_pierres": "Un tas de pierres un peu plus loin"
+    },
+    "merle_faim": {
+      "mangeoire": "Graines au sol"
+    },
+    "ver_sec": {
+      "arroser": "Arroser",
+      "paillis": "Pailler"
+    }
+  },
+  "demandes": {
+    "merle_nid": {
+      "titre": "Les merles cherchent où nicher",
+      "texte": "Les merles aimeraient un nichoir sur un bouleau adulte.",
+      "echec": "Pas de nichoir : un merle est parti nicher ailleurs."
+    },
+    "abeille_fleurs": {
+      "titre": "Les abeilles manquent de fleurs",
+      "texte": "Elles voudraient 3 fleurs de plus autour de leur hôtel.",
+      "echec": "Trop peu de fleurs près de l'hôtel : la nuée d'abeilles a fondu de moitié."
+    },
+    "lapin_abri": {
+      "titre": "Les lapins cherchent un abri",
+      "texte": "Le terrier est plein. Un nouveau tas de pierres, un peu plus loin et dans l'herbe, accueillerait les petits.",
+      "echec": "Faute d'abri, un lapin est allé voir ailleurs."
+    },
+    "merle_faim": {
+      "titre": "Les merles ont faim",
+      "texte": "L'hiver, plus de vers ni de mûres : quelques graines au sol les aideraient.",
+      "echec": "Rien à picorer cet hiver : un merle a quitté l'île."
+    },
+    "ver_sec": {
+      "titre": "Les vers ont soif",
+      "texte": "Le sol sèche au-dessus des vers (humidité {base}). Arrose ou paille ce coin.",
+      "echec": "Le sol est resté sec : les vers se sont enfoncés, il en reste moitié moins."
+    }
+  },
+  "vie": {
+    "titre": "À faire sur l'île",
+    "rien": "Tout va bien pour le moment. Observe : l'île change avec les saisons.",
+    "voir": "Voir",
+    "reste": "Encore {temps}.",
+    "avant_hiver": "L'hiver arrive dans {temps}.",
+    "secondes": "{n} s",
+    "recompense": "À temps : pages, sève, des petits et un spécimen rare plus probable.",
+    "aide": "Les repères ! (problème) et ? (demande) sont posés sur l'île. Touche-les pour voir quoi faire ; le cercle qui se vide indique le temps qui reste."
+  }
 }
