@@ -251,3 +251,9 @@ button.chip { border: 1px solid #d6c7a9; }
   .jauge { top: 50px; bottom: auto; right: 8px; left: auto; }
   .odile { bottom: 90px; }
 }
+
+/* Sprint 5 bis : réserve de sève pleine, mesure des images par seconde. */
+.chip.pleine { box-shadow: 0 0 0 2px #e0a43c, 0 2px 6px rgba(160, 110, 30, 0.35); }
+.ligne.mesure { flex-wrap: wrap; }
+.ligne.mesure .fps { font-variant-numeric: tabular-nums; }
+.ligne.mesure small { flex-basis: 100%; }

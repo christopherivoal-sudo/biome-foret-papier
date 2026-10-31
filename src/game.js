@@ -267,7 +267,7 @@
       case 'couvert_nb': return T('conditions.couvert_nb' + z, { couvert: nomCouvert(c.couvert), min: c.min, rayon: c.rayon });
       case 'stat': return T('conditions.stat_' + (c.op === '<=' ? 'max' : 'min') + z, { stat: T('stats.' + c.stat), valeur: c.valeur });
       case 'amenagement': return T('conditions.amenagement' + z, { amenagement: T('amenagements.' + c.id), min: c.min, rayon: c.rayon });
-      case 'espece': return T('conditions.espece' + z, { espece: nomEsp(c.id), min: c.min, rayon: c.rayon });
+      case 'espece': return c.duree_jours ? T('conditions.espece_duree', { espece: nomEsp(c.id), jours: c.duree_jours }) : T('conditions.espece' + z, { espece: nomEsp(c.id), min: c.min, rayon: c.rayon });
       case 'arbre_adulte': return T('conditions.arbre_adulte', { espece: nomEsp(c.id).toLowerCase(), min: c.min });
       case 'nb_especes': return T('conditions.nb_especes', { min: c.min, etape: (c.etapes || []).map(nomEtape).join(', ') });
       case 'harmonie': return c.duree_jours ? T('conditions.harmonie_duree', { min: pct(c.min), jours: c.duree_jours }) : T('conditions.harmonie', { min: pct(c.min) });
@@ -279,6 +279,7 @@
   }
   function valeurCondition(c, r) {
     if (!r || typeof r.valeur !== 'number') return '';
+    if (c.type !== 'harmonie' && r.duree_jours) return T('conditions.tenu', { tenu: (r.tenu_jours || 0).toFixed(1), duree: r.duree_jours });
     if (c.type === 'harmonie' && r.duree_jours) return T('conditions.valeur_pct', { valeur: pct(r.valeur) }) + ' · ' + T('conditions.tenu', { tenu: (r.tenu_jours || 0).toFixed(1), duree: r.duree_jours });
     if (c.type === 'couvert' || c.type === 'harmonie') return T('conditions.valeur_pct', { valeur: pct(r.valeur) });
     return T('conditions.valeur', { valeur: Math.round(r.valeur * 10) / 10 });
@@ -347,6 +348,11 @@
       const nom = j.id && data.especes[j.id] ? nomEsp(j.id) : '';
       if (COMPORTEMENT[j.type]) observer(j.id, COMPORTEMENT[j.type]);
       switch (j.type) {
+        case 'chene':
+          ajouterFil(T('succession.chene'), true);
+          toast(T('succession.chene'), { classe: 'or', duree: 6000 });
+          odile(T('succession.chene_odile'), { priorite: 1 });
+          break;
         case 'arrivee':
           observer(j.id, 'arrivee');
           if (j.premiere) {
@@ -474,6 +480,12 @@
 
   function majHaut() {
     texte(chips.seve, nombre(etat.seve));
+    // Réserve de sève plafonnée par étape (sprint 5 bis) : chip doré quand elle est pleine.
+    const max = Core.reserveMax(etat), pleine = etat.seve >= max;
+    const cs = chips.seve.parentNode, titre = T('ressources.reserve', { nombre: nombre(Math.floor(etat.seve)), max: nombre(max) });
+    if (cs.title !== titre) cs.title = titre;
+    if (cs.classList.contains('pleine') !== pleine) cs.classList.toggle('pleine', pleine);
+    if (pleine && !etat.ui.tuto['plein_' + etat.etape] && etat.temps > 120) { etat.ui.tuto['plein_' + etat.etape] = 1; odile(T('odile.reserve_pleine'), { priorite: 0 }); }
     texte(chips.graines, nombre(etat.graines));
     texte(chips.pages, nombre(etat.pages));
     const h = Core.horloge(etat);
@@ -498,7 +510,14 @@
     const p = boutonsMenu.odile.querySelector('.pastille'); if (p.hidden !== !n) p.hidden = !n; texte(p, String(n));
     // Jauge de succession.
     const s = Core.etapeSuivante(etat, data);
-    if (!s) { html(jauge, `<span>${T('succession.fin')}</span>`); jauge.classList.remove('prete'); }
+    const tz = !s && Core.teaser(etat, data);
+    if (tz && tz.chene < 0) {
+      // Teaser de la Jeune forêt (sprint 5 bis) : mêmes jauge et panneau, sans passage d'étape.
+      const ok = tz.conditions.filter(c => c.ok).length;
+      html(jauge, `<span>${T('succession.teaser_vers')}</span><i><b style="width:${ok / tz.conditions.length * 100}%"></b></i><em>${T('succession.conditions', { ok, total: tz.conditions.length })}</em>`);
+      jauge.classList.remove('prete');
+    }
+    else if (!s) { html(jauge, `<span>${T('succession.fin')}</span>`); jauge.classList.remove('prete'); }
     else {
       const ok = s.conditions.filter(c => c.ok).length;
       html(jauge, `<span>${s.ok ? T('succession.pret', { etape: nomEtape(s.id) }) : T('succession.vers', { etape: nomEtape(s.id) })}</span><i><b style="width:${ok / s.conditions.length * 100}%"></b></i><em>${T('succession.conditions', { ok, total: s.conditions.length })}</em>`);
@@ -878,7 +897,17 @@
   function dessinerSuccession() {
     const s = Core.etapeSuivante(etat, data), hd = etat.harmonieDetail;
     let h = '';
-    if (!s) h = `<h2>${T('succession.fin')}</h2><p>${T('succession.fin_texte')}</p>`;
+    const tz = !s && Core.teaser(etat, data);
+    if (tz && tz.chene < 0) {
+      h = `<h2>${T('succession.teaser_vers')}</h2><p class="sous">${T('succession.teaser_texte')}</p><ul class="besoins">`;
+      tz.conditions.forEach((r, k) => {
+        const c = tz.definitions[k];
+        h += `<li class="${r.ok ? 'ok' : 'non'}"><span>${r.ok ? '✓' : '✗'}</span><div>${libelleCondition(c)}<small>${valeurCondition(c, r)}</small></div></li>`;
+      });
+      h += '</ul>';
+    }
+    else if (tz) h = `<h2>${T('succession.chene')}</h2><p>${T('succession.chene_texte')}</p>`;
+    else if (!s) h = `<h2>${T('succession.fin')}</h2><p>${T('succession.fin_texte')}</p>`;
     else {
       const et = data.etapes.find(e => e.id === s.id);
       h = `<h2>${T('succession.vers', { etape: nomEtape(s.id) })}</h2><ul class="besoins">`;
@@ -952,7 +981,8 @@
     const items = [];
     const attentePluie = 600000 - (now - (p.pluie || 0));
     items.push({ id: 'pluie', titre: T('bonus.pluie'), aide: T('bonus.pluie_aide'), dispo: attentePluie <= 0, etat: attentePluie > 0 ? T('bonus.attente', { minutes: Math.ceil(attentePluie / 60000) }) : '' });
-    items.push({ id: 'seve_double', titre: T('bonus.seve_double'), aide: T('bonus.seve_double_aide'), dispo: !seveDoubleActive(), etat: seveDoubleActive() ? T('bonus.actif', { minutes: Math.ceil((p.seveDoubleFin - etat.temps) / 60) }) : '' });
+    const pleine = etat.seve >= Core.reserveMax(etat) * 0.9;
+    items.push({ id: 'seve_double', titre: T('bonus.seve_double'), aide: T('bonus.seve_double_aide'), dispo: !seveDoubleActive() && !pleine, etat: seveDoubleActive() ? T('bonus.actif', { minutes: Math.ceil((p.seveDoubleFin - etat.temps) / 60) }) : pleine ? T('bonus.reserve_pleine') : '' });
     const prolongeable = m.actif && (m.actif.id === 'floraison' || m.actif.id === 'orage');
     const cleEv = m.actif ? m.actif.id + ':' + etat.meteo.actif.debut : '';
     items.push({ id: 'prolonger', titre: T('bonus.prolonger'), aide: T('bonus.prolonger_aide', { evenement: m.actif ? nomEv(m.actif.id) : '…' }), dispo: prolongeable && p.prolonge !== cleEv, etat: prolongeable ? (p.prolonge === cleEv ? T('bonus.indisponible') : '') : T('bonus.indisponible') });
@@ -996,6 +1026,7 @@
     const noms = r.nouvelles.map(nomEsp);
     let h = `<div class="odile-tete"><img alt="" src="${vignette('odile')}"><h2>${T('retour.titre')}</h2></div><p>${T('retour.duree', { duree: duree(r.duree) })}${r.plafonne ? ' ' + T('retour.plafond') : ''}</p>`
       + `<p class="gros">${ICONES.seve} ${T('retour.seve', { nombre: nombre(r.seve * (r.double ? 2 : 1)) })}</p>`
+      + (r.plein ? `<p class="sous">${T('retour.plein', { max: nombre(Core.reserveMax(etat)) })}</p>` : '')
       + `<p>${noms.length ? T('retour.especes', { liste: noms.join(', ') }) : T('retour.aucune_espece')}</p>`;
     if (r.nouvelles.length) h += '<div class="grille petite">' + r.nouvelles.map(id => `<div class="carte-esp venue"><img alt="" src="${vignette(id)}"><b>${echapper(nomEsp(id))}</b></div>`).join('') + '</div>';
     if (noms.length) h += `<p class="sous">${echapper(TX('garde.alertes.retour_hors_ligne', { nombre: noms.length }))}</p>`;
@@ -1014,7 +1045,9 @@
     contenu.innerHTML = `<h2>${T('boutons.reglages')}</h2>`
       + `<div class="ligne"><span>${T('boutons.langue')}</span><button type="button" class="petit${langue === 'fr' ? ' actif' : ''}" data-l="fr">Français</button><button type="button" class="petit${langue === 'en' ? ' actif' : ''}" data-l="en">English</button></div>`
       + `<div class="ligne"><span>${T('boutons.vitesse')}</span><button type="button" class="petit${vitesse === 1 ? ' actif' : ''}" data-v="1">×1</button><button type="button" class="petit${vitesse === 3 ? ' actif' : ''}" data-v="3">×3</button></div>`
+      + `<div class="ligne mesure"><span>${T('mesure.titre')}</span><b class="fps"></b><small class="sous">${T('mesure.aide')}</small></div>`
       + `<div class="ligne"><button type="button" class="petit nouvelle">${T('boutons.nouvelle_partie')}</button></div>`;
+    majFps();
     contenu.querySelectorAll('[data-l]').forEach(b => { b.onclick = () => changerLangue(b.dataset.l); });
     contenu.querySelectorAll('[data-v]').forEach(b => { b.onclick = () => { vitesse = +b.dataset.v; majHaut(); dessinerReglages(); }; });
     contenu.querySelector('.nouvelle').onclick = () => {
@@ -1024,12 +1057,28 @@
       l.querySelector('.non').onclick = dessinerReglages;
     };
   }
+  // Mesure des images par seconde (sprint 5 bis) : moyenne lissée, et la pire seconde des 30 dernières.
+  const fpsSecondes = []; let fpsCompte = 0, fpsDebut = 0;
+  function compterImage(now) {
+    if (!fpsDebut) fpsDebut = now;
+    fpsCompte++;
+    if (now - fpsDebut >= 1000) { fpsSecondes.push(fpsCompte * 1000 / (now - fpsDebut)); if (fpsSecondes.length > 30) fpsSecondes.shift(); fpsCompte = 0; fpsDebut = now; majFps(); }
+  }
+  function majFps() {
+    const b = contenu.querySelector('.fps');
+    if (!b) return;
+    const moy = fpsSecondes.length ? fpsSecondes.reduce((a, v) => a + v, 0) / fpsSecondes.length : fps;
+    const min = fpsSecondes.length ? Math.min(...fpsSecondes) : fps;
+    b.textContent = T('mesure.detail', { fps: Math.round(moy), min: Math.round(min), dpr: (Math.min(window.devicePixelRatio || 1, rendu.dprMax || 2)).toFixed(1) });
+  }
+  window.biomeFps = () => ({ moyenne: fpsSecondes.length ? fpsSecondes.reduce((a, v) => a + v, 0) / fpsSecondes.length : fps, secondes: fpsSecondes.slice() });
   function changerLangue(l) {
     langue = l;
     try { localStorage.setItem(CLE_LANGUE, l); } catch (e) { /* rien */ }
     document.documentElement.lang = l;
     for (const [id, b] of Object.entries(boutonsMenu)) { b.querySelector('.etiquette').textContent = T('boutons.' + id); b.title = T('boutons.' + id); }
     for (const r of Object.keys(chips)) chips[r].parentNode.title = T('ressources.' + r);
+    chips.seve.parentNode.title = '';
     construireBarre(); majHaut();
     if (panneauMaj) panneauMaj();
   }
@@ -1047,11 +1096,12 @@
     if (reel - derniereImage > 60000 && !rapportRetour) retourHorsLigne((reel - derniereImage) / 1000);
     derniereImage = reel;
     fps += (1 / Math.max(dt, 1e-3) - fps) * 0.05;
+    compterImage(now);
     if (now > 4000 && now - dernierReglage > 3000 && fps < 45 && rendu.dprMax > 1) { rendu.dprMax = Math.max(1, rendu.dprMax - 0.5); dernierReglage = now; }
     if (!pause && !rapportRetour) {
       const s0 = etat.seve;
       Core.tick(etat, data, dt * vitesse);
-      if (seveDoubleActive() && etat.seve > s0) etat.seve += etat.seve - s0;
+      if (seveDoubleActive() && etat.seve > s0) Core.ajouterProduction(etat, etat.seve - s0);
       lireJournal();
     }
     // Survol : tuile visée et aperçu de la pose (contour rouge si elle ne marcherait pas).

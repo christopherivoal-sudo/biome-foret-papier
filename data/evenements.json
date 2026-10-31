@@ -33,10 +33,10 @@
     "duree_jours": 2,
     "repos_annees": 1,
     "effets": [
-      { "type": "stat_tuile_par_s", "stat": "humidite", "delta": -0.05, "cumul_max": 20, "plancher": 10 }
+      { "type": "stat_tuile_par_s", "stat": "humidite", "delta": -0.1, "cumul_max": 30, "plancher": 10 }
     ],
     "papier": { "id": "calque", "multiplicateur": 2 },
-    "recompense": { "condition": [{ "type": "harmonie", "min": 0.5 }], "pages": 3, "seve": 200 },
+    "recompense": { "condition": [{ "type": "harmonie", "min": 0.7 }], "pages": 3, "seve": 200 },
     "roblox": { "achetable": false, "portee": "serveur", "delai_min_minutes": 15 },
     "statut": "proto"
   }

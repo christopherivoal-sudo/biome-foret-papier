@@ -69,8 +69,17 @@
     dureeRare: 1,               // jours : un spécimen rare garde son papier jusqu'à la fin de l'événement + 1 jour
     pagesCarte: 3,              // pages pour une nouvelle carte de collection
     horsLigneMax: 8 * 3600,     // s : progression hors ligne plafonnée à 8 h
-    tauxHorsLigne: 0.5,         // la sève s'accumule à 50 % du taux hors ligne
     renfortsHorsLigne: 2,       // individus de plus au plus par espèce (agents) au retour
+    // --- Économie de la sève (sprint 5 bis) ---
+    // Réserve plafonnée par étape : seule la production des plantes s'arrête au plafond ; photos, missions,
+    // récompenses et remboursements peuvent le dépasser (un cadeau n'est jamais perdu).
+    reserveMax: { prairie: 1000, lisiere: 3000, jeune_foret: 8000, foret_ancienne: 20000, zone_humide: 40000 },
+    // Rendement décroissant : au-delà du seuil (sève brute par seconde, avant l'harmonie), la production ne compte
+    // plus qu'à ce taux. La Prairie n'y arrive pas ; c'est l'herbe qui s'étend seule en Lisière qui est freinée.
+    rendementSeuil: 2, rendementAuDela: 0.4,
+    // Hors ligne : 50 % du taux pendant la première heure, puis 15 % jusqu'au plafond de 8 h
+    // (8 h d'absence ≈ 1 h 30 de jeu actif, avant le plafond de réserve).
+    horsLignePaliers: [[3600, 0.5], [8 * 3600, 0.15]],
     // Rôles attendus par étape (part « chaîne » de l'harmonie) et habitats de la mosaïque.
     rolesAttendus: {
       prairie: ['producteur', 'herbivore', 'insectivore', 'decomposeur', 'pollinisateur'],
@@ -249,6 +258,7 @@
     switch (couvert) {
       case 'ouvert': return t.c !== 'arbre' && t.c !== 'ronce';
       case 'vegetal': return t.c === 'herbe' || t.c === 'fleurs';
+      case 'ombrage': return t.o >= 20; // tuile à l'ombre des arbres, mi-ombre comprise (teaser de la Jeune forêt)
       case 'bois_mort': return t.c === 'bois_mort';
       default: return t.c === couvert;
     }
@@ -1278,6 +1288,62 @@
   }
 
   // =====================================================================
+  // ---------- Teaser de la Jeune forêt (sprint 5 bis, GDD 10.2) ----------
+  // =====================================================================
+  // À la dernière étape du prototype, la jauge montre les conditions de la Jeune forêt (GDD 2). Quand elles
+  // sont toutes réunies, un premier chêne germe sous un bouleau adulte : « La suite pousse… ». On ne passe pas
+  // l'étape (pas de contenu) ; le chêne reste, même si l'île change ensuite. Condition avec duree_jours :
+  // vraie sans interruption pendant cette durée (le renard présent depuis une saison).
+  const TEASER = {
+    id: 'jeune_foret', apres: 'lisiere',
+    conditions: [
+      { type: 'arbre_adulte', id: 'bouleau', min: 8 },
+      { type: 'couvert', couvert: 'ombrage', min: 0.1, portee: 'ile' },
+      { type: 'espece', id: 'renard', min: 1, portee: 'ile', duree_jours: 3 },
+      { type: 'nb_especes', min: 12, etapes: ['prairie', 'lisiere'] },
+      { type: 'couvert', couvert: 'ouvert', min: 0.25, portee: 'ile' },
+    ],
+  };
+  function teaser(etat, dataBrute) {
+    const data = preparer(dataBrute);
+    if (etat.etape !== TEASER.apres) return null;
+    const tz = etat.teaser || {}, dep = tz.depuis || {};
+    const conditions = TEASER.conditions.map((c, k) => {
+      const r = Object.assign({ type: c.type }, evaluer(etat, data, c));
+      if (c.duree_jours && c.type !== 'harmonie') {
+        const tenu = r.ok && dep[k] !== undefined ? (etat.temps - dep[k]) / P.dureeJour : 0;
+        Object.assign(r, { duree_jours: c.duree_jours, tenu_jours: Math.min(c.duree_jours, tenu), ok: r.ok && tenu >= c.duree_jours });
+      }
+      return r;
+    });
+    return { id: TEASER.id, conditions, definitions: TEASER.conditions, ok: conditions.every(c => c.ok), chene: tz.chene === undefined ? -1 : tz.chene };
+  }
+  function pasTeaser(etat, data) {
+    if (etat.etape !== TEASER.apres) return;
+    const tz = etat.teaser || (etat.teaser = { depuis: {} });
+    if (tz.chene !== undefined) return;
+    TEASER.conditions.forEach((c, k) => {
+      if (!c.duree_jours || c.type === 'harmonie') return;
+      if (evaluer(etat, data, c).ok) { if (tz.depuis[k] === undefined) tz.depuis[k] = etat.temps; }
+      else delete tz.depuis[k];
+    });
+    const r = teaser(etat, data);
+    if (!r.ok) return;
+    // Une tuile libre (herbe ou sol nu, sans aménagement) à côté d'un bouleau adulte, la plus ombragée.
+    let meilleur = -1, ombre = -1;
+    for (const i of tuilesIle(etat)) {
+      const t = etat.tuiles[i];
+      if ((t.c !== 'herbe' && t.c !== 'nu') || t.a || t.paillis > 0) continue;
+      const x = i % N, y = (i / N) | 0;
+      const sousBouleau = tuilesCercle(etat, x, y, 1.5).some(j => { const b = etat.tuiles[j]; return b.e === 'bouleau' && estAdulte(b, data.especes.bouleau); });
+      if (sousBouleau && t.o > ombre) { meilleur = i; ombre = t.o; }
+    }
+    if (meilleur < 0) return;
+    tz.chene = meilleur; tz.t = etat.temps;
+    journal(etat, { type: 'chene', i: meilleur, x: meilleur % N, y: (meilleur / N) | 0 });
+  }
+
+  // =====================================================================
   // ---------- Hors ligne (sprint 3, GDD 1.3, 1.5 et 6.2) ----------
   // =====================================================================
   // Appelé par le jeu au retour du joueur, avec le temps écoulé depuis la dernière sauvegarde.
@@ -1290,9 +1356,10 @@
     const rapport = { duree: s, plafonne: secondes > P.horsLigneMax, seve: 0, graines: 0, nouvelles: [], arrivees: [], double: false };
     if (s < P.pas) return rapport;
     const h = horloge(etat), jours = s / P.dureeJour, croiss = P.croissanceSaison[h.saison];
-    // Sève : production actuelle × harmonie × 50 %.
-    const seve = Math.floor(productionSeve(etat, data) * (0.5 + etat.harmonie) * P.tauxHorsLigne * s);
-    etat.seve += seve; rapport.seve = seve;
+    // Sève : production actuelle × harmonie × taux par palier, sans dépasser le plafond de la réserve.
+    const brute = Math.floor(rendement(productionSeve(etat, data)) * (0.5 + etat.harmonie) * secondesHorsLigne(s));
+    const seve = Math.max(0, Math.min(brute, Math.floor(reserveMax(etat) - etat.seve)));
+    etat.seve += seve; rapport.seve = seve; rapport.plein = seve < brute;
     const paillis = data.actions.paillis.effets;
     for (const i of tuilesIle(etat)) {
       const t = etat.tuiles[i];
@@ -1350,6 +1417,22 @@
     if (!rapport || rapport.double) return refus('deja_double');
     rapport.double = true; etat.seve += rapport.seve;
     return { ok: true, seve: rapport.seve };
+  }
+  // Secondes de production « actives » équivalentes à une absence de s secondes (paliers hors ligne).
+  function secondesHorsLigne(s) {
+    let v = 0, debut = 0;
+    for (const [fin, taux] of P.horsLignePaliers) { if (s > debut) v += (Math.min(s, fin) - debut) * taux; debut = fin; }
+    return v;
+  }
+  function reserveMax(etat) { return P.reserveMax[etat.etape] || P.reserveMax.prairie; }
+  function rendement(brute) { return brute <= P.rendementSeuil ? brute : P.rendementSeuil + (brute - P.rendementSeuil) * P.rendementAuDela; }
+  // Ajoute de la sève produite par les plantes (ou un bonus de production) sans dépasser la réserve ;
+  // si la réserve dépasse déjà le plafond (cadeaux), elle n'est pas réduite.
+  function ajouterProduction(etat, v) {
+    if (v <= 0) return 0;
+    const avant = etat.seve;
+    etat.seve = Math.max(avant, Math.min(reserveMax(etat), avant + v));
+    return etat.seve - avant;
   }
   // Sève produite par seconde avant le facteur d'harmonie (même règle que pasTuiles).
   function productionSeve(etat, data) {
@@ -1435,8 +1518,8 @@
       if (data.especes[id].besoins.every(c => evaluer(etat, data, c, { x: vx, y: vy, soi: idx(vx, vy) }).ok)) planter(etat, data, idx(vx, vy), id);
     }
     for (const i of ile) { const t = etat.tuiles[i]; if (t.champi) seve += data.especes[t.champi].production.seve_par_s * dt; }
-    // Production de sève : × 0,5 à 1,5 selon l'harmonie (GDD 1.4).
-    etat.seve += seve * (0.5 + etat.harmonie);
+    // Production de sève : rendement décroissant, × 0,5 à 1,5 selon l'harmonie (GDD 1.4), plafond de réserve.
+    ajouterProduction(etat, rendement(seve / dt) * dt * (0.5 + etat.harmonie));
     calculerOmbre(etat, data);
   }
 
@@ -1449,7 +1532,7 @@
       etat.temps += P.pas;
       pasTuiles(etat, data, P.pas);
       pasAgents(etat, data, P.pas);
-      if (etat.temps % P.pasEcologie === 0) pasEcologie(etat, data, P.pasEcologie);
+      if (etat.temps % P.pasEcologie === 0) { pasEcologie(etat, data, P.pasEcologie); pasTeaser(etat, data); }
       etat.harmonieAccu += P.pas;
       if (etat.harmonieAccu >= P.harmonieEchantillon) {
         etat.harmonieAccu -= P.harmonieEchantillon;
@@ -1497,6 +1580,7 @@
     besoinsOk, capacite, capaciteZone, effectif, calculerHarmonie, photographier, reclamerMission, noter,
     especesDebloquees, chercherFoyer, REGLES,
     meteo, chancesRares, raresPresents, horsLigne, doublerRetour, productionSeve, completer,
+    reserveMax, rendement, secondesHorsLigne, ajouterProduction, teaser, TEASER,
     tirerPapier: (etat, dataBrute, id) => tirerPapier(etat, preparer(dataBrute), id), // pour les tests
   };
 });

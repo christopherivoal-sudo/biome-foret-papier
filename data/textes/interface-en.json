@@ -4,7 +4,9 @@
     "seve": "Sap",
     "graines": "Seeds",
     "pages": "Pages",
-    "harmonie": "Harmony"
+    "harmonie": "Harmony",
+    "reserve": "Sap reserve: {nombre} / {max}",
+    "pleine": "Reserve full ({max}). Build or plant to get the sap flowing again."
   },
   "saisons": {
     "printemps": "Spring",
@@ -113,7 +115,8 @@
     "bois_mort": "deadwood",
     "amenagement": "structure",
     "ouvert": "open ground",
-    "vegetal": "plant cover (grass and flowers)"
+    "vegetal": "plant cover (grass and flowers)",
+    "ombrage": "tree shade (shade of at least 20)"
   },
   "stats": {
     "fertilite": "Fertility",
@@ -156,7 +159,8 @@
     "moment": "time: {liste}",
     "valeur_pct": "currently {valeur}%",
     "valeur": "currently {valeur}",
-    "tenu": "days held: {tenu} / {duree}"
+    "tenu": "days held: {tenu} / {duree}",
+    "espece_duree": "{espece} present for {jours} days (one season)"
   },
   "carnet": {
     "titre": "Field journal",
@@ -195,7 +199,12 @@
     "conditions": "{ok} / {total}",
     "pret": "Ready! Tap to reach the {etape}.",
     "fin": "More is growing…",
-    "fin_texte": "The Young forest is coming in a future update. Your island keeps living."
+    "fin_texte": "The Young forest is coming in a future update. Your island keeps living.",
+    "teaser_vers": "To the Young forest",
+    "teaser_texte": "The Young forest is coming in a future update. Meet its conditions now to see what sprouts…",
+    "chene": "An oak has sprouted under the birches. More is growing…",
+    "chene_texte": "Your island is ready for the Young forest, coming in a future update. The little oak is waiting for neighbors.",
+    "chene_odile": "Look under the birches: a little oak has sprouted! The Young forest is beginning."
   },
   "bonus": {
     "titre": "Bonuses (optional ads)",
@@ -212,7 +221,8 @@
     "regarder": "Watch an ad",
     "pub_simulee": "Ad (simulated)",
     "pub_fin": "Thanks! Your bonus is ready.",
-    "pub_interstitielle": "Short ad break (simulated)"
+    "pub_interstitielle": "Short ad break (simulated)",
+    "reserve_pleine": "Your sap reserve is full: nothing to double for now."
   },
   "retour": {
     "titre": "While you were away",
@@ -221,7 +231,8 @@
     "seve": "+{nombre} sap",
     "especes": "Visited while you were away: {liste}",
     "aucune_espece": "No new species this time.",
-    "doubler": "Double sap (ad)"
+    "doubler": "Double sap (ad)",
+    "plein": "Your sap reserve is full ({max})."
   },
   "journal": {
     "arrivee": "{espece} arrived.",
@@ -262,5 +273,13 @@
     "chaine": "Food chain",
     "diversite": "Diversity",
     "mosaique": "Habitat mosaic"
+  },
+  "odile": {
+    "reserve_pleine": "Your sap reserve is overflowing! Build or plant and it will fill up again."
+  },
+  "mesure": {
+    "titre": "Frames per second",
+    "detail": "{fps} average, {min} lowest (last 30 seconds), resolution ×{dpr}",
+    "aide": "Note this down during phone tests."
   }
 }

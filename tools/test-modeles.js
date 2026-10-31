@@ -38,7 +38,7 @@ for (const [nom, m] of maillages) {
 
 // 2. Budget de faces : les objets nombreux doivent rester légers (GDD 10.6 : 60 images/s sur téléphone).
 const budget = { herbe: 4, fleurs: 14, ronce: 75, bouleau: 140, sauterelle: 30, abeille: 40, tircis: 20, ver: 25, turricule: 6,
-  lapin: 40, renard: 40, herisson: 80, merle: 40, alouette: 40, coulemelle: 40, odile: 60, tas_pierres: 60, hotel_insectes: 60, tas_bois: 60 };
+  lapin: 40, renard: 40, herisson: 80, merle: 40, alouette: 40, coulemelle: 40, odile: 60, tas_pierres: 60, hotel_insectes: 60, tas_bois: 60, jeune_chene: 40 };
 for (const [nom, m] of maillages) {
   const racine = nom.split('.')[0].replace(/Bouton|Jumelles/, '');
   if (budget[racine] !== undefined) verif(m.f.length <= budget[racine], `${nom} : ${m.f.length} faces (budget ${budget[racine]})`);

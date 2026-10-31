@@ -2,7 +2,7 @@
 // Ne modifie jamais l'état : il le lit et le dessine.
 // - Sol en papier plié, une tuile = deux triangles : couleur selon couvert, fertilité, humidité, ombre, saison.
 // - Tuiles : herbe, fleurs, ronce, bouleau, eau (mare creusée), roche, bois mort (tas ou arbre foudroyé),
-//   tas de pierres, hôtel à insectes, paillis, nichoir, mycélium et coulemelles.
+//   tas de pierres, hôtel à insectes, paillis, nichoir, mycélium et coulemelles, jeune chêne du teaser (sprint 5 bis).
 // - Saisons (feuillage, mûres, neige, feuilles qui tombent), jour, crépuscule, nuit.
 // - Météo : orage (nuages, pluie, éclairs, foudre), sécheresse (herbe jaunie, sol craquelé, brume chaude),
 //   floraison (pétales, fleurs plus grandes).
@@ -251,6 +251,11 @@
         if (t.champi && fructifie(A)) {
           const n = 1 + (hash(i, 30) < 0.5);
           for (let k = 0; k < n; k++) R3.add(k ? M.coulemelleBouton : M.coulemelle, x + (hash(i, 31 + k) - 0.5) * 0.6, 0, z + (hash(i, 33 + k) - 0.5) * 0.6, hash(i, 35) * 6, k ? 1.1 : 1.15, undefined, papier ? { papier } : undefined);
+        }
+        if (etat.teaser && etat.teaser.chene === i && (t.c === 'herbe' || t.c === 'nu' || t.c === 'fleurs') && !t.a) {
+          // Teaser de la Jeune forêt : le jeune chêne sort de terre en une minute, puis se balance doucement.
+          const pousse = lisse(0, 60, etat.temps - (etat.teaser.t || 0)), s = (0.35 + 0.85 * pousse) * 1.15;
+          R3.add(M.jeune_chene[sais] || M.jeune_chene.ete, x + 0.12, 0, z - 0.1, 0.6 + Math.sin(temps * 0.7) * 0.06, s, s);
         }
         if (t.graines >= 1 && (t.c === 'fleurs' || t.c === 'ronce' || t.c === 'arbre')) {
           // Graines mûres à récolter : petite capsule qui flotte au-dessus de la plante.

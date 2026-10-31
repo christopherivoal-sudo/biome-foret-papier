@@ -20,7 +20,7 @@ node tools/test-core.js         # tests de src/core.js
 node tools/sim-headless.js      # 20 parties d'1 h simulées : rythme, venues, départs, événements, papiers rares, retour hors ligne
 node tools/sim-headless.js --minutes 120   # 2 h : sécheresse et foudre (elles n'arrivent qu'à partir de l'année 1)
 node tools/test-modeles.js      # modèles origami : géométrie, budget de faces, couleurs des fiches
-node tools/construire.js        # dist/vitrine.html : île jouée par le joueur automatique + galerie des modèles
+node tools/construire.js        # dist/jeu.html (le jeu) ; --vitrine : dist/vitrine.html (île jouée par le joueur automatique + galerie)
 node tools/test-rendu.js        # ouvre la vitrine dans Chromium (Playwright requis) : erreurs, captures dans dist/captures/
 node tools/test-rendu.js --perf # temps par image sur un téléphone simulé (processeur ×4, 30 animaux)
 node tools/planche.js [journal|washi] [ids]   # planche des modèles, de près

@@ -4,7 +4,9 @@
     "seve": "Sève",
     "graines": "Graines",
     "pages": "Pages",
-    "harmonie": "Harmonie"
+    "harmonie": "Harmonie",
+    "reserve": "Réserve de sève : {nombre} / {max}",
+    "pleine": "Réserve pleine ({max}). Aménage ou sème pour que la sève coule de nouveau."
   },
   "saisons": {
     "printemps": "Printemps",
@@ -113,7 +115,8 @@
     "bois_mort": "bois mort",
     "amenagement": "aménagement",
     "ouvert": "terrain ouvert",
-    "vegetal": "couvert végétal (herbe et fleurs)"
+    "vegetal": "couvert végétal (herbe et fleurs)",
+    "ombrage": "mi-ombre des arbres (ombre d'au moins 20)"
   },
   "stats": {
     "fertilite": "Fertilité",
@@ -156,7 +159,8 @@
     "moment": "moment : {liste}",
     "valeur_pct": "actuellement {valeur} %",
     "valeur": "actuellement {valeur}",
-    "tenu": "tenu {tenu} sur {duree} jour(s)"
+    "tenu": "tenu {tenu} sur {duree} jour(s)",
+    "espece_duree": "{espece} présent depuis {jours} jours (une saison)"
   },
   "carnet": {
     "titre": "Carnet de terrain",
@@ -195,7 +199,12 @@
     "conditions": "{ok} / {total}",
     "pret": "Prêt ! Touche pour passer à la {etape}.",
     "fin": "La suite pousse…",
-    "fin_texte": "La Jeune forêt arrivera dans une prochaine version. Ton île continue de vivre."
+    "fin_texte": "La Jeune forêt arrivera dans une prochaine version. Ton île continue de vivre.",
+    "teaser_vers": "Vers la Jeune forêt",
+    "teaser_texte": "La Jeune forêt arrivera dans une prochaine version. Réunis déjà ses conditions pour voir ce qui germe…",
+    "chene": "Un chêne a germé sous les bouleaux. La suite pousse…",
+    "chene_texte": "Ton île est prête pour la Jeune forêt, qui arrivera dans une prochaine version. Le petit chêne attend ses voisins.",
+    "chene_odile": "Regarde sous les bouleaux : un petit chêne a germé ! C'est le début de la Jeune forêt."
   },
   "bonus": {
     "titre": "Bonus (publicité facultative)",
@@ -212,7 +221,8 @@
     "regarder": "Regarder une pub",
     "pub_simulee": "Publicité (simulée)",
     "pub_fin": "Merci ! Le bonus est accordé.",
-    "pub_interstitielle": "Petite pause publicitaire (simulée)"
+    "pub_interstitielle": "Petite pause publicitaire (simulée)",
+    "reserve_pleine": "Ta réserve de sève est pleine : rien à doubler pour l'instant."
   },
   "retour": {
     "titre": "Pendant ton absence",
@@ -221,7 +231,8 @@
     "seve": "+{nombre} sève",
     "especes": "Venues pendant ton absence : {liste}",
     "aucune_espece": "Pas de nouvelle espèce cette fois.",
-    "doubler": "Doubler la sève (pub)"
+    "doubler": "Doubler la sève (pub)",
+    "plein": "Ta réserve de sève est pleine ({max})."
   },
   "journal": {
     "arrivee": "{espece} est arrivé(e).",
@@ -262,5 +273,13 @@
     "chaine": "Chaîne alimentaire",
     "diversite": "Diversité",
     "mosaique": "Mosaïque des habitats"
+  },
+  "odile": {
+    "reserve_pleine": "Ta réserve de sève déborde ! Aménage ou sème : elle se remplira de nouveau."
+  },
+  "mesure": {
+    "titre": "Images par seconde",
+    "detail": "{fps} en moyenne, {min} au plus bas (30 dernières secondes), définition ×{dpr}",
+    "aide": "À noter pendant les tests sur téléphone."
   }
 }

@@ -110,6 +110,35 @@
     return b.build();
   }
 
+  // Jeune chêne (teaser de la Jeune forêt, sprint 5 bis) : tige brune, bouquets de feuilles lobées, gland au pied.
+  // En hiver, il garde ses feuilles sèches et brunes (marcescence, vraie chez les jeunes chênes). Environ 30 faces.
+  function jeuneChene(saison) {
+    const b = new B();
+    const brun = '#7a5a3c', ecorce = mel('#7a5a3c', '#4a3a2a', 0.3);
+    const vert = saison === 'hiver' ? hex('#9a6a3a') : saison === 'automne' ? hex('#c08a34') : saison === 'printemps' ? mel('#5f8a3c', '#b8d77a', 0.35) : hex('#4f7a34');
+    const verts = [vert, fonce(vert, 0.82), mel(vert, saison === 'hiver' ? '#c49a6a' : '#a8c07a', 0.25)];
+    b.baton([0, 0, 0], [0.02, 0.52, 0.01], 3, 0.022, [brun, ecorce]);
+    b.baton([0.01, 0.26, 0], [0.15, 0.4, 0.05], 3, 0.012, ecorce);
+    b.baton([0.015, 0.34, 0], [-0.13, 0.46, -0.06], 3, 0.012, ecorce);
+    // Feuille lobée : contour en zigzag (lobes arrondis du chêne), à moitié dressée pour se voir de côté.
+    const feuille = (o, ang, L, couleur, dresse) => {
+      const d = [Math.cos(ang) * 0.8, 0.6, Math.sin(ang) * 0.8];
+      const k = dresse === undefined ? 0.6 : dresse, pp = [-Math.sin(ang) * (1 - k * 0.5), k, Math.cos(ang) * (1 - k * 0.5)];
+      const prof = [[0, 0], [0.16, 0.2], [0.3, 0.12], [0.45, 0.3], [0.6, 0.15], [0.76, 0.27], [0.9, 0.12], [1, 0]];
+      const pt = (u, v) => b.vert(o[0] + d[0] * u * L + pp[0] * v * L, o[1] + d[1] * u * L + pp[1] * v * L, o[2] + d[2] * u * L + pp[2] * v * L);
+      const ids = prof.map(([u, v]) => pt(u, v)).concat(prof.slice(1, -1).reverse().map(([u, v]) => pt(u, -v)));
+      b.face(ids, couleur, true);
+    };
+    const haut = [0.02, 0.52, 0.01], g = [0.15, 0.4, 0.05], dr = [-0.13, 0.46, -0.06];
+    feuille(g, 0.3, 0.26, verts[0]); feuille(g, -0.9, 0.22, verts[2], 0.3);
+    feuille(dr, 3.4, 0.25, verts[1]); feuille(dr, 2.2, 0.21, verts[0], 0.3);
+    feuille(haut, 1.6, 0.24, verts[2]); feuille(haut, -1.3, 0.24, verts[0]); feuille(haut, 0.2, 0.2, verts[1], 0.9);
+    // Gland au pied : la cupule et le gland couché.
+    b.pyramid(0.08, 0.04, 5, 0.035, 0.035, 0, '#8a6a3e', 0, '#6e5230');
+    b.octa(0.06, 0.03, 0.08, 0.03, 0.025, 0.04, '#b88a4a', '#9a7038');
+    return b.build();
+  }
+
   // Coulemelle : grand chapeau plat écailleux sur un pied fin à anneau ; bouton : jeune « baguette de tambour ».
   function coulemelle(pal, bouton) {
     const b = new B();
@@ -485,6 +514,7 @@
         ete: [bouleau(pb, feuillesBouleau.ete, 5), bouleau(pb, feuillesBouleau.ete, 13)],
         automne: [bouleau(pb, feuillesBouleau.automne, 5), bouleau(pb, feuillesBouleau.automne, 13)],
         hiver: [bouleau(pb, null, 5), bouleau(pb, null, 13)] },
+      jeune_chene: { printemps: jeuneChene('printemps'), ete: jeuneChene('ete'), automne: jeuneChene('automne'), hiver: jeuneChene('hiver') },
       coulemelle: coulemelle(pal.coulemelle, false), coulemelleBouton: coulemelle(pal.coulemelle, true),
       lapin: lapin(pal.lapin), renard: renard(pal.renard), herisson: herisson(pal.herisson),
       merle: { pose: merle(pal.merle, 'pose'), haut: merle(pal.merle, 'haut'), bas: merle(pal.merle, 'bas') },
@@ -518,6 +548,7 @@
       { id: 'coulemelle', nom: 'Coulemelle', variantes: [['automne', M.coulemelle], ['bouton', M.coulemelleBouton]], taille: 1.6 },
       { id: 'herbe', nom: 'Herbe des prés', variantes: [['printemps', M.herbe.printemps[0]], ['été', M.herbe.ete[0]], ['sèche', M.herbe.sec[0]], ['hiver', M.herbe.hiver[0]]], taille: 1.3 },
       { id: 'fleurs', nom: 'Fleurs sauvages', variantes: M.fleurs.map((m, k) => [['jaune', 'rose', 'blanche', 'mauve'][k], m]), taille: 2.6 },
+      { id: 'jeune_chene', nom: 'Jeune chêne (teaser)', variantes: [['printemps', M.jeune_chene.printemps], ['été', M.jeune_chene.ete], ['automne', M.jeune_chene.automne], ['hiver', M.jeune_chene.hiver]], taille: 2.2 },
       { id: 'tas_pierres', nom: 'Tas de pierres', variantes: [['', M.tas_pierres]], taille: 1.4 },
       { id: 'hotel_insectes', nom: 'Hôtel à insectes', variantes: [['', M.hotel_insectes]], taille: 1.1 },
       { id: 'tas_bois', nom: 'Tas de bois', variantes: [['', M.tas_bois], ['arbre foudroyé', M.bois_mort_naturel]], taille: 1.1 },

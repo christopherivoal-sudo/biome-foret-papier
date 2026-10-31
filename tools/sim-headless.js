@@ -123,6 +123,7 @@ function partie(graine) {
       if (j.type === 'evenement_fin' && ev) { Object.assign(ev, { reussi: j.reussi, especesApres: Core.especesPresentes(e, data).length, flAvant: ev.flAvant }); ev = null; }
       if (j.type === 'foudre') r.meteo[r.meteo.length - 1].foudre = true;
       if (j.type === 'rare') r.rares++;
+      if (j.type === 'chene') r.chene = e.temps;
       r.evenements.push(j.type);
     }
     // Plantes semées : « venue » au premier semis.
@@ -147,6 +148,7 @@ function partie(graine) {
     }
   }
   r.fin = Core.resume(e, data);
+  const tz = Core.teaser(e, data); if (tz) r.teaserFin = tz.conditions;
   r.cartes = Object.keys(e.collection).length;
   r.pages = e.pages;
   return r;
@@ -180,7 +182,7 @@ for (const id of toutes) {
   console.log(`${id.padEnd(13)} ${mmss(med(v)).padStart(8)}      ${String(jamais).padStart(4)}           ${partis.toFixed(1).padStart(5)}               ${indiv.toFixed(1).padStart(5)}`);
 }
 const moy = f => (res.reduce((s, r) => s + f(r), 0) / res.length);
-console.log(`\nSève en réserve (médiane) : ${[5, 10, 15, 30, 60].filter(m => m <= MINUTES).map(m => `${m} min → ${med(res.map(r => r.seve[m]))}`).join(', ')}`);
+console.log(`\nSève en réserve (médiane) : ${[5, 10, 15, 20, 30, 45, 60, 90, 120].filter(m => m <= MINUTES).map(m => `${m} min → ${med(res.map(r => r.seve[m]))}`).join(', ')}`);
 if (res[0].a15) {
   console.log(`À 15 min : fertilité ${moy(r => r.a15.res.fertilite).toFixed(1)}, humidité ${moy(r => r.a15.res.humidite).toFixed(1)}, harmonie ${moy(r => r.a15.res.harmonie).toFixed(2)}, espèces ${moy(r => r.a15.res.especes.length).toFixed(1)}`);
   const conds = res.filter(r => r.a15.conditions && r.lisiere === null || r.lisiere > 900).map(r => r.a15.conditions).filter(Boolean);
@@ -203,6 +205,12 @@ for (const id of ['floraison', 'orage', 'secheresse']) {
   console.log(ligne);
 }
 console.log(`Papiers rares : ${med(res.map(r => r.rares))} spécimens apparus par partie (médiane), ${med(res.map(r => r.cartes))} cartes collectées sur 28 (min ${Math.min(...res.map(r => r.cartes))}, max ${Math.max(...res.map(r => r.cartes))}) ; pages à la fin : ${med(res.map(r => r.pages))}`);
+const ch = res.map(r => r.chene).filter(v => v !== undefined);
+console.log(`Chêne de la Jeune forêt (teaser) : ${ch.length}/${PARTIES} parties, médiane ${mmss(med(ch))}  (cible ~1 h cumulée)`);
+if (ch.length < PARTIES) {
+  const e0 = res.find(r => r.chene === undefined);
+  if (e0 && e0.teaserFin) console.log('  conditions à la fin d\'une partie sans chêne : ' + e0.teaserFin.map(c => `${c.type} ${c.ok ? '✓' : '✗'} ${typeof c.valeur === 'number' ? +c.valeur.toFixed(2) : ''}`).join(' ; '));
+}
 const ret = res.map(r => r.retour).filter(Boolean);
 if (ret.length) console.log(`Retour après 10 h d'absence à 30 min (plafond 8 h ${ret.every(x => x.plafonne) ? 'appliqué' : 'NON appliqué'}) : +${med(ret.map(x => x.seve))} sève (réserve avant ${med(ret.map(x => x.seveAvant))}), ${med(ret.map(x => x.arrivees))} arrivées dont ${med(ret.map(x => x.nouvelles))} nouvelles espèces, espèces ${med(ret.map(x => x.especesAvant))} → ${med(ret.map(x => x.especesApres))}, départs dans la minute qui suit : ${ret.reduce((s, x) => s + x.departs1min, 0)}`);
 if (DETAIL) for (const r of res) console.log(JSON.stringify({ graine: r.graine, trou: [r.trouA, r.maxTrou], lisiere: r.lisiere, venues: r.venues, partis: r.partis, effectifs: r.fin.effectifs, harmonie: r.fin.harmonieDetail }));

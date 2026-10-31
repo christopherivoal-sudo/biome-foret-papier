@@ -198,6 +198,46 @@ function prairiePrete() {
     await p.close();
   }
 
+  // ---------- 3 bis. Sprint 5 bis : teaser de la Jeune forêt, réserve pleine, images par seconde ----------
+  console.log('Teaser de la Jeune forêt, réserve, images par seconde');
+  p = await ctx.newPage(); suivre(p);
+  await p.goto(URL + '?nouvelle=1&langue=fr');
+  await p.waitForTimeout(600);
+  await charger(p, S[1].etat);
+  await p.waitForTimeout(700);
+  verifier((await p.locator('.jauge').innerText()).includes('Jeune forêt'), 'en Lisière, la jauge montre le chemin vers la Jeune forêt');
+  await p.click('.jauge');
+  await p.waitForTimeout(300);
+  verifier(await p.locator('.panneau.ouvert .besoins li').count() === 5, 'le panneau liste les 5 conditions de la Jeune forêt');
+  await capture(p, '9b-teaser');
+  await p.keyboard.press('Escape');
+  // Germination : on simule la fin du teaser (le chemin dans core.js est vérifié par test-core.js).
+  const ou = await p.evaluate(() => {
+    const e = window.BIOME_JEU.etat, Core = window.BiomeCore;
+    const i = Core.tuilesIle(e).find(k => e.tuiles[k].c === 'herbe' && !e.tuiles[k].a);
+    e.teaser = { depuis: {}, chene: i, t: e.temps - 60 };
+    e.journal.push({ t: e.temps, type: 'chene', i, x: i % Core.N, y: (i / Core.N) | 0 });
+    return i;
+  });
+  await p.waitForTimeout(600);
+  verifier(ou >= 0 && (await p.locator('.toast').allInnerTexts()).some(t => t.includes('chêne')), 'le chêne germe : message « La suite pousse… »');
+  verifier((await p.locator('.jauge').innerText()).includes('La suite pousse'), 'la jauge affiche « La suite pousse… »');
+  await capture(p, '9c-chene');
+  // Réserve pleine : chip doré, « Sève double » indisponible.
+  await p.evaluate(() => { const e = window.BIOME_JEU.etat; e.seve = window.BiomeCore.reserveMax(e); });
+  await p.waitForTimeout(400);
+  verifier(await p.locator('.chip.pleine').count() === 1, 'réserve de sève pleine signalée');
+  await p.click('.rond >> nth=2');
+  await p.waitForTimeout(300);
+  verifier(await p.locator('[data-b="seve_double"][disabled]').count() === 1, '« Sève double » indisponible quand la réserve est pleine');
+  await p.keyboard.press('Escape');
+  await p.click('.rond >> nth=3');
+  await p.waitForTimeout(2300);
+  verifier(/\d+ en moyenne/.test(await p.locator('.fps').innerText()), 'les images par seconde s\'affichent dans les réglages');
+  await capture(p, '9d-reglages');
+  await p.keyboard.press('Escape');
+  await p.close();
+
   // ---------- 4. Retour après une absence, sauvegarde ----------
   console.log('Absence et sauvegarde');
   p = await ctx.newPage(); suivre(p);

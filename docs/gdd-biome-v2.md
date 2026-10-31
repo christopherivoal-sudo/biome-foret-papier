@@ -1,6 +1,6 @@
 # Biome, la forêt de papier : document de conception v2
 
-Version 1.4, 31 octobre 2026 (précisions du sprint 3 en 5.1 et 8.5, du sprint 4 en 1.9 et 10.4, du sprint 5 en 10.4). Rédigé par Claude, décisions de Christophe intégrées (section 11).
+Version 1.5, 31 octobre 2026 (précisions du sprint 3 en 5.1 et 8.5, du sprint 4 en 1.9 et 10.4, du sprint 5 en 10.4, du sprint 5 bis en 4.3, 5.1, 6.2 et 10.4). Rédigé par Claude, décisions de Christophe intégrées (section 11).
 
 Repères de lecture :
 - **[PROTO]** : construit dans le prototype v2.
@@ -275,6 +275,11 @@ Le joueur **ne place jamais d'animal**. Il dispose de :
 - Île de rayon 9 : herbe au centre (environ 25 % des tuiles), fertilité 10 à 25, humidité 20, quelques roches.
 - Les sauterelles arrivent en moins de 30 secondes : première leçon, aucun achat.
 - Production de sève indicative : 0,05 par tuile d'herbe ou de fleurs par seconde, 0,3 par bouleau adulte, × harmonie. Toutes les valeurs seront ajustées par simulation.
+- **Économie de la sève (sprint 5 bis)** : sans frein, la réserve montait à 36 000 en 2 h et à 70 000 après 8 h d'absence, alors que tout le contenu de la Lisière coûte moins de 5 000. Trois freins :
+  - **Réserve plafonnée par étape** : Prairie 1 000, Lisière 3 000 (puis 8 000, 20 000, 40 000 prévus). Seule la production des plantes s'arrête au plafond ; photos, missions, récompenses et remboursements peuvent le dépasser (un cadeau n'est jamais perdu). Le compteur s'entoure d'or quand la réserve est pleine et Odile le dit une fois par étape.
+  - **Rendement décroissant** : au-delà de 2 sève/s (avant l'harmonie), la production ne compte plus qu'à 40 %. La Prairie n'y arrive pas ; c'est l'herbe qui s'étend seule en Lisière qui est freinée.
+  - **Hors ligne par paliers** : voir 6.2.
+  Résultat (20 parties) : réserve 657 à 15 min, 1 850 à 30 min, puis pleine (3 000) vers 45 min ; Lisière toujours à 16:41 en médiane.
 
 ### 4.4 Déroulé des 15 premières minutes (tutoriel intégré)
 
@@ -300,7 +305,7 @@ Le joueur **ne place jamais d'animal**. Il dispose de :
 |---|---|---|---|---|---|
 | **Floraison** | printemps, 1 fois par printemps | 1 jour | fleurs ×2 en graines, pollinisateurs ×1,5 | Washi ×5 | [PROTO] |
 | **Orage** | été (60 %), automne (30 %) | 1 min | humidité +30 partout ; la foudre peut abattre 1 arbre adulte → bois mort + petite clairière (renouvellement) ; animaux à l'abri pendant l'orage | Journal ×5 | [PROTO] |
-| **Sécheresse** | été (25 %), jamais 2 étés de suite, **jamais avant la Lisière** | 2 jours | l'humidité de l'air baisse de 0,05 par seconde jusqu'à −20 (plancher 10 par tuile) ; mares et paillis restent des refuges ; espèces humides en départ si ça dure. Récompense : harmonie ≥ 50 % à la fin → 3 pages + bonus de sève | Calque ×2 (les mirages) | [PROTO] |
+| **Sécheresse** | été (25 %), jamais 2 étés de suite, **jamais avant la Lisière** | 2 jours | l'humidité de l'air baisse de 0,1 par seconde jusqu'à −30 (plancher 10 par tuile ; durcie au sprint 5 bis, avant : 0,05 et −20) ; mares et paillis restent des refuges ; espèces humides en départ si ça dure. Récompense : harmonie ≥ 70 % à la fin (avant : 50 %) → 3 pages + bonus de sève | Calque ×2 (les mirages) | [PROTO] |
 | **Migration** | printemps et automne | 1 jour | des visiteurs de passage (grues, cigognes) se posent s'il y a une prairie ou de l'eau ; on peut les photographier, ils ne restent pas | Doré ×3 sur les visiteurs | [PLUS TARD] |
 | **Nuit des lucioles** | été, la nuit | 1 nuit | lucioles décoratives ; les animaux nocturnes se montrent davantage | Calque ×5 | [PLUS TARD] |
 | **Brouillard** | automne | ½ jour | visibilité réduite ; champignons ×2 | Calque ×3 | [PLUS TARD] |
@@ -371,7 +376,7 @@ Rendu : le moteur Canvas 2D remplit des faces planes ; on remplace la couleur un
 
 ### 6.2 Progression solo
 - Sauvegarde automatique toutes les 10 s dans `localStorage`, plus la sauvegarde en ligne du portail si son kit de développement en propose une (à vérifier pour chaque portail lors de l'intégration).
-- **Hors ligne** (plafonné à 8 h) : la sève s'accumule à 50 % du taux, les plantes poussent, les arrivées possibles sont résolues au retour. Aucun départ, aucun événement, saison figée. Écran de retour : « Pendant ton absence : +1 240 sève, 2 nouvelles espèces sont venues. »
+- **Hors ligne** (plafonné à 8 h) : la sève s'accumule à 50 % du taux pendant la première heure, puis à 15 % (8 h d'absence ≈ 1 h 30 de jeu actif), sans dépasser le plafond de la réserve (4.3) ; l'écran de retour le signale si la réserve est pleine, les plantes poussent, les arrivées possibles sont résolues au retour. Aucun départ, aucun événement, saison figée. Écran de retour : « Pendant ton absence : +1 240 sève, 2 nouvelles espèces sont venues. »
 - Le contenu est identique à celui de Roblox, sans les échanges.
 
 ### 6.3 Publicités
@@ -699,6 +704,13 @@ Précisions du sprint 5 (interface, `game.js`, `game.css`, `ads.js`) :
 - **Téléphone** : mise en page portrait (menu en colonne à droite, barre d'actions qui défile), tactile (toucher pour agir, glisser pour tourner, pincer pour zoomer).
 - **Tests** : `tools/test-jeu.js` joue à la souris et au doigt dans Chromium (semer, refus, panneau de tuile, photo, carnet, mission, pub, passage à la Lisière, retour, sauvegarde, téléphone) : 25 vérifications, aucune erreur.
 
+Précisions du sprint 5 bis :
+- **Économie de la sève** : plafond de réserve par étape, rendement décroissant, hors ligne par paliers (4.3 et 6.2). La pub « Sève double » est grisée quand la réserve est pleine à 90 %.
+- **Sécheresse durcie** (5.1) : l'humidité moyenne tombe de 47 à 21 (avant : 29) ; aucune espèce perdue en moyenne, récompense toujours obtenue par le joueur automatique.
+- **Teaser de la Jeune forêt** : une fois la Lisière atteinte, la jauge devient « Vers la Jeune forêt » avec les conditions du GDD 2 (8 bouleaux adultes ; mi-ombre, ombre ≥ 20, sur 10 % de l'île ; le renard présent depuis une saison ; 12 espèces ; 25 % de terrain ouvert). Choix de Claude : l'ombre « ≥ 30 sur 20 % » du GDD n'est jamais atteinte avec 10 bouleaux espacés (7 % au mieux), d'où la mi-ombre sur 10 % ; à revoir quand la Jeune forêt sera construite. Quand tout est réuni, un **jeune chêne** germe sur la tuile libre la plus ombragée à côté d'un bouleau adulte (il sort de terre en 1 min, garde ses feuilles sèches en hiver), avec un message, une bulle d'Odile et la jauge « La suite pousse… ». On ne change pas d'étape. Joueur automatique : chêne vers 1 h 14 de jeu, dans 20 parties sur 20.
+- **Images par seconde** dans les réglages : moyenne et pire seconde des 30 dernières, définition actuelle (pour les tests sur téléphone).
+- Tests : 167 pour `core.js`, 542 pour les modèles, 32 vérifications dans le navigateur.
+
 ### 10.5 Ordre de travail (une conversation par sprint)
 
 | Sprint | Contenu | Qui |
@@ -709,6 +721,7 @@ Précisions du sprint 5 (interface, `game.js`, `game.css`, `ads.js`) :
 | 3 | Temps, saisons, 3 événements, papiers rares ; textures journal et washi | Claude |
 | 4 | Modèles origami des 9 nouvelles espèces, rendu des tuiles (eau, ronce, paillis) ; textures journal et washi (fait le 31/10) | Claude |
 | 5 | Interface : carnet, photos, missions, barre d'actions, jauge de succession ; consigne 05 (anglais de la garde, des missions et de l'interface) (fait le 31/10) | Claude, puis ChatGPT |
+| 5 bis | Économie de la sève, sécheresse, chêne teaser, images/s (fait le 31/10) | Claude |
 | 6 | Test de jeu par Christophe et ses proches, retours, corrections | Christophe, puis Claude |
 
 ### 10.6 Critères de réussite (mesurés par simulation et par les tests)

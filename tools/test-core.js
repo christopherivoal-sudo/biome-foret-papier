@@ -478,13 +478,13 @@ console.log('Sécheresse : épreuve douce et récompense');
   demarrer(e, data, 'secheresse');
   avancer(e, 470);
   const m = Core.resume(e, data);
-  verifier('l\'humidité baisse (au plus −20)', m.humidite < h0 - 5 && e.meteo.humidite >= -20, [h0, m.humidite, e.meteo.humidite]);
+  verifier('l\'humidité baisse (au plus −30)', m.humidite < h0 - 5 && e.meteo.humidite >= -30, [h0, m.humidite, e.meteo.humidite]);
   verifier('aucune tuile sous le plancher de 10 à cause de la sécheresse', Core.tuilesIle(e).every(i => e.tuiles[i].h >= 10 - 1e-9));
   e.harmonie = 0.9;
   const p0 = e.pages, s0 = e.seve;
   avancer(e, 10);
   const fin = evts(e, 'evenement_fin', 'secheresse')[0];
-  verifier('harmonie ≥ 50 % à la fin : 3 pages et 200 sève', fin && fin.reussi && e.pages === p0 + 3 && e.seve - s0 >= 200, fin);
+  verifier('harmonie ≥ 70 % à la fin : 3 pages et 200 sève', fin && fin.reussi && e.pages === p0 + 3 && e.seve - s0 >= 200, fin);
   verifier('le joueur a été prévenu de la fin', !e.meteo.actif);
 }
 {
@@ -560,7 +560,8 @@ console.log('Hors ligne');
   const prod = Core.productionSeve(e, data) * (0.5 + e.harmonie);
   const r = Core.horsLigne(e, data, 10 * 3600);
   verifier('absence de 10 h comptée 8 h (plafond)', r.duree === 8 * 3600 && r.plafonne);
-  verifier('sève à 50 % du taux', Math.abs(r.seve - Math.floor(prod * 0.5 * 8 * 3600)) <= 1 && e.seve === r.seve, [r.seve, prod]);
+  const attendu = Math.min(Core.reserveMax(e), Math.floor(Core.rendement(Core.productionSeve(e, data)) * (0.5 + e.harmonie) * (3600 * 0.5 + 7 * 3600 * 0.15)));
+  verifier('sève : 50 % la 1re heure puis 15 %, sans dépasser la réserve', Math.abs(r.seve - attendu) <= 1 && e.seve === r.seve, [r.seve, attendu, prod]);
   verifier('heure et saison figées, aucun événement', e.temps === avant.temps && Core.horloge(e).saison === avant.saison && JSON.stringify(e.meteo.prevu) === avant.prevu && JSON.stringify(e.meteo.actif) === avant.actif && !evts(e, 'evenement').some(j => j.t === e.temps));
   verifier('les plantes ont poussé (bouleau adulte)', e.tuiles[bi].age >= 12, e.tuiles[bi].age);
   verifier('le rapport est noté au journal', evts(e, 'retour').length === 1);
@@ -588,6 +589,66 @@ console.log('Hors ligne');
   verifier('aucun départ hors ligne : le compteur de manque repart de zéro', e.agents.includes(h) && h.mal === 0 && !evts(e, 'depart').length);
   avancer(e, 30);
   verifier('pas de départ immédiat au retour', !evts(e, 'depart').length);
+}
+
+console.log('Économie de la sève (sprint 5 bis)');
+{
+  verifier('paliers hors ligne : 1 h → 30 min, 8 h → 1 h 33', Core.secondesHorsLigne(3600) === 1800 && Math.abs(Core.secondesHorsLigne(8 * 3600) - (1800 + 7 * 3600 * 0.15)) < 1e-6);
+  verifier('rendement décroissant au-delà de 2 sève/s', Core.rendement(1.5) === 1.5 && Math.abs(Core.rendement(4) - 2.8) < 1e-9);
+  const e = Core.creer(data, { graine: 41 });
+  e.seve = Core.reserveMax(e) - 1;
+  avancer(e, 60);
+  verifier('la production s\'arrête au plafond de la Prairie (1 000)', e.seve === 1000, e.seve);
+  e.seve = 1500;
+  avancer(e, 30);
+  verifier('une réserve au-dessus du plafond (cadeaux) n\'est pas réduite', e.seve === 1500, e.seve);
+  verifier('ajouterProduction : rien au-delà du plafond', Core.ajouterProduction(e, 100) === 0 && e.seve === 1500);
+  e.etape = 'lisiere';
+  verifier('plafond de la Lisière : 3 000', Core.reserveMax(e) === 3000);
+  e.seve = 2990;
+  const r = Core.horsLigne(e, data, 8 * 3600);
+  verifier('hors ligne : le gain s\'arrête à la réserve pleine, signalé au retour', e.seve === 3000 && r.seve === 10 && r.plein, [e.seve, r.seve, r.plein]);
+}
+
+console.log('Teaser de la Jeune forêt (sprint 5 bis)');
+{
+  const e = Core.creer(data, { graine: 42 });
+  verifier('pas de teaser en Prairie', Core.teaser(e, data) === null);
+  e.etape = 'lisiere';
+  const tz = Core.teaser(e, data);
+  verifier('en Lisière : 5 conditions, non remplies', tz && tz.conditions.length === 5 && !tz.ok && tz.chene === -1);
+  // Île préparée : 12 bouleaux adultes en bosquet, un renard, assez d'espèces, du terrain ouvert.
+  const pos = [];
+  for (let dx = -3; dx <= 3; dx += 2) for (const dy of [-2, 0, 2]) pos.push([C + dx, C + dy]);
+  for (const [x, y] of pos) Object.assign(e.tuiles[Core.idx(x, y)], { c: 'arbre', e: 'bouleau', age: 20, f: 40 });
+  avancer(e, 5);
+  const d = Core.teaser(e, data);
+  verifier('8 bouleaux adultes ✓', d.conditions[0].ok, d.conditions[0]);
+  verifier('mi-ombre sur 10 % de l\'île ✓', d.conditions[1].ok, d.conditions[1].valeur);
+  const avecRenard = () => { if (!e.agents.some(a => a.esp === 'renard')) Core.ajouterAgent(e, 'renard', C + 6, C + 6); };
+  avecRenard();
+  // Les espèces présentes ne sont pas toutes là : on vérifie la règle de durée du renard seule.
+  avancer(e, 120);
+  const r1 = Core.teaser(e, data).conditions[2];
+  verifier('renard présent depuis ½ jour : pas encore une saison', !r1.ok && r1.tenu_jours > 0.4 && r1.tenu_jours < 3, r1);
+  e.agents = e.agents.filter(a => a.esp !== 'renard');
+  avancer(e, 10);
+  verifier('le renard part : le compteur repart de zéro', Core.teaser(e, data).conditions[2].tenu_jours === 0);
+  // Germination forcée : toutes les conditions vraies (on fixe la mémoire du renard et les espèces).
+  e.teaser.depuis[2] = e.temps - 3 * 240; avecRenard();
+  for (const id of ['sauterelle', 'ver', 'abeille', 'tircis']) Core.fixerPopulation(e, id, C + 5, C - 4, 6);
+  for (const id of ['lapin', 'lapin', 'alouette', 'merle', 'herisson']) Core.ajouterAgent(e, id, C - 5, C + 4);
+  for (const [x, y] of [[C - 6, C], [C - 6, C + 1], [C - 7, C]]) Object.assign(e.tuiles[Core.idx(x, y)], { c: 'ronce', e: 'ronce', age: 5, f: 40 });
+  avancer(e, 10);
+  const t2 = Core.teaser(e, data);
+  if (!t2.ok) console.log('    (conditions : ' + t2.conditions.map(c => c.ok ? '✓' : '✗').join(' ') + ')');
+  verifier('toutes les conditions réunies → un chêne germe sous un bouleau', t2.chene >= 0 && evts(e, 'chene').length === 1, t2.conditions.map(c => c.ok));
+  if (t2.chene >= 0) {
+    const x = t2.chene % Core.N, y = (t2.chene / Core.N) | 0;
+    verifier('le chêne est sur une tuile libre à côté d\'un bouleau adulte', ['herbe', 'nu'].includes(e.tuiles[t2.chene].c) && Core.tuilesCercle(e, x, y, 1.5).some(j => e.tuiles[j].e === 'bouleau'));
+    e.agents = []; avancer(e, 30);
+    verifier('le chêne reste même si l\'île change ensuite', Core.teaser(e, data).chene === t2.chene && evts(e, 'chene').length === 1);
+  }
 }
 
 console.log('Anciennes sauvegardes et déterminisme');
