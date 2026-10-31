@@ -23,7 +23,8 @@
   // Une face : { i: indices, c: [r,g,b], ds: double face, ne: non éclairée }
   function Builder() { this.v = []; this.f = []; }
   Builder.prototype.vert = function (x, y, z) { this.v.push([x, y, z]); return this.v.length - 1; };
-  Builder.prototype.face = function (ids, color, ds, ne) { this.f.push({ i: ids, c: hex(color), ds: !!ds, ne: !!ne }); };
+  // ds : double face ; ne : non éclairée ; doux : éclairage adouci (brins, feuilles, tranche de l'île), sans faces trop sombres.
+  Builder.prototype.face = function (ids, color, ds, ne, doux) { this.f.push({ i: ids, c: hex(color), ds: !!ds, ne: !!ne, doux: !!(doux || ds) }); };
   Builder.prototype.tri = function (a, b, c, color, ds) {
     const i = this.vert(a[0], a[1], a[2]), j = this.vert(b[0], b[1], b[2]), k = this.vert(c[0], c[1], c[2]);
     this.face([i, j, k], color, ds);
@@ -145,7 +146,7 @@
   Builder.prototype.inclure = function (m, x, y, z, ry, s) {
     const c = Math.cos(ry || 0), sn = Math.sin(ry || 0), k = s || 1, base = this.v.length;
     for (const v of m.v) this.v.push([x + (v[0] * c + v[2] * sn) * k, y + v[1] * k, z + (-v[0] * sn + v[2] * c) * k]);
-    for (const f of m.f) this.f.push({ i: f.i.map(i => i + base), c: f.c, ds: f.ds, ne: f.ne });
+    for (const f of m.f) this.f.push({ i: f.i.map(i => i + base), c: f.c, ds: f.ds, ne: f.ne, doux: f.doux });
   };
   Builder.prototype.build = function () { return { v: this.v, f: this.f }; };
 
@@ -167,7 +168,7 @@
     const ux = -rz * fy, uy = rz * fx - rx * fz, uz = rx * fy;
     this.f = [fx, fy, fz]; this.r = [rx, 0, rz]; this.u = [ux, uy, uz];
     this.focal = Math.min(w, h * 1.25) / (2 * Math.tan(this.fov / 2));
-    this.cx = w / 2; this.cy = h / 2 + h * 0.03;
+    this.cx = w / 2; this.cy = h / 2 + h * (this.decalY !== undefined ? this.decalY : 0.03);
   };
   // Monde → écran ; la profondeur est rendue dans out[2].
   Camera.prototype.project = function (x, y, z, out) {
@@ -199,13 +200,14 @@
   const BLANC = [1, 1, 1];
   const CHAINES = new Map();
   // teinte : multiplicateurs [r, g, b] d'ambiance (nuit bleutée, orage gris...).
-  function shade(c, nx, ny, nz, alpha, teinte, nonEclaire) {
+  function shade(c, nx, ny, nz, alpha, teinte, nonEclaire, doux) {
     const t = teinte || BLANC;
     let r, g, b;
     if (nonEclaire) { r = c[0]; g = c[1]; b = c[2]; }
     else {
       const d = nx * L[0] + ny * L[1] + nz * L[2];
-      const k = 0.58 + 0.52 * Math.max(0, d);
+      // Sprint 6 : les faces « douces » (brins d'herbe, feuilles, tranche de l'île) ne tombent jamais dans le gris.
+      const k = doux ? 0.84 + 0.26 * Math.abs(d) : 0.58 + 0.52 * Math.max(0, d);
       // Ombres un peu bleutées, lumière un peu chaude : effet papier.
       r = c[0] * k + (k > 1 ? 6 : -4);
       g = c[1] * k + (k > 1 ? 3 : -1);
@@ -220,6 +222,16 @@
     const cle = (r << 16) | (g << 8) | b;
     let s = CHAINES.get(cle);
     if (!s) { s = '#' + (0x1000000 + cle).toString(16).slice(1); CHAINES.set(cle, s); }
+    return s;
+  }
+  // Couleur d'arête (pli du papier) : la couleur de la face, un peu plus sombre. Mise en cache.
+  const ARETES = new Map();
+  function arete(col) {
+    let s = ARETES.get(col);
+    if (s) return s;
+    if (col.charCodeAt(0) !== 35) s = col;
+    else { const n = parseInt(col.slice(1), 16), k = 0.86; s = 'rgb(' + (((n >> 16) & 255) * k | 0) + ',' + (((n >> 8) & 255) * k | 0) + ',' + ((n & 255) * k | 0) + ')'; }
+    ARETES.set(col, s);
     return s;
   }
 
@@ -310,6 +322,7 @@
     this.tmp = [0, 0, 0];
     this.wv = [];
     this.teinte = null;
+    this.aretes = true; // plis marqués (sprint 6)
     this.motifs = {};
     this.motifsSources = canvas.ownerDocument ? creerMotifs(canvas.ownerDocument) : null;
     if (this.motifsSources) for (const id in this.motifsSources) this.motifs[id] = this.ctx.createPattern(this.motifsSources[id], 'repeat');
@@ -317,7 +330,7 @@
   Renderer.prototype.begin = function () { this.np = 0; };
   Renderer.prototype._poly = function () {
     let p = this.polys[this.np];
-    if (!p) { p = { pts: new Float32Array(16), n: 0, z: 0, col: '', papier: '', l1: 1, l2: 1, k: 1 }; this.polys[this.np] = p; }
+    if (!p) { p = { pts: new Float32Array(16), n: 0, z: 0, col: '', ar: '', papier: '', l1: 1, l2: 1, k: 1 }; this.polys[this.np] = p; }
     this.np++;
     return p;
   };
@@ -354,7 +367,8 @@
       for (let m = 0; m < ids.length; m++) { const w2 = wv[ids[m]]; p.pts[m * 2] = w2[3]; p.pts[m * 2 + 1] = w2[4]; zs += w2[5]; }
       p.z = zs / ids.length + biais;
       p.papier = papier && this.motifs[papier] && !f.ne ? papier : '';
-      p.col = shade(p.papier ? couleurPapier(f.c, papier) : f.c, nx, ny, nz, alpha, this.teinte, f.ne);
+      p.col = shade(p.papier ? couleurPapier(f.c, papier) : f.c, nx, ny, nz, alpha, this.teinte, f.ne, f.doux);
+      p.ar = this.aretes && !f.ne && !f.doux ? arete(p.col) : p.col;
       if (p.papier) {
         p.l1 = Math.hypot(ux, uy, uz) || 1; p.l2 = Math.hypot(vx2, vy2, vz2) || 1;
         p.k = Math.max(0.35, Math.min(1, 0.55 + 0.5 * (nx * L[0] + ny * L[1] + nz * L[2])));
@@ -392,7 +406,7 @@
       for (let m = 1; m < p.n; m++) ctx.lineTo(pts[m * 2], pts[m * 2 + 1]);
       ctx.closePath();
       ctx.fillStyle = p.col; ctx.fill();
-      ctx.strokeStyle = p.col; ctx.stroke();
+      ctx.strokeStyle = p.ar; ctx.stroke();
       if (p.papier) {
         // Le motif suit la face : repère formé par ses deux premières arêtes.
         const mot = this.motifs[p.papier], e = PAPIERS[p.papier].echelle;
@@ -407,5 +421,5 @@
     return n;
   };
 
-  return { Builder, Camera, Renderer, shade, hex, melange, couleurPapier, creerMotifs, PAPIERS };
+  return { Builder, Camera, Renderer, shade, arete, hex, melange, couleurPapier, creerMotifs, PAPIERS };
 });

@@ -281,5 +281,47 @@
     "titre": "Frames per second",
     "detail": "{fps} average, {min} lowest (last 30 seconds), resolution ×{dpr}",
     "aide": "Note this down during phone tests."
+  },
+  "camera": {
+    "gauche": "Turn left",
+    "droite": "Turn right",
+    "centrer": "Center the island"
+  },
+  "horloge_court": "{saison} · day {jour}",
+  "barre": {
+    "bientot": "Locked",
+    "bientot_aide": "{nombre} more builds unlock at the Forest edge."
+  },
+  "arrivee": {
+    "nouvelle": "New species: {espece}!"
+  },
+  "peinture": {
+    "aide": "Hold and drag to place several."
+  },
+  "guide": {
+    "passer": "Skip the guide",
+    "etape": "Guide {n} / {total}",
+    "bienvenue": "Welcome! Here you never place animals: you prepare their habitat and they come on their own. Watch the grass…",
+    "fleurs_choisir": "Flowers feed the pollinators. Tap “Flowers” below.",
+    "fleurs_poser": "Hold your finger and drag over the golden tiles to sow flowers ({n} / {total}).",
+    "hotel_choisir": "Bees love your flowers, but they need a nest. Tap “Bug hotel”.",
+    "hotel_attendre": "The bug hotel costs {cout} sap ({seve} / {cout}). Your plants make sap on their own.",
+    "hotel_poser": "Place the hotel on a golden tile, near the flowers.",
+    "pierres_choisir": "Rabbits want grass and a hiding place. Tap “Rock pile”.",
+    "pierres_attendre": "The rock pile costs {cout} sap ({seve} / {cout}).",
+    "pierres_poser": "Place the rock pile at the edge of the grass, on a golden tile.",
+    "mare_choisir": "Earthworms like damp soil. Tap “Pond”.",
+    "mare_attendre": "Digging a pond costs {cout} sap ({seve} / {cout}).",
+    "mare_poser": "Dig the pond on the golden tiles: the soil all around gets damp.",
+    "paillis_choisir": "Mulch feeds the soil. Tap “Mulch”.",
+    "paillis_poser": "Drag over the golden tiles near the pond to spread mulch ({n} / {total}).",
+    "jauge": "Well done! This gauge shows what your meadow needs to become a forest edge. Tap it.",
+    "fin": "Your turn! Tap an animal to photograph it: every photo fills your field journal.",
+    "recolte": "Seeds are ripe! With “Observe”, tap the golden pod to collect them.",
+    "vu_sauterelle": "The grasshoppers came on their own: the grass feeds them.",
+    "vu_abeille": "The bees are here: flowers to visit and a hotel to nest in.",
+    "vu_lapin": "A rabbit! Grass to nibble and rocks to hide under.",
+    "vu_ver": "Earthworms: the pond and the mulch made the soil damp and rich.",
+    "vu_alouette": "The skylark came to eat the grasshoppers, in wide open space."
   }
 }

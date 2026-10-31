@@ -27,10 +27,10 @@
   // ---------------------------------------------------------------- Plantes
   function touffe(c1, c2, variante) {
     const b = new B();
-    // Éventail de brins pliés, bas et larges.
-    b.tri([-0.06, 0, 0], [0.06, 0, 0], [-0.26, 0.7, 0.04], c1, true);
-    b.tri([-0.06, 0, 0], [0.06, 0, 0], [0.02, 1, -0.02], c2, true);
-    b.tri([0, 0, -0.06], [0, 0, 0.06], variante ? [-0.1, 0.8, -0.24] : [0.06, 0.6, 0.26], c1, true);
+    // Éventail de trois brins de papier, larges à la base et penchés vers l'extérieur (sprint 6 : plus lisibles de loin).
+    b.tri([-0.12, 0, 0.02], [0.08, 0, -0.02], [-0.42, 0.78, 0.1], c1, true);
+    b.tri([-0.1, 0, 0], [0.1, 0, 0], [0.04, 1.05, -0.04], c2, true);
+    b.tri([0, 0, -0.1], [0.02, 0, 0.1], variante ? [0.36, 0.82, -0.3] : [0.34, 0.7, 0.32], c1, true);
     return b.build();
   }
   function fleur(couleur, tige, coeur) {

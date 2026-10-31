@@ -167,9 +167,9 @@
       etat.ui.nouvelleT = etat.temps;
       if (!silence) {
         observer(id, 'arrivee');
-        const r = TX('garde.reactions.' + id);
-        if (r) odile(r, { priorite: 1 });
         ajouterFil(T('journal.premiere', { espece: nomEsp(id) }), true);
+        const r = TX('garde.reactions.' + id);
+        if (r) ajouterFil(r);
       }
     }
   }
@@ -244,7 +244,6 @@
     if (cle === 'arrivee') return true;
     etat.pages += 1;
     // Plusieurs observations à la fois (au chargement d'une île) : une seule bulle, le reste va au journal.
-    if (Date.now() - dernierToastComportement > 2500) { dernierToastComportement = Date.now(); toast(T('reussites.comportement', { texte: textes[cle] }), { icone: vignette(id) }); }
     ajouterFil(T('reussites.comportement', { texte: textes[cle] }));
     for (const autre of debloquees()) {
       if (venu(autre)) continue;
@@ -294,9 +293,9 @@
     const t = el('div', 'toast' + (o.classe ? ' ' + o.classe : ''), zoneToasts);
     if (o.icone) el('img', '', t).src = o.icone;
     el('span', '', t).textContent = texte;
-    while (zoneToasts.children.length > 3) zoneToasts.firstChild.remove();
-    setTimeout(() => t.classList.add('sort'), o.duree || 3600);
-    setTimeout(() => t.remove(), (o.duree || 3600) + 500);
+    while (zoneToasts.children.length > 2) zoneToasts.firstChild.remove();
+    setTimeout(() => t.classList.add('sort'), o.duree || 2800);
+    setTimeout(() => t.remove(), (o.duree || 2800) + 500);
   }
   function ajouterFil(texte, important) {
     const f = etat.ui.fil;
@@ -318,8 +317,10 @@
     o = o || {};
     if (!texte) return;
     if (fileOdile.some(b => b.texte === texte)) return;
+    // Sprint 6 : une seule bulle à la fois en bas de l'écran. Pendant le guide, Odile parle en petit bandeau.
+    if (guideVisible()) { if (o.priorite === 1 && !o.boutons) toast(texte, { icone: vignette('odile'), duree: 4200 }); return; }
     if (o.priorite === 0 && fileOdile.length >= 2) return; // le superflu ne s'accumule pas
-    fileOdile.push({ texte, boutons: o.boutons || [], duree: o.duree || (o.boutons ? 25000 : 9000) });
+    fileOdile.push({ texte, boutons: o.boutons || [], duree: o.duree || (o.boutons ? 20000 : 7000) });
     if (!bulleOdile.classList.contains('ouverte')) suivanteOdile();
   }
   function suivanteOdile() {
@@ -358,10 +359,10 @@
           if (j.premiere) {
             etat.ui.nouvelleT = etat.temps;
             ajouterFil(T('journal.premiere', { espece: nom }), true);
-            toast(T('journal.premiere', { espece: nom }), { icone: vignette(j.id), classe: 'or' });
-            const tuto = { sauterelle: 'sauterelles', alouette: 'alouette' }[j.id];
-            if (tuto && !etat.ui.tuto[tuto]) { etat.ui.tuto[tuto] = 1; odile(TX('garde.tutoriel.' + tuto), { priorite: 1 }); }
-            else odile(TX('garde.reactions.' + j.id), { priorite: 1 });
+            const reaction = TX('garde.reactions.' + j.id);
+            if (reaction) ajouterFil(reaction);
+            // Sprint 6 : l'arrivée se montre sur l'île (étiquette au-dessus de l'animal), et le guide explique pourquoi.
+            premiereArrivee(j);
           } else ajouterFil(T('journal.arrivee', { espece: nom }));
           break;
         case 'renfort': break;
@@ -380,10 +381,10 @@
         case 'foudre': ajouterFil(T('journal.foudre'), true); break;
         case 'hibernation': case 'migration': case 'reveil': ajouterFil(T('journal.' + j.type, { espece: nom })); break;
         case 'annonce': odile(TX('evenements.' + j.id + '.annonce') || TX('garde.alertes.' + j.id), { priorite: 1 }); break;
-        case 'evenement': ajouterFil(T('journal.evenement', { evenement: nomEv(j.id) }), true); toast(nomEv(j.id), { classe: 'meteo' }); break;
+        case 'evenement': ajouterFil(T('journal.evenement', { evenement: nomEv(j.id) }), true); break;
         case 'evenement_fin':
           ajouterFil(T('journal.evenement_fin', { evenement: nomEv(j.id) }));
-          odile(TX('evenements.' + j.id + '.fin') || TX('garde.alertes.fin_evenement'), { priorite: 1 });
+          ajouterFil(TX('evenements.' + j.id + '.fin') || TX('garde.alertes.fin_evenement'));
           if (j.reussi) toast(T('journal.evenement_reussi', { pages: j.pages, seve: j.seve }), { classe: 'or' });
           break;
         case 'rare':
@@ -394,8 +395,7 @@
         case 'mission': {
           const titre = TX('missions.' + j.id + '.titre') || j.id;
           ajouterFil(T('journal.mission', { titre }), true);
-          toast(T('reussites.mission', { titre }), { classe: 'or' });
-          odile(TX('garde.alertes.mission_reussie'), { priorite: 0 });
+          toast(T('reussites.mission', { titre }), { classe: 'or', icone: vignette('odile') });
           break;
         }
         case 'etape': ajouterFil(T('journal.etape', { etape: nomEtape(j.id) }), true); break;
@@ -410,22 +410,11 @@
   function tutoriel() {
     const u = etat.ui.tuto, h = Core.horloge(etat);
     const montrer = cle => { u[cle] = 1; odile(TX('garde.tutoriel.' + cle), { priorite: 1 }); };
-    if (etat.etape === 'prairie') {
-      if (!u.accueil) montrer('accueil');
-      else if (!u.carnet && etat.temps > 10) { u.carnet = 1; odile(TX('garde.tutoriel.carnet'), { priorite: 1, boutons: [[T('boutons.carnet'), () => ouvrirCarnet()]] }); }
-      if (!u.semer_fleurs && u.sauterelles && etat.temps > 30 && etat.missions.actives.some(m => m.id === 'premiers_semis' && !m.remplie)) montrer('semer_fleurs');
-      if (!u.besoin_partiel && !venu('abeille')) {
-        const r = besoinsMeilleurs('abeille');
-        if (r && r[0].ok && !r[1].ok) montrer('besoin_partiel');
-      }
-      if (!u.abri_lapin && etat.temps > 300 && !venu('lapin')) montrer('abri_lapin');
-      if (!u.mare_paillis && etat.temps > 480 && !venu('ver')) montrer('mare_paillis');
-      if (!u.harmonie) {
-        const s = Core.etapeSuivante(etat, data);
-        if (s && !s.ok && s.conditions.filter(c => !c.ok).every(c => c.type === 'harmonie')) montrer('harmonie');
-      }
+    if (etat.etape === 'prairie' && !u.harmonie && !guideVisible()) {
+      const s = Core.etapeSuivante(etat, data);
+      if (s && !s.ok && s.conditions.filter(c => !c.ok).every(c => c.type === 'harmonie')) montrer('harmonie');
     }
-    if (!u.premiere_nuit && h.moment === 'nuit') montrer('premiere_nuit');
+    if (!u.premiere_nuit && h.moment === 'nuit' && !guideVisible()) montrer('premiere_nuit');
     // Alertes de saison.
     if (saisonVue && saisonVue !== h.saison) {
       if (h.saison === 'hiver') odile(TX('garde.alertes.hiver'), { priorite: 0 });
@@ -434,7 +423,7 @@
     saisonVue = h.saison;
     momentVu = h.moment;
     // Blocage : aucune nouvelle espèce depuis 5 minutes → indice gratuit (GDD 1.9).
-    if (etat.temps - etat.ui.nouvelleT > 300) {
+    if (etat.temps - etat.ui.nouvelleT > 300 && !guideVisible()) {
       const id = especeLaPlusProche(true);
       etat.ui.nouvelleT = etat.temps;
       if (id) odile(TX('garde.indices.blocage'), {
@@ -444,6 +433,169 @@
           ouvrirCarnet(id);
         }], [T('boutons.plus_tard'), () => {}]],
       });
+    }
+  }
+
+
+  // =====================================================================
+  // Guide des premières minutes (sprint 6) : remplace les bulles du tutoriel de la Prairie.
+  // Chaque étape montre le bouton à toucher (main qui tape), puis les tuiles où la pose marche (contour doré),
+  // et quand l'espèce attendue arrive, la caméra va la montrer avec une étiquette qui explique pourquoi elle est venue.
+  // Les étapes se valident d'après l'état de l'île : un joueur qui fait les choses dans un autre ordre avance quand même.
+  // =====================================================================
+  const nbTuiles = f => Core.tuilesIle(etat).filter(i => f(etat.tuiles[i])).length;
+  const aAmenagement = id => Core.tuilesIle(etat).some(i => etat.tuiles[i].a === id);
+  const centreDe = f => {
+    const l = Core.tuilesIle(etat).filter(i => f(etat.tuiles[i]));
+    if (!l.length) return null;
+    let x = 0, y = 0; for (const i of l) { x += i % N; y += (i / N) | 0; }
+    return { x: x / l.length, y: y / l.length };
+  };
+  // Tuiles où l'action marcherait (sans compter le coût), les plus proches d'un point d'intérêt.
+  function suggestions(id, pres, max) {
+    const l = [];
+    for (const i of Core.tuilesIle(etat)) {
+      const x = i % N, y = (i / N) | 0;
+      if (!apercu(id, x, y, true)) continue;
+      const d = pres ? Math.hypot(x - pres.x, y - pres.y) : Math.hypot(x - Core.CENTRE, y - Core.CENTRE);
+      l.push([d + ((i * 7919) % 13) * 0.01, i]);
+    }
+    l.sort((a, b) => a[0] - b[0]);
+    return l.slice(0, max || 8).map(e => e[1]);
+  }
+  const herbeOuFleurs = t => t.c === 'herbe' || t.c === 'fleurs';
+  function etapePose(cle, action, opts) {
+    // Étape « choisis le bouton, puis pose » ; attend la sève si besoin.
+    return {
+      id: cle, action, attendu: opts.attendu,
+      fini: opts.fini,
+      texte() {
+        const c = coutAction(action);
+        if (etat.seve < c.seve && opts.attendre !== false) return T('guide.' + cle + '_attendre', { cout: c.seve, seve: Math.floor(etat.seve) });
+        const p = opts.progres ? opts.progres() : null;
+        return actionChoisie === action ? T('guide.' + cle + '_poser', p || {}) : T('guide.' + cle + '_choisir', p || {});
+      },
+      pret() { const c = coutAction(action); return etat.seve >= c.seve && etat.graines >= c.graines; },
+      tuiles() { return suggestions(action, opts.pres ? opts.pres() : null, opts.max || 6); },
+      glisse: ['semer_herbe', 'semer_fleurs', 'paillis', 'semer_ronce'].includes(action),
+    };
+  }
+  const ETAPES_GUIDE = [
+    { id: 'bienvenue', texte: () => T('guide.bienvenue'), fini: () => (venu('sauterelle') && etat.temps - (etat.ui.guide.vuT || 0) > 6) || etat.temps > 50, attendu: 'sauterelle' },
+    etapePose('fleurs', 'semer_fleurs', {
+      fini: () => nbTuiles(t => t.e === 'fleurs') >= 3 || (nbTuiles(t => t.e === 'fleurs') >= 1 && etat.graines < 1),
+      progres: () => ({ n: nbTuiles(t => t.e === 'fleurs'), total: 3 }), attendre: false, max: 8,
+      pres: () => centreDe(herbeOuFleurs),
+    }),
+    etapePose('hotel', 'hotel_insectes', { fini: () => aAmenagement('hotel_insectes'), attendu: 'abeille', pres: () => centreDe(t => t.e === 'fleurs'), max: 4 }),
+    etapePose('pierres', 'tas_pierres', { fini: () => aAmenagement('tas_pierres'), attendu: 'lapin', pres: () => centreDe(t => t.c === 'herbe'), max: 4 }),
+    etapePose('mare', 'mare', { fini: () => aAmenagement('mare'), max: 3 }),
+    etapePose('paillis', 'paillis', {
+      fini: () => nbTuiles(t => t.paillis > 0) >= 3, attendu: 'ver',
+      progres: () => ({ n: nbTuiles(t => t.paillis > 0), total: 3 }), pres: () => centreDe(t => t.c === 'eau'), max: 6,
+    }),
+    { id: 'jauge', texte: () => T('guide.jauge'), fini: () => !!etat.ui.guide.jaugeVue, cible: () => jauge },
+  ];
+  function etatGuide() { return etat.ui.guide || (etat.ui.guide = { k: 0, ferme: etat.etape !== 'prairie', attendus: {} }); }
+  function etapeGuide() {
+    const g = etatGuide();
+    if (g.ferme) return null;
+    while (g.k < ETAPES_GUIDE.length && ETAPES_GUIDE[g.k].fini()) {
+      const e = ETAPES_GUIDE[g.k];
+      if (e.attendu && !venu(e.attendu)) g.attendus[e.attendu] = 1;
+      g.k++;
+    }
+    if (g.k >= ETAPES_GUIDE.length) { g.ferme = true; odile(T('guide.fin'), { priorite: 1, duree: 9000 }); return null; }
+    return ETAPES_GUIDE[g.k];
+  }
+  const guideVisible = () => !!(etat && etat.ui && etat.ui.guide && !etat.ui.guide.ferme);
+  const bulleGuide = el('div', 'guide', racine);
+  bulleGuide.innerHTML = '<img alt=""><div><small></small><p></p></div><button type="button" class="fermer" aria-label="×">×</button>';
+  bulleGuide.querySelector('.fermer').onclick = () => { etatGuide().ferme = true; majGuide(); };
+  const main = el('div', 'main', racine);
+  main.innerHTML = '<svg viewBox="0 0 40 40"><path d="M15 37c-3-3-8-9-9-12-1-2 1-4 3-3l4 3V8a2.5 2.5 0 0 1 5 0v10l1-.2V6a2.5 2.5 0 0 1 5 0v12l1 .1V8.5a2.5 2.5 0 0 1 5 0V20l.8.2v-6a2.5 2.5 0 0 1 5 0V28c0 4-3 9-6 9z" fill="#fffaf0" stroke="#5a4a38" stroke-width="1.6" stroke-linejoin="round"/></svg>';
+  let guideTuiles = [], guideCible = null, guideRecolte = -1;
+  function majGuide() {
+    const e = etat ? etapeGuide() : null;
+    for (const b of Object.values(boutonsActions)) b.classList.remove('conseil');
+    jauge.classList.remove('conseil');
+    guideTuiles = []; guideCible = null;
+    // Astuce de récolte, une fois : quand une capsule de graines est mûre.
+    guideRecolte = -1;
+    if (!etat.ui.tuto.recolte) {
+      const i = Core.tuilesIle(etat).find(k => etat.tuiles[k].graines >= 1);
+      if (i !== undefined) guideRecolte = i;
+    }
+    if (!e && guideRecolte < 0) { bulleGuide.classList.remove('ouverte'); racine.classList.remove('guide-ouvert'); main.className = 'main'; return; }
+    let txt, etape = '';
+    if (e) {
+      const g = etatGuide();
+      etape = T('guide.etape', { n: g.k + 1, total: ETAPES_GUIDE.length });
+      txt = e.texte();
+      if (e.action) {
+        if (actionChoisie !== e.action) guideCible = { bouton: boutonsActions[e.action] };
+        else if (!e.pret || e.pret()) { guideTuiles = e.tuiles(); if (guideTuiles.length) guideCible = { tuile: guideTuiles[0], glisse: e.glisse }; }
+      } else if (e.cible) guideCible = { bouton: e.cible() };
+      if (guideCible && guideCible.bouton) guideCible.bouton.classList.add('conseil');
+    }
+    if (guideRecolte >= 0 && (!e || actionChoisie === 'observer')) {
+      txt = T('guide.recolte'); guideTuiles = [guideRecolte];
+      guideCible = actionChoisie === 'observer' ? { tuile: guideRecolte, haut: 0.6 } : { bouton: boutonsActions.observer };
+      if (guideCible.bouton) guideCible.bouton.classList.add('conseil');
+    }
+    bulleGuide.querySelector('img').src = vignette('odile');
+    texte(bulleGuide.querySelector('small'), etape);
+    texte(bulleGuide.querySelector('p'), txt);
+    bulleGuide.querySelector('.fermer').hidden = !e;
+    bulleGuide.querySelector('.fermer').title = T('guide.passer');
+    if (!bulleGuide.classList.contains('ouverte')) { bulleGuide.classList.add('ouverte'); racine.classList.add('guide-ouvert'); fermerOdileVite(); }
+  }
+  function fermerOdileVite() { if (bulleOdile.classList.contains('ouverte')) { bulleOdile.classList.remove('ouverte'); racine.classList.remove('odile-ouverte'); odileFin = 0; } }
+  // La main suit sa cible à chaque image (la caméra bouge).
+  function placerMain() {
+    if (!guideCible || panneau.classList.contains('ouvert')) { if (main.className !== 'main') main.className = 'main'; return; }
+    let x, y, cls = 'main visible';
+    if (guideCible.bouton) {
+      const r = guideCible.bouton.getBoundingClientRect();
+      if (!r.width) { main.className = 'main'; return; }
+      x = r.left + r.width / 2; y = r.top + r.height * 0.55; cls += ' tape';
+    } else {
+      const i = guideCible.tuile, o = rendu.ecran(i % N, (i / N) | 0, guideCible.haut || 0);
+      x = o.x; y = o.y; cls += guideCible.glisse ? ' glisse' : ' tape';
+    }
+    main.style.transform = `translate(${Math.round(x)}px, ${Math.round(y)}px)`;
+    if (main.className !== cls) main.className = cls;
+  }
+  function evenementTuto(quoi) {
+    if (quoi === 'recolte') etat.ui.tuto.recolte = 1;
+    if (etat.ui.guide) majGuide();
+  }
+  // Première venue d'une espèce : étiquette sur l'île ; pendant le guide, la caméra va la montrer.
+  const etiquettes = [];
+  function premiereArrivee(j) {
+    const g = etat.ui.guide, explication = T('guide.vu_' + j.id);
+    const aExpliquer = explication !== 'guide.vu_' + j.id;
+    if (j.x === undefined) { toast(T('arrivee.nouvelle', { espece: nomEsp(j.id) }), { icone: vignette(j.id), classe: 'or' }); return; }
+    const e = el('div', 'etiquette-ile', racine);
+    e.innerHTML = `<img alt="" src="${vignette(j.id)}"><div><b></b>${aExpliquer ? '<small></small>' : ''}</div>`;
+    e.querySelector('b').textContent = T('arrivee.nouvelle', { espece: nomEsp(j.id) });
+    if (aExpliquer) e.querySelector('small').textContent = explication;
+    etiquettes.push({ el: e, x: j.x, y: j.y, agent: j.agent, fin: Date.now() + (aExpliquer ? 7000 : 4500) });
+    if (g && (!g.ferme || g.attendus[j.id] || j.id === 'sauterelle') && etat.etape === 'prairie') {
+      if (j.id === 'sauterelle') g.vuT = etat.temps;
+      delete g.attendus[j.id];
+      animerCamera({ tx: j.x - Core.CENTRE, tz: j.y - Core.CENTRE, dist: Math.min(cam.dist, 15) }, 1.3);
+    }
+  }
+  function majEtiquettes() {
+    const now = Date.now();
+    for (let k = etiquettes.length - 1; k >= 0; k--) {
+      const t = etiquettes[k];
+      if (now > t.fin) { t.el.classList.add('sort'); if (now > t.fin + 500) { t.el.remove(); etiquettes.splice(k, 1); } continue; }
+      let x = t.x, y = t.y;
+      if (t.agent !== undefined) { const a = etat.agents.find(a2 => a2.id === t.agent); if (a) { x = a.x; y = a.y; } }
+      const o = rendu.ecran(x, y, 1.1);
+      t.el.style.transform = `translate(${Math.round(o.x)}px, ${Math.round(o.y)}px) translate(-50%, -100%)`;
     }
   }
 
@@ -490,7 +642,7 @@
     texte(chips.pages, nombre(etat.pages));
     const h = Core.horloge(etat);
     html(blocTemps, ICONES[h.moment === 'nuit' ? 'lune' : h.moment === 'crepuscule' ? 'crepuscule' : 'soleil']
-      + `<span>${T('horloge', { saison: T('saisons.' + h.saison), jour: h.jour % 3 + 1, annee: h.annee + 1 })}</span><b class="vitesse">×${vitesse}</b>`);
+      + `<span>${T(innerWidth < 700 ? 'horloge_court' : 'horloge', { saison: T('saisons.' + h.saison), jour: h.jour % 3 + 1, annee: h.annee + 1 })}</span><b class="vitesse">×${vitesse}</b>`);
     const m = Core.meteo(etat, data);
     let txt = T('meteo.calme'), cls = '';
     if (m.actif) { txt = T('meteo.actif', { nom: nomEv(m.actif.id), secondes: Math.ceil(m.actif.reste) }); cls = m.actif.id; }
@@ -552,6 +704,11 @@
       b.onclick = () => choisirAction(id);
       boutonsActions[id] = b;
     }
+    // Sprint 6 : les aménagements encore verrouillés sont rangés derrière un seul bouton (barre plus courte).
+    const bientot = el('button', 'action bientot', barre); bientot.type = 'button';
+    bientot.innerHTML = `<span class="ic">${ICONES.cadenas}</span><span class="nom">${T('barre.bientot')}</span><small class="cout"><span class="nb"></span></small>`;
+    bientot.onclick = () => { const n = ACTIONS.filter(a => !actionDebloquee(a)).length; toast(T('barre.bientot_aide', { nombre: n }), { duree: 3200 }); };
+    boutonsActions._bientot = bientot;
     majBarre();
   }
   function actionDebloquee(id) {
@@ -560,9 +717,13 @@
   }
   function majBarre() {
     const et = data.etapes.find(e => e.id === etat.etape);
+    const verrouillees = ACTIONS.filter(a => !actionDebloquee(a)).length, bt = boutonsActions._bientot;
+    if (bt) { if (bt.hidden !== !verrouillees) bt.hidden = !verrouillees; texte(bt.querySelector('.nb'), '+' + verrouillees); }
     for (const [id, b] of Object.entries(boutonsActions)) {
+      if (id === '_bientot') continue;
       const ok = actionDebloquee(id), c = coutAction(id);
       if (b.classList.contains('verrouille') === ok) b.classList.toggle('verrouille', !ok);
+      if (id !== 'agrandir' && b.hidden !== !ok) b.hidden = !ok;
       if (b.classList.contains('choisie') !== (id === actionChoisie)) b.classList.toggle('choisie', id === actionChoisie);
       if (id === 'agrandir') {
         const possible = etat.rayon < et.rayon_ile;
@@ -581,9 +742,12 @@
     if (!actionDebloquee(id)) { toast(T('refus.verrouille', { etape: nomEtape(data.actions[id].etape) })); return; }
     actionChoisie = actionChoisie === id ? 'observer' : id;
     majBarre();
-    if (actionChoisie === 'observer') { aideAction.classList.remove('visible'); return; }
-    aideAction.innerHTML = `<b>${T('actions.' + id)}</b> · ${T('aides.' + id) !== 'aides.' + id ? T('aides.' + id) : T('actions.' + id + '_aide')}`;
-    aideAction.classList.add('visible');
+    if (actionChoisie === 'observer') { aideAction.classList.remove('visible'); majGuide(); return; }
+    aideAction.innerHTML = `<b>${T('actions.' + id)}</b> · ${T('aides.' + id) !== 'aides.' + id ? T('aides.' + id) : T('actions.' + id + '_aide')}${PEINTURE.has(id) ? ' ' + T('peinture.aide') : ''}`;
+    // Sprint 6 : l'aide s'efface seule (et ne s'affiche pas pendant le guide, qui explique déjà).
+    clearTimeout(aideAction._t);
+    if (!guideVisible()) { aideAction.classList.add('visible'); aideAction._t = setTimeout(() => aideAction.classList.remove('visible'), 3500); }
+    majGuide();
   }
   function agrandir() {
     const r = Core.action(etat, data, 'agrandir');
@@ -605,13 +769,13 @@
   }
   // Aperçu au survol : la pose marcherait-elle ici ? (sans rien modifier)
   const liberable = t => t && !t.a && t.c !== 'eau' && t.c !== 'roche';
-  function apercu(id, x, y) {
+  function apercu(id, x, y, sansCout) {
     if (!Core.dansIle(etat, x, y)) return false;
     const t = etat.tuiles[Core.idx(x, y)], a = data.actions[id];
     if (id === 'retirer') return !!(t.a || t.e || t.c === 'roche');
     if (!a) return true;
     const c = coutAction(id);
-    if (etat.seve < c.seve || etat.graines < c.graines) return false;
+    if (!sansCout && (etat.seve < c.seve || etat.graines < c.graines)) return false;
     if (a.type === 'semis') {
       if (!liberable(t) || t.e === a.espece) return false;
       if (a.espece !== 'herbe' && t.c !== 'nu' && t.c !== 'herbe') return false;
@@ -626,63 +790,163 @@
     }
     return true;
   }
-  function poser(id, x, y) {
+  function poser(id, x, y, silence) {
     const r = Core.action(etat, data, id, x, y);
     if (!r.ok) {
+      if (silence) return r;
       if (r.raison === 'besoins') r.fiche = data.especes[data.actions[id].espece];
-      return refus(r);
+      refus(r);
+      return r;
     }
-    if (id === 'retirer') toast(T('reussites.retire', { nombre: r.rendu }));
+    if (id === 'retirer') { if (!silence) toast(T('reussites.retire', { nombre: r.rendu }), { duree: 1600 }); }
     else {
       const a = data.actions[id];
       if (a.type === 'semis') { observer(a.espece, 'pousse'); reconnaitrePlantes(false); }
-      if (id === 'hotel_insectes' && !etat.ui.tuto.hotel) { etat.ui.tuto.hotel = 1; odile(TX('garde.tutoriel.hotel'), { priorite: 1 }); }
     }
-    majHaut();
+    evenementTuto('pose', id, x, y);
+    if (!silence) majHaut();
+    return r;
   }
 
   // =====================================================================
   // Clics sur l'île : caméra, photos, récolte, tuiles
   // =====================================================================
+  // Sprint 6 : glisser déplace la caméra ; avec une action de semis choisie, maintenir et glisser sème à la chaîne.
+  // Souris : clic droit + glisser pour tourner, molette pour zoomer. Doigts : deux doigts pour zoomer, tourner, déplacer.
+  const PEINTURE = new Set(['semer_herbe', 'semer_fleurs', 'paillis', 'semer_ronce', 'retirer']);
   const pointeurs = {};
-  let glisse = null, pince = null, survol = null, appui = null;
+  let geste = null, survol = null, appui = null;
+  const posEcran = ev => { const r = canvas.getBoundingClientRect(); return { sx: ev.clientX - r.left, sy: ev.clientY - r.top }; };
+  function infoPince() {
+    const ids = Object.keys(pointeurs), a = pointeurs[ids[0]], b = pointeurs[ids[1]];
+    return { d: Math.hypot(a.x - b.x, a.y - b.y), ang: Math.atan2(b.y - a.y, b.x - a.x), mx: (a.x + b.x) / 2, my: (a.y + b.y) / 2 };
+  }
+  function debutPeinture() {
+    if (!geste || geste.mode !== 'peint' || geste.actif) return;
+    geste.actif = true;
+    peindre(geste.x, geste.y);
+  }
+  function peindre(cx, cy) {
+    const r = canvas.getBoundingClientRect(), t = rendu.tuileSous(cx - r.left, cy - r.top);
+    if (!t || !Core.dansIle(etat, t.x, t.y)) return;
+    const cle = t.x + ',' + t.y;
+    if (geste.faites.has(cle)) return;
+    geste.faites.add(cle);
+    if (!geste.premiere) geste.premiere = t;
+    // Retirer à la chaîne : seulement ce qui ressemble à la première tuile touchée (on ne rase pas un hôtel par mégarde).
+    if (actionChoisie === 'retirer') {
+      const tu = etat.tuiles[Core.idx(t.x, t.y)], sig = tu.a || tu.e || tu.c;
+      if (geste.sig === undefined) geste.sig = sig;
+      if (sig !== geste.sig) return;
+    }
+    if (!apercu(actionChoisie, t.x, t.y)) return;
+    const res = poser(actionChoisie, t.x, t.y, true);
+    if (res && res.ok) { geste.poses++; dernierTap = { x: t.x, y: t.y, fin: Date.now() + 400 }; }
+  }
+  function finPeinture() {
+    const g = geste;
+    if (!g.actif) {
+      // Simple toucher : une pose, avec l'explication en cas de refus.
+      const r = canvas.getBoundingClientRect();
+      return clic(g.x - r.left, g.y - r.top);
+    }
+    if (!g.poses && g.premiere) poser(actionChoisie, g.premiere.x, g.premiere.y); // rien n'a marché : on dit pourquoi, une fois
+    else if (g.poses > 1) evenementTuto('peinture', g.poses);
+  }
+  canvas.addEventListener('contextmenu', ev => ev.preventDefault());
   canvas.addEventListener('pointerdown', ev => {
-    canvas.setPointerCapture(ev.pointerId);
+    try { canvas.setPointerCapture(ev.pointerId); } catch (e) { /* pointeur synthétique */ }
     pointeurs[ev.pointerId] = { x: ev.clientX, y: ev.clientY };
-    const ids = Object.keys(pointeurs);
-    if (ids.length === 2) { const a = pointeurs[ids[0]], b = pointeurs[ids[1]]; pince = { d: Math.hypot(a.x - b.x, a.y - b.y), dist: cam.dist }; glisse = null; appui = null; }
-    else { glisse = { x: ev.clientX, y: ev.clientY, yaw: cam.yaw, pitch: cam.pitch }; appui = { x: ev.clientX, y: ev.clientY, t: Date.now() }; }
+    const n = Object.keys(pointeurs).length;
+    if (n === 2) {
+      if (geste && geste.mode === 'peint') { clearTimeout(geste.minuteur); if (geste.actif && geste.poses) majHaut(); }
+      geste = Object.assign({ mode: 'pince', dist: cam.dist, yaw: cam.yaw }, infoPince());
+      geste.d0 = geste.d; geste.ang0 = geste.ang;
+      appui = null; return;
+    }
+    if (n > 2) return;
+    appui = { x: ev.clientX, y: ev.clientY, t: Date.now() };
+    if (ev.button === 2 || (ev.pointerType === 'mouse' && ev.shiftKey)) geste = { mode: 'rot', x: ev.clientX, y: ev.clientY, yaw: cam.yaw, pitch: cam.pitch };
+    else if (ev.button === 1) geste = { mode: 'pan', x: ev.clientX, y: ev.clientY };
+    else if (actionChoisie !== 'observer' && PEINTURE.has(actionChoisie)) {
+      geste = { mode: 'peint', x: ev.clientX, y: ev.clientY, faites: new Set(), poses: 0, actif: false };
+      // Petit délai au doigt : laisse le temps de poser un second doigt pour zoomer sans semer.
+      geste.minuteur = setTimeout(debutPeinture, ev.pointerType === 'mouse' ? 0 : 110);
+    }
+    else geste = { mode: 'pan', x: ev.clientX, y: ev.clientY };
   });
   canvas.addEventListener('pointermove', ev => {
-    const r = canvas.getBoundingClientRect();
-    if (ev.pointerType === 'mouse') survol = { sx: ev.clientX - r.left, sy: ev.clientY - r.top };
-    if (!pointeurs[ev.pointerId]) return;
-    pointeurs[ev.pointerId] = { x: ev.clientX, y: ev.clientY };
-    const ids = Object.keys(pointeurs);
-    if (pince && ids.length === 2) { const a = pointeurs[ids[0]], b = pointeurs[ids[1]]; cam.dist = Math.max(6, Math.min(70, pince.dist * pince.d / Math.max(10, Math.hypot(a.x - b.x, a.y - b.y)))); return; }
-    if (glisse) {
-      if (appui && Math.hypot(ev.clientX - appui.x, ev.clientY - appui.y) > 8) appui = null;
-      if (!appui) {
-        cam.yaw = glisse.yaw - (ev.clientX - glisse.x) * 0.008;
-        cam.pitch = Math.max(0.35, Math.min(1.35, glisse.pitch + (ev.clientY - glisse.y) * 0.006));
-      }
+    if (ev.pointerType === 'mouse') survol = posEcran(ev);
+    const p = pointeurs[ev.pointerId];
+    if (!p || !geste) return;
+    const dx = ev.clientX - p.x, dy = ev.clientY - p.y;
+    p.x = ev.clientX; p.y = ev.clientY;
+    if (appui && Math.hypot(ev.clientX - appui.x, ev.clientY - appui.y) > 8) appui = null;
+    if (geste.mode === 'pince') {
+      if (Object.keys(pointeurs).length < 2) return;
+      const i = infoPince();
+      cam.dist = Math.max(6, Math.min(45, geste.dist * geste.d0 / Math.max(10, i.d)));
+      cam.yaw = geste.yaw - (i.ang - geste.ang0);
+      rendu.deplacer(i.mx - geste.mx, i.my - geste.my, etat);
+      geste.mx = i.mx; geste.my = i.my;
+    } else if (geste.mode === 'rot') {
+      cam.yaw = geste.yaw - (ev.clientX - geste.x) * 0.008;
+      cam.pitch = Math.max(0.4, Math.min(1.35, geste.pitch + (ev.clientY - geste.y) * 0.006));
+    } else if (geste.mode === 'pan') {
+      if (!appui) rendu.deplacer(dx, dy, etat);
+    } else if (geste.mode === 'peint') {
+      if (!geste.actif && !appui) { clearTimeout(geste.minuteur); debutPeinture(); }
+      if (geste.actif) peindre(ev.clientX, ev.clientY);
     }
   });
   const finPointeur = ev => {
-    if (appui && pointeurs[ev.pointerId] && Object.keys(pointeurs).length === 1 && ev.type === 'pointerup') {
-      const r = canvas.getBoundingClientRect();
-      clic(ev.clientX - r.left, ev.clientY - r.top);
+    if (!pointeurs[ev.pointerId]) return;
+    const n = Object.keys(pointeurs).length;
+    if (geste && n === 1 && ev.type === 'pointerup') {
+      if (geste.mode === 'peint') { clearTimeout(geste.minuteur); finPeinture(); }
+      else if (geste.mode === 'pan' && appui) { const r = canvas.getBoundingClientRect(); clic(ev.clientX - r.left, ev.clientY - r.top); }
     }
     delete pointeurs[ev.pointerId];
-    if (Object.keys(pointeurs).length < 2) pince = null;
-    if (!Object.keys(pointeurs).length) { glisse = null; appui = null; }
+    if (geste && geste.mode === 'pince' && n === 2) {
+      // Il reste un doigt : il continue à déplacer la caméra, sans semer.
+      const id = Object.keys(pointeurs)[0];
+      geste = id ? { mode: 'pan', x: pointeurs[id].x, y: pointeurs[id].y } : null;
+    }
+    if (!Object.keys(pointeurs).length) { geste = null; appui = null; majHaut(); }
   };
   canvas.addEventListener('pointerup', finPointeur); canvas.addEventListener('pointercancel', finPointeur);
   canvas.addEventListener('pointerleave', () => { survol = null; });
-  canvas.addEventListener('wheel', ev => { ev.preventDefault(); cam.dist = Math.max(6, Math.min(70, cam.dist * (ev.deltaY > 0 ? 1.1 : 0.9))); }, { passive: false });
+  canvas.addEventListener('wheel', ev => { ev.preventDefault(); cam.dist = Math.max(6, Math.min(45, cam.dist * (ev.deltaY > 0 ? 1.1 : 0.9))); }, { passive: false });
   window.addEventListener('keydown', ev => {
     if (ev.key === 'Escape') { if (panneau.classList.contains('ouvert')) fermerPanneau(); else if (actionChoisie !== 'observer') choisirAction(actionChoisie); fermerPanneauTuile(); }
+    if (panneau.classList.contains('ouvert')) return;
+    const pas = 40, k = ev.key.toLowerCase();
+    if (k === 'arrowleft' || k === 'a' || k === 'q') rendu.deplacer(pas, 0, etat);
+    else if (k === 'arrowright' || k === 'd') rendu.deplacer(-pas, 0, etat);
+    else if (k === 'arrowup' || k === 'w' || k === 'z') rendu.deplacer(0, pas, etat);
+    else if (k === 'arrowdown' || k === 's') rendu.deplacer(0, -pas, etat);
   });
+  // Petits boutons de caméra : tourner à gauche, à droite, recentrer.
+  const boutonsCamera = el('div', 'camera-boutons', racine);
+  for (const [id, svg, f] of [
+    ['gauche', '<svg viewBox="0 0 24 24"><path d="M7 8a7 7 0 1 1-1 7" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/><path d="M3 4v5h5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>', () => tourner(-Math.PI / 4)],
+    ['droite', '<svg viewBox="0 0 24 24"><path d="M17 8a7 7 0 1 0 1 7" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/><path d="M21 4v5h-5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>', () => tourner(Math.PI / 4)],
+    ['centrer', '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.5" fill="currentColor"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>', () => { rendu.cadrer(etat); }],
+  ]) { const b = el('button', 'rond petit-rond', boutonsCamera); b.type = 'button'; b.innerHTML = svg; b.title = T('camera.' + id); b.onclick = f; }
+  // Mouvements de caméra animés (boutons, tutoriel qui montre un résultat).
+  let anim = null;
+  function tourner(da) { animerCamera({ yaw: cam.yaw + da }, 0.45); }
+  function animerCamera(cible, duree) {
+    anim = { de: { yaw: cam.yaw, tx: cam.tx, tz: cam.tz, dist: cam.dist }, vers: Object.assign({ yaw: cam.yaw, tx: cam.tx, tz: cam.tz, dist: cam.dist }, cible), t: 0, duree: duree || 1 };
+  }
+  function avancerCamera(dt) {
+    if (!anim) return;
+    if (geste) { anim = null; return; } // le joueur reprend la main
+    anim.t += dt / anim.duree;
+    const k = anim.t >= 1 ? 1 : anim.t * anim.t * (3 - 2 * anim.t);
+    for (const c of ['yaw', 'tx', 'tz', 'dist']) cam[c] = anim.de[c] + (anim.vers[c] - anim.de[c]) * k;
+    if (anim.t >= 1) anim = null;
+  }
 
   let dernierTap = null;
   function clic(sx, sy) {
@@ -698,7 +962,7 @@
     const tu = etat.tuiles[Core.idx(t.x, t.y)];
     if (tu.graines >= 1) {
       const r = Core.action(etat, data, 'recolter', t.x, t.y);
-      if (r.ok) { envol(sx, sy, '+' + r.graines, chips.graines); majHaut(); return; }
+      if (r.ok) { envol(sx, sy, '+' + r.graines, chips.graines); evenementTuto('recolte'); majHaut(); return; }
     }
     ouvrirPanneauTuile(t.x, t.y, sx, sy);
   }
@@ -709,7 +973,6 @@
     flash();
     if (r.carte) toast(T('reussites.carte', { espece: nomEsp(id), papier: T('papiers.' + papier) }), { icone: vignette(id, papier), classe: 'or', duree: 5000 });
     else if (r.premiere) toast(T('reussites.photo_premiere', { espece: nomEsp(id) }), { icone: vignette(id), classe: 'or' });
-    else toast(T('reussites.photo', { espece: nomEsp(id) }), { icone: vignette(id), duree: 1800 });
     if (sx !== undefined && r.premiere) envol(sx, sy, '+1', chips.pages);
     majHaut();
   }
@@ -893,7 +1156,7 @@
   }
 
   // ---------- Succession ----------
-  function ouvrirSuccession() { ouvrirPanneau(dessinerSuccession, 'succession'); }
+  function ouvrirSuccession() { if (etat.ui.guide) etat.ui.guide.jaugeVue = true; ouvrirPanneau(dessinerSuccession, 'succession'); majGuide(); }
   function dessinerSuccession() {
     const s = Core.etapeSuivante(etat, data), hd = etat.harmonieDetail;
     let h = '';
@@ -1115,12 +1378,15 @@
       const a = data.actions[actionChoisie];
       survolTuile = { x: sv.x, y: sv.y, taille: a && a.taille > 1 ? a.taille : 1, refus: !survolOk };
     } else survolTuile = null;
-    rendu.dessiner(etat, dt, { survol: survolTuile });
+    avancerCamera(dt);
+    rendu.dessiner(etat, dt, { survol: survolTuile, guides: guideTuiles });
+    placerMain();
+    majEtiquettes();
     if (survol) canvas.style.cursor = actionChoisie !== 'observer' ? 'crosshair' : rendu.cibleSous(survol.sx, survol.sy) ? 'pointer' : 'grab';
     if (now - dernierLent > 500) {
       dernierLent = now;
       lents++;
-      if (lents % 2 === 0) { reconnaitrePlantes(false); tutoriel(); }
+      if (lents % 2 === 0) { reconnaitrePlantes(false); tutoriel(); majGuide(); }
       if (lents % 10 === 0) observerPlantes();
       majHaut();
       majPanneauTuile();
@@ -1146,12 +1412,13 @@
   construireBarre();
   majFil();
   majHaut();
+  majGuide();
   saisonVue = Core.horloge(etat).saison;
   // Accès pour les tests automatiques (tools/test-jeu.js).
   window.BIOME_JEU = {
     get etat() { return etat; }, set etat(e) { etat = Core.completer(e); etat.ui = Object.assign(uiDefaut(), etat.ui || {}); marquerVu(); rendu.cadrer(etat); construireBarre(); majHaut(); },
     rendu, clic, choisirAction, poser, photographier, ouvrirCarnet, ouvrirMissions, ouvrirSuccession, ouvrirBonus, ouvrirReglages, fermerPanneau,
-    passerEtape, retourHorsLigne, changerLangue, sauver, vignette, majIndices,
+    passerEtape, retourHorsLigne, changerLangue, sauver, vignette, majIndices, majGuide, get guide() { return etat.ui.guide; },
     get vitesse() { return vitesse; }, set vitesse(v) { vitesse = v; },
   };
   requestAnimationFrame(boucle);

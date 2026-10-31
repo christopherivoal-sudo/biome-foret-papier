@@ -281,5 +281,47 @@
     "titre": "Images par seconde",
     "detail": "{fps} en moyenne, {min} au plus bas (30 dernières secondes), définition ×{dpr}",
     "aide": "À noter pendant les tests sur téléphone."
+  },
+  "camera": {
+    "gauche": "Tourner à gauche",
+    "droite": "Tourner à droite",
+    "centrer": "Recentrer l'île"
+  },
+  "horloge_court": "{saison} · jour {jour}",
+  "barre": {
+    "bientot": "À débloquer",
+    "bientot_aide": "{nombre} aménagements arrivent à la Lisière."
+  },
+  "arrivee": {
+    "nouvelle": "Nouvelle espèce : {espece} !"
+  },
+  "peinture": {
+    "aide": "Maintiens et glisse pour en poser plusieurs."
+  },
+  "guide": {
+    "passer": "Passer le guide",
+    "etape": "Guide {n} / {total}",
+    "bienvenue": "Bienvenue ! Ici, tu ne places jamais d'animaux : tu prépares leur habitat et ils viennent seuls. Regarde l'herbe…",
+    "fleurs_choisir": "Les fleurs nourrissent les pollinisateurs. Touche « Fleurs » en bas.",
+    "fleurs_poser": "Maintiens le doigt et glisse sur les tuiles dorées pour semer des fleurs ({n} / {total}).",
+    "hotel_choisir": "Les abeilles aiment tes fleurs, mais il leur faut un nid. Touche « Hôtel à insectes ».",
+    "hotel_attendre": "Il faut {cout} sève pour l'hôtel à insectes ({seve} / {cout}). Les plantes en produisent toutes seules.",
+    "hotel_poser": "Pose l'hôtel sur une tuile dorée, près des fleurs.",
+    "pierres_choisir": "Les lapins cherchent de l'herbe et une cachette. Touche « Tas de pierres ».",
+    "pierres_attendre": "Il faut {cout} sève pour le tas de pierres ({seve} / {cout}).",
+    "pierres_poser": "Pose le tas de pierres au bord de l'herbe, sur une tuile dorée.",
+    "mare_choisir": "Les vers de terre aiment un sol humide. Touche « Mare ».",
+    "mare_attendre": "Il faut {cout} sève pour creuser une mare ({seve} / {cout}).",
+    "mare_poser": "Creuse la mare sur les tuiles dorées : le sol devient humide tout autour.",
+    "paillis_choisir": "Le paillis nourrit le sol. Touche « Paillis ».",
+    "paillis_poser": "Glisse sur les tuiles dorées, près de la mare, pour étaler du paillis ({n} / {total}).",
+    "jauge": "Bravo ! Cette jauge montre ce qu'il faut pour que ta prairie devienne une lisière. Touche-la.",
+    "fin": "À toi de jouer ! Touche un animal pour le photographier : chaque photo remplit ton carnet.",
+    "recolte": "Des graines sont mûres ! Avec « Observer », touche la capsule dorée pour les récolter.",
+    "vu_sauterelle": "Les sauterelles sont venues seules : l'herbe les nourrit.",
+    "vu_abeille": "Les abeilles sont là : des fleurs à butiner et un hôtel pour nicher.",
+    "vu_lapin": "Un lapin ! De l'herbe à brouter et des pierres pour se cacher.",
+    "vu_ver": "Des vers de terre : la mare et le paillis ont rendu le sol humide et riche.",
+    "vu_alouette": "L'alouette est venue manger les sauterelles, dans un grand espace ouvert."
   }
 }

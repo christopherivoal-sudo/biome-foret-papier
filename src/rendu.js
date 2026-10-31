@@ -20,8 +20,8 @@
   const lisse = (a, b, x) => { const t = borne((x - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); };
 
   // Couleurs du sol (papier).
-  const SOL_PAUVRE = [214, 192, 152], SOL_RICHE = [138, 104, 72];
-  const HERBE = { printemps: [150, 198, 104], ete: [126, 178, 94], automne: [150, 168, 94], hiver: [150, 160, 112] };
+  const SOL_PAUVRE = [222, 196, 148], SOL_RICHE = [150, 108, 70];
+  const HERBE = { printemps: [136, 190, 96], ete: [116, 172, 84], automne: [146, 162, 88], hiver: [150, 160, 112] };
   const HERBE_SECHE = [204, 188, 118], NEIGE = [243, 241, 235], EAU = [104, 160, 196], GLACE = [190, 216, 228];
 
   function creer(canvas, dataBrute, Core) {
@@ -48,7 +48,7 @@
         const d = Math.hypot(x, z);
         if (d > Re) { x *= Re / d; z *= Re / d; }
         const bord = Math.max(0, 1 - Math.abs(Math.hypot(x, z) - Re) / 0.8);
-        let y = (hash(i, j) - 0.5) * 0.1 * (1 - bord);
+        let y = (hash(i, j) - 0.5) * 0.05 * (1 - bord);
         // Mare : un sommet entouré d'eau est creusé, un sommet de berge descend un peu.
         const n = eau(i - 1, j - 1) + eau(i, j - 1) + eau(i - 1, j) + eau(i, j);
         if (n === 4) y = -0.22; else if (n > 0) y = -0.04;
@@ -71,23 +71,22 @@
           tris.push({ v: t, cell, n: [nx / nl, ny / nl, nz / nl], k: tris.length });
         }
       }
-      // Tranche de l'îlot : deux couches de papier, plus le promontoire de la cabane.
+      // Tranche de l'îlot (sprint 6) : une carte de papier épaisse, crème puis kraft, sans cône sombre en dessous.
       const sk = new E.Builder(), S = 72;
       for (let k = 0; k < S; k++) {
         const a0 = k / S * Math.PI * 2, a1 = (k + 1) / S * Math.PI * 2;
         const c0 = Math.cos(a0), s0 = Math.sin(a0), c1 = Math.cos(a1), s1 = Math.sin(a1);
         const p0 = sk.vert(c0 * Re, 0, s0 * Re), p1 = sk.vert(c1 * Re, 0, s1 * Re);
-        const q0 = sk.vert(c0 * Re, -0.42, s0 * Re), q1 = sk.vert(c1 * Re, -0.42, s1 * Re);
-        const r0 = sk.vert(c0 * Re * 0.97, -0.5, s0 * Re * 0.97), r1 = sk.vert(c1 * Re * 0.97, -0.5, s1 * Re * 0.97);
-        const b0 = sk.vert(c0 * Re * 0.72, -1.9, s0 * Re * 0.72), b1 = sk.vert(c1 * Re * 0.72, -1.9, s1 * Re * 0.72);
-        sk.face([p0, p1, q1, q0], k % 2 ? '#ece4d3' : '#e2d9c6');
-        sk.face([q0, q1, r1, r0], '#cbbd9f');
-        sk.face([r0, r1, b1, b0], k % 2 ? '#8e7656' : '#836b4c');
+        const q0 = sk.vert(c0 * Re, -0.16, s0 * Re), q1 = sk.vert(c1 * Re, -0.16, s1 * Re);
+        const r0 = sk.vert(c0 * Re * 0.995, -0.42, s0 * Re * 0.995), r1 = sk.vert(c1 * Re * 0.995, -0.42, s1 * Re * 0.995);
+        sk.face([p0, p1, q1, q0], k % 2 ? '#f4ecda' : '#efe6d2', false, false, true);
+        sk.face([q0, q1, r1, r0], k % 2 ? '#c9a878' : '#c2a070', false, false, true);
       }
       const ang = 2.88, cxp = Math.cos(ang) * (Re + 0.75), czp = Math.sin(ang) * (Re + 0.75);
       const pr = new E.Builder();
-      pr.prism(0, 0, 9, 1.05, 1.15, -0.4, -0.01, ['#ece4d3', '#e2d9c6'], 0.2);
-      pr.pyramid(0, 0, 9, 1.05, -0.4, -1.2, ['#8e7656', '#836b4c'], 0.2);
+      pr.prism(0, 0, 9, 1.05, 1.15, -0.16, -0.01, ['#f4ecda', '#efe6d2'], 0.2);
+      pr.prism(0, 0, 9, 1.04, 1.05, -0.42, -0.16, ['#c9a878', '#c2a070'], 0.2);
+      for (const f of pr.f) f.doux = true;
       terrain = { sig: signatureEau(etat), Re, V, P: V.map(() => [0, 0, 0]), tris, jupe: sk.build(), promontoire: pr.build(), cabane: { x: cxp, z: czp, dir: -ang - Math.PI / 2 } };
       odile.x = cxp + 0.6; odile.z = czp;
     }
@@ -129,7 +128,7 @@
       c = [c[0] * (1.06 - 0.24 * hum), c[1] * (1.05 - 0.2 * hum), c[2] * (1.0 - 0.1 * hum)];
       let vert = HERBE[A.saison];
       if (A.saison === 'printemps' && A.meteo === 'floraison') vert = [160, 204, 110];
-      vert = mel(vert, HERBE_SECHE, lisse(34, 12, hv));
+      vert = mel(vert, HERBE_SECHE, A.meteo === 'secheresse' ? lisse(34, 12, hv) : lisse(16, 6, hv));
       const neige = A.saison === 'hiver' ? lisse(0.05, 0.4, A.finSaison) * 0.9 + 0.1 : 0;
       switch (t.c) {
         case 'herbe': c = mel(c, vert, 0.55 + 0.4 * Math.min(1, t.age + 0.3)); break;
@@ -217,19 +216,24 @@
       for (const i of liste) {
         const t = etat.tuiles[i], x = (i % N) - C, z = ((i / N) | 0) - C, hv = t.h + A.decalH;
         const h1 = hash(i, 1), h2 = hash(i, 2), papier = rares.tuile[i] || '';
-        const seche = hv < 24, basse = t.c === 'herbe' || t.c === 'fleurs';
+        const seche = hv < 14 || (A.meteo === 'secheresse' && hv < 26), basse = t.c === 'herbe' || t.c === 'fleurs';
         if (couche === 'bas' && !basse) continue;
         if (basse && couche === 'bas') {
           const jeu = sais === 'hiver' ? 'hiver' : seche ? 'sec' : sais;
           const touffes = M.herbe[jeu];
-          const ht = (0.16 + 0.22 * Math.min(1, t.age + 0.2)) * (seche ? 0.75 : 1) * (sais === 'hiver' ? 0.7 : 1);
+          const ht = (0.22 + 0.24 * Math.min(1, t.age + 0.2)) * (seche ? 0.75 : 1) * (sais === 'hiver' ? 0.7 : 1);
           if (sais === 'hiver' && hash(i, 8) < 0.7) continue;
-          R3.add(touffes[h1 < 0.5 ? 0 : 1], x + (h1 - 0.5) * 0.5, 0, z + (h2 - 0.5) * 0.5, h2 * 6.28, 0.9, ht, t.c === 'herbe' && papier ? { papier } : undefined);
-          if (hash(i, 7) < 0.3 && sais !== 'hiver') R3.add(touffes[h2 < 0.5 ? 1 : 0], x - (h2 - 0.5) * 0.6, 0, z + (h1 - 0.5) * 0.6, h1 * 6.28, 0.8, ht * 0.85);
+          R3.add(touffes[h1 < 0.5 ? 0 : 1], x + (h1 - 0.5) * 0.5, 0, z + (h2 - 0.5) * 0.5, h2 * 6.28, 1.0, ht, t.c === 'herbe' && papier ? { papier } : undefined);
+          // Sprint 6 : herbe plus dense (3 touffes par tuile), pour une prairie qui se lit de loin.
+          if (sais !== 'hiver' && t.c === 'herbe') {
+            R3.add(touffes[h2 < 0.5 ? 1 : 0], x - 0.28 + hash(i, 7) * 0.12, 0, z + 0.22 - hash(i, 9) * 0.1, h1 * 6.28, 0.85, ht * 0.85);
+            R3.add(touffes[h1 < 0.5 ? 1 : 0], x + 0.26 - hash(i, 11) * 0.1, 0, z - 0.26 + hash(i, 12) * 0.12, h2 * 3.1 + 1, 0.8, ht * 0.8);
+          }
           if (t.c === 'fleurs' && sais !== 'hiver') {
-            const n = floraison ? 4 : 2 + (hash(i, 3) < 0.5), sc = (floraison ? 1.3 : 1) * (seche ? 0.8 : 1) * (0.6 + 0.4 * Math.min(1, t.age + 0.3));
+            // Sprint 6 : fleurs plus grandes et plus nombreuses (on les voit au-dessus de l'herbe).
+            const n = floraison ? 5 : 3 + (hash(i, 3) < 0.5), sc = 1.55 * (floraison ? 1.25 : 1) * (seche ? 0.8 : 1) * (0.6 + 0.4 * Math.min(1, t.age + 0.3));
             for (let k = 0; k < n; k++) {
-              const fx = x + (hash(i, 10 + k) - 0.5) * 0.7, fz = z + (hash(i, 14 + k) - 0.5) * 0.7;
+              const fx = x + (hash(i, 10 + k) - 0.5) * 0.75, fz = z + (hash(i, 14 + k) - 0.5) * 0.75;
               R3.add(M.fleurs[(((hash(i, 4) * 4) | 0) + k) % 4], fx, 0, fz, hash(i, 5 + k) * 6, sc, sc * (seche ? 0.85 : 1), papier ? { papier } : undefined);
             }
           }
@@ -286,23 +290,23 @@
         const p = suivre(a, dt), papier = rares.agent[a.id] || '', o = papier ? { papier } : {};
         if (a.m === 'dort') { zzz.push(p); continue; }
         cibles.push({ k: 'agent', agent: a.id, esp: a.esp, papier, x: p.x, y: (p.haut || 0) + 0.3, z: p.z });
-        const bouge = p.vit > 0.15;
+        const bouge = p.vit > 0.15, G = api.grossir;
         if (bouge) p.ph += dt * (a.esp === 'lapin' ? 11 : 9);
         switch (a.esp) {
           case 'lapin': {
             const saut = bouge ? Math.abs(Math.sin(p.ph)) * 0.15 : 0;
-            ombre(p.x, p.z, 0.2, 0.2);
+            ombre(p.x, p.z, 0.2 * G, 0.2);
             o.tilt = bouge ? -0.12 : 0;
-            R3.add(M.lapin, p.x, saut, p.z, p.dir, 1.0, 1.0, o); break;
+            R3.add(M.lapin, p.x, saut, p.z, p.dir, 1.0 * G, 1.0 * G, o); break;
           }
           case 'renard': {
-            ombre(p.x, p.z, 0.3, 0.3);
-            R3.add(M.renard, p.x, bouge ? Math.abs(Math.sin(p.ph)) * 0.05 : 0, p.z, p.dir, 1.15, 1.15, o); break;
+            ombre(p.x, p.z, 0.3 * G, 0.3);
+            R3.add(M.renard, p.x, bouge ? Math.abs(Math.sin(p.ph)) * 0.05 : 0, p.z, p.dir, 1.15 * G, 1.15 * G, o); break;
           }
           case 'herisson': {
-            ombre(p.x, p.z, 0.22, 0.15);
+            ombre(p.x, p.z, 0.22 * G, 0.15);
             o.roll = bouge ? Math.sin(p.ph * 1.6) * 0.08 : 0;
-            R3.add(M.herisson, p.x, 0, p.z, p.dir, 1.15, 1.15, o); break;
+            R3.add(M.herisson, p.x, 0, p.z, p.dir, 1.15 * G, 1.15 * G, o); break;
           }
           case 'merle': case 'alouette': {
             const jeu = M[a.esp];
@@ -315,7 +319,7 @@
             const mesh = p.haut > 0.15 ? (bat ? jeu.haut : jeu.bas) : jeu.pose;
             ombre(p.x, p.z, 0.16, 0.1 + p.haut * 0.3);
             const sautille = !vole && bouge ? Math.abs(Math.sin(p.ph * 1.4)) * 0.06 : 0;
-            R3.add(mesh, p.x, p.haut + sautille, p.z, p.dir, 1.25, 1.25, o); break;
+            R3.add(mesh, p.x, p.haut + sautille, p.z, p.dir, 1.25 * G, 1.25 * G, o); break;
           }
           default: R3.add(M.froisse, p.x, 0, p.z, 0, 1, 1, o);
         }
@@ -361,7 +365,7 @@
               const ph = (temps * 0.18 + hash(z, s)) % 1, dehors = hiver || A.meteo === 'secheresse' ? 0.15 : 0.4;
               if (ph < dehors) {
                 const hy = Math.sin(Math.PI * ph / dehors);
-                R3.add(M.ver[Math.floor(temps * 2 + s) % 2], px, 0, pz, hash(z, s + 2) * 6, 1.4, 1.4 * hy, s === 0 && papierZone ? { papier: papierZone } : undefined);
+                R3.add(M.ver[Math.floor(temps * 2 + s) % 2], px, 0, pz, hash(z, s + 2) * 6, 1.4 * api.grossir, 1.4 * hy * api.grossir, s === 0 && papierZone ? { papier: papierZone } : undefined);
                 cibles.push({ k: 'pop', esp: id, zone: z, papier: s === 0 ? papierZone : '', x: px, y: 0.15, z: pz });
               }
             }
@@ -379,7 +383,7 @@
               const sautT = ph > 0.8 ? (ph - 0.8) / 0.2 : 0;
               const px = a0[0] + (a1[0] - a0[0]) * sautT, pz = a0[1] + (a1[1] - a0[1]) * sautT;
               const dir = Math.atan2(a1[0] - a0[0], a1[1] - a0[1]);
-              R3.add(sautT > 0 ? M.sauterelle.saut : M.sauterelle.pose, px, Math.sin(Math.PI * sautT) * 0.45, pz, dir, 1.1, 1.1, s === 0 && papierZone ? { papier: papierZone } : undefined);
+              R3.add(sautT > 0 ? M.sauterelle.saut : M.sauterelle.pose, px, Math.sin(Math.PI * sautT) * 0.45, pz, dir, 1.1 * api.grossir, 1.1 * api.grossir, s === 0 && papierZone ? { papier: papierZone } : undefined);
               cibles.push({ k: 'pop', esp: id, zone: z, papier: s === 0 ? papierZone : '', x: px, y: Math.sin(Math.PI * sautT) * 0.45 + 0.1, z: pz });
             }
           } else if (id === 'abeille' || id === 'tircis') {
@@ -395,8 +399,8 @@
               const py = (id === 'abeille' ? 0.45 : 0.6) + Math.sin(ph * Math.PI) * (id === 'abeille' ? 0.35 : 0.7) + Math.sin(temps * 5 + s) * 0.03;
               const dir = Math.atan2(P1[0] - P0[0], P1[1] - P0[1]) + Math.sin(temps * 2 + s) * 0.6;
               const o = s === 0 && papierZone ? { papier: papierZone } : undefined;
-              if (id === 'abeille') R3.add(Math.floor(temps * 30 + s) % 2 ? M.abeille.haut : M.abeille.bas, px, py, pz, dir, 1.5, 1.5, o);
-              else R3.add(M.tircis[Math.floor(temps * (ph < 0.35 ? 4 : 9) + s) % 3], px, py, pz, dir, 1.6, 1.6, o);
+              if (id === 'abeille') R3.add(Math.floor(temps * 30 + s) % 2 ? M.abeille.haut : M.abeille.bas, px, py, pz, dir, 1.5 * api.grossir, 1.5 * api.grossir, o);
+              else R3.add(M.tircis[Math.floor(temps * (ph < 0.35 ? 4 : 9) + s) % 3], px, py, pz, dir, 1.6 * api.grossir, 1.6 * api.grossir, o);
               cibles.push({ k: 'pop', esp: id, zone: z, papier: s === 0 ? papierZone : '', x: px, y: py, z: pz });
             }
           }
@@ -442,7 +446,21 @@
       const s = v => 'rgb(' + (v[0] | 0) + ',' + (v[1] | 0) + ',' + (v[2] | 0) + ')';
       g.addColorStop(0, s(c[0])); g.addColorStop(1, s(c[1]));
       ctx.fillStyle = g; ctx.fillRect(0, 0, w, h);
+      // Sprint 6 : grain de papier et halo doux au centre (le plateau ressort du fond).
+      const v = ctx.createRadialGradient(w / 2, h * 0.55, Math.min(w, h) * 0.2, w / 2, h * 0.55, Math.max(w, h) * 0.75);
+      v.addColorStop(0, 'rgba(255,252,242,0.35)'); v.addColorStop(1, 'rgba(90,70,45,0.12)');
+      ctx.fillStyle = v; ctx.fillRect(0, 0, w, h);
+      if (typeof document !== 'undefined') {
+        if (!grain) {
+          const gc = document.createElement('canvas'); gc.width = gc.height = 96;
+          const gx = gc.getContext('2d');
+          for (let k = 0; k < 900; k++) { gx.fillStyle = k % 2 ? 'rgba(255,255,255,0.10)' : 'rgba(80,60,40,0.05)'; gx.fillRect(hash(k, 1) * 96, hash(k, 2) * 96, 1 + hash(k, 3) * 1.5, 1); }
+          grain = ctx.createPattern(gc, 'repeat');
+        }
+        ctx.fillStyle = grain; ctx.fillRect(0, 0, w, h);
+      }
     }
+    let grain = null;
     function emettre(etat, A, dt) {
       const Re = terrain.Re;
       const ajouter = (n, f) => { for (let k = 0; k < n; k++) particules.push(f()); };
@@ -653,6 +671,14 @@
         ctx.drawImage(fond, 0, 0, w, h);
       }
       dessinerEffetsSol(dt);
+      if (opts.guides && opts.guides.length) {
+        // Tuiles conseillées par le tutoriel (sprint 6) : contour doré qui respire.
+        const al = 0.7 + 0.3 * Math.sin(temps * 4);
+        for (const i of opts.guides) {
+          const x = (i % N) - C, z = ((i / N) | 0) - C;
+          R3.groundPoly([x - 0.44, z - 0.44, x + 0.44, z - 0.44, x + 0.44, z + 0.44, x - 0.44, z + 0.44], 'rgba(255,226,120,' + (al * 0.5).toFixed(2) + ')', 'rgba(232,166,30,' + al.toFixed(2) + ')', 3, 0.06);
+        }
+      }
       if (opts.survol && Core.dansIle(etat, opts.survol.x, opts.survol.y)) {
         // taille : 2 pour la mare (2×2) ; refus : contour rouge (la pose ne marcherait pas ici).
         const x = opts.survol.x - C, z = opts.survol.y - C, k = (opts.survol.taille || 1) - 0.5;
@@ -684,9 +710,23 @@
       if (!p) return null;
       return { x: Math.round(p.x + C), y: Math.round(p.z + C) };
     }
+    // Sprint 6 : caméra plus proche (on voit les animaux) ; le joueur se déplace en glissant.
     function cadrer(etat) {
       const Re = Math.sqrt(etat.rayon * etat.rayon + etat.rayon), asp = canvas.clientWidth / Math.max(1, canvas.clientHeight);
-      cam.dist = Math.max(12, Math.min(52, Re * (asp < 0.8 ? 3.1 : 2.6)));
+      const portrait = asp < 0.8;
+      cam.pitch = portrait ? 0.9 : 0.72;
+      cam.dist = Math.max(9, Math.min(40, Re * (portrait ? 1.9 : 1.95)));
+      cam.tx = 0; cam.tz = 0;
+      cam.decalY = portrait ? -0.07 : 0.02;
+    }
+    // Déplacement de la caméra en pixels d'écran ; la cible reste au-dessus de l'île.
+    function deplacer(dx, dy, etat) {
+      if (!cam.focal) return;
+      const k = cam.dist / cam.focal, fx = -Math.sin(cam.yaw), fz = -Math.cos(cam.yaw), sp = Math.max(0.5, Math.sin(cam.pitch));
+      cam.tx += -cam.r[0] * dx * k + fx * dy * k / sp;
+      cam.tz += -cam.r[2] * dx * k + fz * dy * k / sp;
+      const lim = etat ? Math.sqrt(etat.rayon * etat.rayon + etat.rayon) * 0.9 : 10, d = Math.hypot(cam.tx, cam.tz);
+      if (d > lim) { cam.tx *= lim / d; cam.tz *= lim / d; }
     }
 
     // Cible cliquable la plus proche d'un point de l'écran (à moins de rayon pixels), ou null.
@@ -706,7 +746,7 @@
     // Position à l'écran d'un point du monde exprimé en tuiles (pour les bulles et les effets de l'interface).
     function ecran(tx, ty, hauteur) { const o = cam.project(tx - C, hauteur || 0, ty - C, [0, 0, 0]); return { x: o[0], y: o[1] }; }
     function ecranCabane() { if (!terrain) return null; const o = cam.project(terrain.cabane.x, 1.6, terrain.cabane.z, [0, 0, 0]); return { x: o[0], y: o[1] }; }
-    const api = { dessiner, tuileSous, cadrer, cibleSous, ecran, ecranCabane, get cibles() { return cibles; }, camera: cam, moteur: R3, modeles: M, dprMax: 2 };
+    const api = { dessiner, tuileSous, cadrer, deplacer, grossir: 1.35, cibleSous, ecran, ecranCabane, get cibles() { return cibles; }, camera: cam, moteur: R3, modeles: M, dprMax: 2 };
     return api;
   }
 

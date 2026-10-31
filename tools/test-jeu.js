@@ -63,9 +63,12 @@ function prairiePrete() {
   let p = await ctx.newPage(); suivre(p);
   await p.goto(URL + '?nouvelle=1&graine=7&langue=fr');
   await p.waitForTimeout(1500);
-  verifier(await p.locator('.odile.ouverte').count() === 1, 'Odile accueille le joueur');
-  verifier(await p.locator('.barre .action').count() === 13, 'barre de 13 actions (observer, 10 aménagements, retirer, agrandir)');
-  verifier(await p.locator('.action.verrouille').count() === 4, '4 actions de la Lisière verrouillées');
+  verifier(await p.locator('.guide.ouverte').count() === 1, 'le guide accueille le joueur (sprint 6)');
+  verifier(await p.locator('.odile.ouverte').count() === 0, 'une seule bulle à la fois : pas de bulle d\'Odile en même temps');
+  verifier(await p.locator('.barre .action:visible').count() === 9, 'barre compacte : 9 boutons visibles (observer, 6 aménagements, retirer, « à débloquer »)');
+  verifier(await p.locator('.action.verrouille').count() === 4 && await p.locator('.action.verrouille:visible').count() === 0, '4 actions de la Lisière rangées derrière « à débloquer »');
+  const hBarre = await p.evaluate(() => document.querySelector('.barre').getBoundingClientRect().height);
+  verifier(hBarre < 72, `barre du bas basse (${Math.round(hBarre)} px)`);
   await capture(p, '1-debut');
 
   // Semer des fleurs à la souris, sur une tuile où elles pousseraient.
@@ -80,7 +83,7 @@ function prairiePrete() {
   verifier(!!cible, 'une tuile accepte des fleurs');
   if (cible) {
     await p.click('.action[data-id="semer_fleurs"]');
-    verifier(await p.locator('.aide-action.visible').count() === 1, "l'aide de l'action s'affiche");
+    verifier(await p.locator('.aide-action.visible').count() === 0, "pendant le guide, pas de bulle d'aide en plus");
     const avant = await p.evaluate(() => window.BIOME_JEU.etat.seve);
     await clicTuile(p, cible.x, cible.y);
     const apres = await p.evaluate(([x, y]) => { const e = window.BIOME_JEU.etat; return { seve: e.seve, c: e.tuiles[y * window.BiomeCore.N + x].c }; }, [cible.x, cible.y]);
@@ -95,6 +98,53 @@ function prairiePrete() {
   verifier(await p.locator('.panneau-tuile.ouvert').count() === 1, 'observer une tuile ouvre son panneau (fertilité, humidité, ombre)');
   await capture(p, '2-tuile');
   await p.keyboard.press('Escape');
+  await p.close();
+
+  // ---------- 1 bis. Sprint 6 : guide, semis en glissant, déplacement de la caméra ----------
+  console.log('Guide et semis en glissant (ordinateur)');
+  p = await ctx.newPage(); suivre(p);
+  await p.goto(URL + '?nouvelle=1&graine=3&langue=fr');
+  await p.waitForTimeout(800);
+  await p.evaluate(() => { window.BIOME_JEU.vitesse = 20; });
+  await p.waitForFunction(() => window.BIOME_JEU.guide && window.BIOME_JEU.guide.k >= 1, null, { timeout: 20000 });
+  await p.evaluate(() => { window.BIOME_JEU.vitesse = 1; });
+  verifier(await p.locator('.etiquette-ile').count() >= 1, 'la première espèce est annoncée sur l\'île');
+  verifier(await p.locator('.action.conseil[data-id="semer_fleurs"]').count() === 1, 'guide : le bouton « Fleurs » est montré');
+  await p.click('.action[data-id="semer_fleurs"]');
+  await p.waitForTimeout(600);
+  verifier(await p.locator('.main.visible.glisse').count() === 1, 'guide : la main montre où glisser sur l\'île');
+  await capture(p, '1b-guide');
+  // Glisser sur une rangée de tuiles d'herbe avec l'herbe choisie : plusieurs tuiles d'un coup.
+  await p.evaluate(() => { const e = window.BIOME_JEU.etat; e.seve = 500; e.graines = 30; });
+  await p.click('.action[data-id="semer_herbe"]');
+  await p.evaluate(() => window.BIOME_JEU.rendu.cadrer(window.BIOME_JEU.etat));
+  await p.waitForTimeout(200);
+  // Une suite d'au moins 3 tuiles nues voisines, bien visible à l'écran (hors des bulles et de la barre).
+  const ligne = await p.evaluate(() => { const C = window.BiomeCore, e = window.BIOME_JEU.etat, R = window.BIOME_JEU.rendu;
+    const vis = (x, y) => { const o = R.ecran(x, y, 0); return o.x > 120 && o.x < 1000 && o.y > 160 && o.y < 560; };
+    for (let y = C.CENTRE - 6; y <= C.CENTRE + 6; y++) { let xs = [];
+      for (let x = C.CENTRE - 8; x <= C.CENTRE + 8; x++) { const t = e.tuiles[y * C.N + x]; if (t && t.c === 'nu' && !t.a && vis(x, y)) { xs.push(x); if (xs.length >= 4) return [R.ecran(xs[0], y, 0), R.ecran(xs[3], y, 0)]; } else xs = []; } }
+    return null; });
+  if (ligne) {
+    const avant = await p.evaluate(() => window.BIOME_JEU.etat.tuiles.filter(t => t && t.c === 'herbe').length);
+    await p.mouse.move(ligne[0].x, ligne[0].y); await p.mouse.down();
+    for (let k = 1; k <= 24; k++) await p.mouse.move(ligne[0].x + (ligne[1].x - ligne[0].x) * k / 24, ligne[0].y + (ligne[1].y - ligne[0].y) * k / 24);
+    await p.mouse.up();
+    const apres = await p.evaluate(() => window.BIOME_JEU.etat.tuiles.filter(t => t && t.c === 'herbe').length);
+    verifier(apres - avant >= 3, `maintenir et glisser sème à la chaîne (${apres - avant} tuiles d'herbe d'un geste)`);
+  } else verifier(false, 'rangée de tuiles nues trouvée');
+  // En observation, glisser déplace la caméra.
+  await p.click('.action[data-id="observer"]');
+  const c0 = await p.evaluate(() => [window.BIOME_JEU.rendu.camera.tx, window.BIOME_JEU.rendu.camera.tz]);
+  await p.mouse.move(640, 400); await p.mouse.down(); await p.mouse.move(560, 360, { steps: 6 }); await p.mouse.up();
+  const c1 = await p.evaluate(() => [window.BIOME_JEU.rendu.camera.tx, window.BIOME_JEU.rendu.camera.tz]);
+  verifier(Math.hypot(c1[0] - c0[0], c1[1] - c0[1]) > 0.5, 'glisser en observation déplace la caméra');
+  // Le guide avance quand on pose ce qu'il demande, et se ferme quand on le passe.
+  await p.evaluate(() => { const C = window.BiomeCore, e = window.BIOME_JEU.etat; let n = 0;
+    for (const i of C.tuilesIle(e)) { if (n >= 3) break; const x = i % C.N, y = (i / C.N) | 0; if (window.BIOME_JEU.poser('semer_fleurs', x, y, true).ok) n++; } window.BIOME_JEU.majGuide(); });
+  verifier(await p.evaluate(() => window.BIOME_JEU.guide.k) >= 2, 'guide : 3 fleurs semées → étape suivante (hôtel à insectes)');
+  await p.click('.guide .fermer');
+  verifier(await p.locator('.guide.ouverte').count() === 0, 'le guide peut être passé');
   await p.close();
 
   // ---------- 2. Île de la Lisière (partie de 2 h) : photo, carnet, missions, bonus ----------

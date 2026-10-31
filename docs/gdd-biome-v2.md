@@ -1,6 +1,6 @@
 # Biome, la forêt de papier : document de conception v2
 
-Version 1.5, 31 octobre 2026 (précisions du sprint 3 en 5.1 et 8.5, du sprint 4 en 1.9 et 10.4, du sprint 5 en 10.4, du sprint 5 bis en 4.3, 5.1, 6.2 et 10.4). Rédigé par Claude, décisions de Christophe intégrées (section 11).
+Version 1.6, 31 octobre 2026 (précisions du sprint 3 en 5.1 et 8.5, du sprint 4 en 1.9 et 10.4, du sprint 5 en 10.4, du sprint 5 bis en 4.3, 5.1, 6.2 et 10.4, du sprint 6 en 10.4). Rédigé par Claude, décisions de Christophe intégrées (section 11).
 
 Repères de lecture :
 - **[PROTO]** : construit dans le prototype v2.
@@ -711,6 +711,18 @@ Précisions du sprint 5 bis :
 - **Images par seconde** dans les réglages : moyenne et pire seconde des 30 dernières, définition actuelle (pour les tests sur téléphone).
 - Tests : 167 pour `core.js`, 542 pour les modèles, 32 vérifications dans le navigateur.
 
+Précisions du sprint 6 (retours de Christophe après ses premiers tests) :
+- **Barre d'actions** : compacte (boutons de 60 px, 52 px sur téléphone) et centrée ; les aménagements encore verrouillés sont rangés derrière un seul bouton « À débloquer » (+4). L'aide d'une action s'efface seule après 3,5 s.
+- **Bord de l'île** : le cône sombre sous l'île (l'« ombre » étrange) est retiré ; la tranche est une carte de papier crème puis kraft, éclairée doucement.
+- **Pose en glissant** : avec Herbe, Fleurs, Paillis, Ronce ou Retirer, maintenir le clic ou le doigt et glisser pose sur chaque tuile traversée (seulement là où ça marche ; si rien ne marche, un seul refus expliqué). Retirer en glissant n'enlève que ce qui ressemble à la première tuile touchée. Les aménagements (mare, hôtel, tas, bouleau, nichoir) restent à l'unité.
+- **Caméra** : plus proche (on voit les animaux), animaux et nuées 35 % plus gros, fleurs plus grandes. En observation, glisser **déplace** la vue ; clic droit (ou Maj) + glisser pour tourner, molette pour zoomer ; au doigt, deux doigts pour zoomer, tourner et déplacer ; boutons ⟲ ⟳ et « recentrer » ; flèches ou ZQSD au clavier.
+- **Moins de fenêtres** : une seule bulle à la fois en bas de l'écran ; le fil du journal n'est plus à l'écran (onglet journal du carnet) ; plus de bandeau pour les comportements, les débuts d'événement, les photos déjà faites ; mission remplie : un seul bandeau ; réactions d'Odile aux espèces rangées dans le journal.
+- **Guide des premières minutes** (remplace les bulles du tutoriel de la Prairie, 7 étapes) : accueil → semer 3 fleurs → hôtel à insectes → tas de pierres → mare → 3 paillis → jauge. À chaque étape, une main montre le bouton à toucher puis, sur l'île, les tuiles dorées où la pose marche (avec un geste de glissé pour les semis). Si la sève manque, le guide affiche « x / coût ». Les étapes se valident d'après l'état de l'île (on peut les faire dans le désordre) ; on peut passer le guide (×). Astuce unique de récolte quand la première capsule de graines est mûre.
+- **Montrer le résultat** : à la première venue d'une espèce, une étiquette s'affiche au-dessus d'elle sur l'île (« Nouvelle espèce : … » et, pour la sauterelle, l'abeille, le lapin, le ver et l'alouette, pourquoi elle est venue) ; pendant le guide, la caméra glisse jusqu'à elle.
+- **Graphismes** : herbe verte et dense (3 touffes par tuile, brins éclairés doucement), herbe sèche seulement quand le sol est vraiment sec, sol kraft plus chaud et moins tacheté, arêtes de pli légèrement plus sombres sur les modèles, grain de papier et halo doux sur le fond.
+- Textes du guide écrits par Claude en français et en anglais (`interface-*.json`, rubriques `guide`, `camera`, `barre`, `arrivee`, `peinture`).
+- Tests : 167 (`core.js`), 542 (modèles), 41 vérifications dans le navigateur (dont semis en glissant, déplacement, guide, pince à deux doigts sans semer).
+
 ### 10.5 Ordre de travail (une conversation par sprint)
 
 | Sprint | Contenu | Qui |
@@ -722,7 +734,7 @@ Précisions du sprint 5 bis :
 | 4 | Modèles origami des 9 nouvelles espèces, rendu des tuiles (eau, ronce, paillis) ; textures journal et washi (fait le 31/10) | Claude |
 | 5 | Interface : carnet, photos, missions, barre d'actions, jauge de succession ; consigne 05 (anglais de la garde, des missions et de l'interface) (fait le 31/10) | Claude, puis ChatGPT |
 | 5 bis | Économie de la sève, sécheresse, chêne teaser, images/s (fait le 31/10) | Claude |
-| 6 | Test de jeu par Christophe et ses proches, retours, corrections | Christophe, puis Claude |
+| 6 | Test de jeu par Christophe et ses proches, retours, corrections (première série de corrections faite le 31/10 : barre, bord de l'île, pose en glissant, guide, caméra, graphismes) | Christophe, puis Claude |
 
 ### 10.6 Critères de réussite (mesurés par simulation et par les tests)
 - Première arrivée d'espèce en moins de 30 s ; un événement visible toutes les 60 s au moins.
