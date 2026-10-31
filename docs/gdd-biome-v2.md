@@ -1,6 +1,6 @@
 # Biome, la forêt de papier : document de conception v2
 
-Version 1.7, 31 octobre 2026 (précisions du sprint 3 en 5.1 et 8.5, du sprint 4 en 1.9 et 10.4, du sprint 5 en 10.4, du sprint 5 bis en 4.3, 5.1, 6.2 et 10.4, du sprint 6 en 10.4 ; gameplay actif du sprint 7 en section 12). Rédigé par Claude, décisions de Christophe intégrées (section 11).
+Version 1.8, 31 octobre 2026 (précisions du sprint 3 en 5.1 et 8.5, du sprint 4 en 1.9 et 10.4, du sprint 5 en 10.4, du sprint 5 bis en 4.3, 5.1, 6.2 et 10.4, du sprint 6 en 10.4 ; gameplay actif du sprint 7 en section 12 ; rendu WebGL du sprint 8a en 10.4 et 10.5). Rédigé par Claude, décisions de Christophe intégrées (section 11).
 
 Repères de lecture :
 - **[PROTO]** : construit dans le prototype v2.
@@ -729,6 +729,18 @@ Précisions du sprint 6 (retours de Christophe après ses premiers tests) :
 - Textes du guide écrits par Claude en français et en anglais (`interface-*.json`, rubriques `guide`, `camera`, `barre`, `arrivee`, `peinture`).
 - Tests : 167 (`core.js`), 542 (modèles), 41 vérifications dans le navigateur (dont semis en glissant, déplacement, guide, pince à deux doigts sans semer).
 
+Précisions du sprint 8a (rendu WebGL, `src/moteur3d.js`, Three.js r160) :
+- **Three.js inclus dans le fichier du jeu** : `vendor/three/` (licence MIT), transformé en script classique par `tools/three-global.js` à la construction. Le jeu reste un seul fichier HTML, sans rien à charger ailleurs (1,1 Mo au lieu de 480 Ko ; on pourra l'alléger au sprint 8c).
+- **Même façon de dessiner** : `rendu.js` appelle toujours `add(modèle, x, y, z, ...)` ; le moteur WebGL convertit chaque modèle origami une fois, puis dessine toutes ses copies d'un coup (instances). Toute la logique de `rendu.js` (saisons, météo, animaux, populations, Odile, effets) est conservée telle quelle.
+- **Lumière** réglée pour retrouver les couleurs du Canvas 2D (0,58 à l'ombre, 1,10 en plein soleil, faces douces jamais grises), avec de **vraies ombres portées** (arbres, ronces, animaux, cabane ; l'herbe et les fleurs les reçoivent sans en projeter). Une part du soleil ne projette pas d'ombre, pour des ombres douces de maquette. Le soleil traverse le ciel au fil de la journée (les ombres tournent), la lune revient la nuit.
+- **Sol** : un seul maillage, couleurs recalculées à chaque image (eau qui miroite). **Décalques** (carte des habitats, survol, guide, anneaux, paille, sol craquelé, graines au sol) : polygones posés juste au-dessus du sol. **Pluie, neige, pétales, feuilles** : petites cartes de papier dans la scène, cachées par les arbres.
+- **Deux calques 2D** autour du canvas WebGL : le ciel derrière ; devant, les étoiles des spécimens rares, les « z » du hérisson, l'éclair et la brume de chaleur. Ils ne captent pas les clics.
+- **Caméra** : celle d'engine.js reste la référence (clics, bulles, repères) ; la caméra Three.js en recopie exactement la projection (écart mesuré : 0 pixel).
+- **Repli** : sans WebGL (ou sans Three.js), le jeu reprend l'ancien moteur Canvas 2D ; `?canvas2d` dans l'adresse le force. Les réglages (images par seconde) affichent le moteur utilisé. Les vignettes de l'interface restent dessinées en Canvas 2D.
+- **Pas encore** : arêtes de pli marquées (le Canvas 2D les dessinait de près) ; elles reviennent au sprint 8b avec le rendu papier.
+- **Mesures** : processeur par image sur une île de 2 h, 3 ms en WebGL contre 67 ms en Canvas 2D (sans le cache du fond) ; environ 70 commandes de dessin et 12 000 triangles.
+- **Tests** : `tools/test-webgl.js` (14 vérifications : WebGL choisi, calques, caméra identique, clic qui sème, 5 scènes avec ombres, repli Canvas 2D sans Three.js et avec `?canvas2d`, aucune erreur). Le navigateur de test n'a pas de carte graphique (3 images par seconde en WebGL) : `tools/test-jeu.js` teste donc l'interface avec le moteur Canvas 2D (`--webgl` pour forcer WebGL).
+
 ### 10.5 Ordre de travail (une conversation par sprint)
 
 | Sprint | Contenu | Qui |
@@ -742,7 +754,9 @@ Précisions du sprint 6 (retours de Christophe après ses premiers tests) :
 | 5 bis | Économie de la sève, sécheresse, chêne teaser, images/s (fait le 31/10) | Claude |
 | 6 | Test de jeu par Christophe et ses proches, retours, corrections (première série de corrections faite le 31/10 : barre, bord de l'île, pose en glissant, guide, caméra, graphismes) | Christophe, puis Claude |
 | 7 | Gameplay actif : l'île se dérègle, coups de pouce, voisinages et carte des habitats, demandes des habitants, effets visibles (fait le 31/10, section 12) | Claude |
-| 8 | Rendu WebGL avec Three.js (environ 3 sprints) | Claude |
+| 8a | Moteur WebGL à l'identique : instances, sol, décalques, vraies ombres portées, soleil qui tourne, repli Canvas 2D (fait le 31/10) | Claude |
+| 8b | Rendu papier : grain et fibres sur les faces, arêtes de pli, ombre douce dans les creux, eau qui reflète le ciel, effet maquette (flou de profondeur), vraie nuit (lumière de la cabane), pluie, neige et pétales en 3D | Claude |
+| 8c | Vie et mouvement : herbe dense qui ondule, arbres qui se balancent, aménagements qui se déplient à la pose, passage d'étape en 3D, qualité automatique pour téléphones, fichier allégé | Claude |
 
 ### 10.6 Critères de réussite (mesurés par simulation et par les tests)
 - Première arrivée d'espèce en moins de 30 s ; un événement visible toutes les 60 s au moins.
@@ -771,6 +785,10 @@ Précisions du sprint 6 (retours de Christophe après ses premiers tests) :
    Voir la section 12 (sprint 7) pour le détail.
 7. **Choix de Claude du sprint 6 validés** : textes du guide et des aides écrits directement par Claude en français et en anglais ; réactions d'Odile aux espèces rangées dans le journal du carnet.
 8. **Graphismes** : passage du rendu en **WebGL avec Three.js** juste après le sprint 7. D'ici là, aucune retouche graphique.
+
+### Décisions du 31/10 au soir (lancement du sprint 8)
+9. **Choix de Claude du sprint 7 validés** (12.7) : gestes Arroser et Graines au sol dès la Prairie, carte des habitats aussi pour les gestes et cachée pendant le guide, réglages de départ de `P.vie`, barre de 11 boutons.
+10. **Découpage du chantier WebGL** en trois sprints (10.5) : 8a moteur à l'identique avec ombres, 8b rendu papier, 8c vie et mouvement.
 
 Aucune question ouverte pour le moment.
 
@@ -839,7 +857,7 @@ Récompense : 2 pages, 25 sève, 2 petits pour les merles et les lapins (+3 pour
 - Joueur passif : surpâturage réglé seul en 10 à 12 min (l'herbe disparaît, les lapins partent) ; hérisson parti à l'hiver ; la plupart des demandes échouent.
 - Les ronces envahissantes arrivent vers 60 à 70 min (3,8 fois en 90 min chez le joueur attentif, qui taille).
 
-### 12.7 Choix de Claude (à valider en jouant)
+### 12.7 Choix de Claude (validés le 31/10)
 - Les gestes « Arroser » et « Graines au sol » sont disponibles dès la Prairie ; « Tailler » et « Éloigner le renard » en Lisière.
 - La carte des habitats colore aussi les gestes, et reste cachée pendant le guide.
 - Réglages de départ (tous dans `P.vie`, faciles à changer) : seuils, délais, récompenses et coûts ci-dessus.
