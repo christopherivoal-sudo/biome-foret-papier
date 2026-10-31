@@ -1,6 +1,6 @@
 # Biome, la forêt de papier : document de conception v2
 
-Version 1.2, 31 octobre 2026 (précisions du sprint 3 en 5.1 et 8.5). Rédigé par Claude, décisions de Christophe intégrées (section 11).
+Version 1.3, 31 octobre 2026 (précisions du sprint 3 en 5.1 et 8.5, du sprint 4 en 1.9 et 10.4). Rédigé par Claude, décisions de Christophe intégrées (section 11).
 
 Repères de lecture :
 - **[PROTO]** : construit dans le prototype v2.
@@ -114,7 +114,7 @@ Rôle :
 - **Indices** : quand le joueur bloque (aucune nouvelle espèce depuis 5 minutes), elle propose un indice gratuit sur l'espèce la plus proche de venir. C'est aussi elle qui propose la pub récompensée « Indice du naturaliste ».
 - **Commentaires** : quand le joueur fait venir une espèce, elle réagit (une phrase par espèce, écrite par ChatGPT).
 
-Rendu : modèle origami simple (environ 40 faces) qui se promène lentement autour de sa cabane et regarde avec ses jumelles l'animal le plus proche. Sur Roblox, chaque île a la sienne. Une **tenue de garde** est un bon cosmétique (section 7.4).
+Rendu : modèle origami simple (environ 40 faces) qui se promène lentement autour de sa cabane et regarde avec ses jumelles l'animal le plus proche. Choix du sprint 4 : la cabane est posée sur un petit **promontoire de papier collé au bord de l'île**, hors de la grille ; elle ne prend donc aucune tuile au joueur (facile à changer si Christophe préfère une tuile de l'île). Sur Roblox, chaque île a la sienne. Une **tenue de garde** est un bon cosmétique (section 7.4).
 
 Données : ajouter une rubrique `garde` dans `textes/fr.json` (bulles du tutoriel, missions, réactions par espèce, alertes) ; ses missions sont décrites dans `data/missions.json` avec le même langage de conditions (section 8.2).
 
@@ -674,6 +674,16 @@ On garde `core.js` (simulation pure, sans DOM), `engine.js` (rendu Canvas 2D), `
 - `tools/validate.js` et `tools/sim-headless.js` (Node) : vérification des données et simulation accélérée de 5 heures avec un joueur automatique simple, pour mesurer les temps de passage et repérer les espèces qui ne viennent jamais.
 - Une **construction** en un seul fichier HTML (assemblage des modules et des données) pour publier sur claude.ai puis sur les portails.
 
+Précisions du sprint 4 (rendu, `engine.js`, `models.js`, `rendu.js`) :
+- **Modèles** : générés par le code, aux couleurs du champ `palette` des fiches (données et rendu restent d'accord). Budget de faces vérifié par `tools/test-modeles.js` (ex. herbe 3 faces, ronce ≤ 75, bouleau ≤ 140, animaux ≤ 80).
+- **Tuiles** : couleur du sol selon fertilité (sol pauvre clair, riche brun), humidité (plus sombre), ombre des arbres et saison ; herbe jaunie quand l'humidité baisse. Mare creusée dans le papier, eau qui miroite, gelée en hiver. Paillis : brins de paille. Sol craquelé seulement pendant une sécheresse (ou humidité < 10). Neige progressive en hiver.
+- **Saisons** : bouleau vert tendre, vert, doré, nu ; ronce verte, fleurie (fin de printemps, début d'été), à mûres (fin d'été, automne), rougie en hiver ; coulemelles visibles en automne, mycélium (filaments blancs) le reste de l'année ; feuilles qui tombent en automne, flocons en hiver.
+- **Animaux** : le lapin sautille, le hérisson se dandine, merle et alouette volent quand ils se déplacent vite ; l'alouette monte chanter en vol stationnaire au-dessus de son territoire. Hibernation : le hérisson disparaît dans son abri, des « z » s'en échappent (le tas « ronfle »). Prédation : la proie devient une boule de papier froissé qui rétrécit.
+- **Populations** : quelques individus visibles par zone (sauterelles qui bondissent de touffe en touffe, abeilles et tircis qui vont de fleur en fleur, vers qui sortent de terre près de leurs turricules) ; cachés la nuit, en hiver et pendant l'orage selon l'espèce.
+- **Météo** : orage (ciel gris, nuages au fond de la scène, pluie, éclairs, éclair sur l'arbre foudroyé), sécheresse (lumière chaude, brume), floraison (pétales qui volent, fleurs plus grandes et plus nombreuses), annonce de l'orage (nuages qui se rassemblent). Jour, crépuscule et nuit par une teinte d'ambiance ; la fenêtre de la cabane reste éclairée la nuit.
+- **Papiers rares** : motif collé aux faces du spécimen (journal : papier gris et colonnes de texte ; washi : pastel, fibres, petites fleurs et points dorés), plus une petite étoile au-dessus de lui pour attirer l'œil.
+- **Performances** : le ciel, le sol, l'herbe et les fleurs sont dessinés dans une image mise en cache tant que la caméra ne bouge pas (rafraîchie toutes les 1,5 s) ; seuls les objets hauts et les animaux sont triés à chaque image. Si l'appareil peine (moins de 45 images/s), la définition baisse automatiquement.
+
 ### 10.5 Ordre de travail (une conversation par sprint)
 
 | Sprint | Contenu | Qui |
@@ -682,7 +692,7 @@ On garde `core.js` (simulation pure, sans DOM), `engine.js` (rendu Canvas 2D), `
 | 1 | `core.js` v2 : tuiles, statistiques, conditions, `validate.js` ; intégration des fiches de ChatGPT | Claude |
 | 2 | Arrivées, départs, capacités, chaîne alimentaire ; `sim-headless.js` ; premier équilibrage | Claude |
 | 3 | Temps, saisons, 3 événements, papiers rares ; textures journal et washi | Claude |
-| 4 | Modèles origami des 9 nouvelles espèces, rendu des tuiles (eau, ronce, paillis) | Claude |
+| 4 | Modèles origami des 9 nouvelles espèces, rendu des tuiles (eau, ronce, paillis) ; textures journal et washi (fait le 31/10) | Claude |
 | 5 | Interface : carnet, photos, missions, barre d'actions, jauge de succession ; consigne 3 (anglais) | Claude, puis ChatGPT |
 | 6 | Test de jeu par Christophe et ses proches, retours, corrections | Christophe, puis Claude |
 

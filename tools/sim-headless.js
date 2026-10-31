@@ -152,6 +152,9 @@ function partie(graine) {
   return r;
 }
 
+// Utilisé comme module (tools/scenes.js) : on expose le joueur automatique sans lancer le rapport.
+if (require.main !== module) { module.exports = { joueur }; return; }
+
 // ---------- Rapport ----------
 const t0 = Date.now();
 const res = [];
