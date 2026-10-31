@@ -314,7 +314,8 @@
   "mesure": {
     "titre": "Images par seconde",
     "detail": "{fps} en moyenne, {min} au plus bas (30 dernières secondes), définition ×{dpr}",
-    "aide": "À noter pendant les tests sur téléphone."
+    "aide": "À noter pendant les tests sur téléphone.",
+    "qualite": "qualité {q}"
   },
   "camera": {
     "gauche": "Tourner à gauche",

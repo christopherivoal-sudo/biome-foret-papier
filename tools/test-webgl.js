@@ -2,6 +2,7 @@
 // Test du rendu WebGL (sprint 8a) dans Chromium : le jeu choisit WebGL, la caméra Three.js tombe exactement
 // sur la caméra d'engine.js (clics, bulles et repères restent justes), un clic sur l'île sème bien,
 // le repli Canvas 2D marche (sans Three.js, ou avec ?canvas2d), et le travail du processeur par image baisse.
+// Sprint 8b : matériaux papier, effet maquette, lampe de la cabane la nuit, qualité qui baisse seule.
 // Écrit des captures dans dist/captures/webgl-*.png.
 // Usage : node tools/test-webgl.js   (construire d'abord : node tools/construire.js)
 // Le navigateur de test n'a pas de carte graphique : il dessine 3 images par seconde, c'est normal ici.
@@ -28,7 +29,7 @@ function verifier(c, m) { if (c) { ok++; console.log('  ✓ ' + m); } else { ko+
     p.on('pageerror', e => erreurs.push(e.message));
     p.on('console', m => { if (m.type() === 'error') erreurs.push(m.text()); });
     if (init) await p.addInitScript(init);
-    await p.goto(URL + '?langue=fr&' + q);
+    await p.goto(URL + '?langue=fr&qualite=2&' + q);
     await p.waitForTimeout(1200);
     return p;
   };
@@ -72,22 +73,36 @@ function verifier(c, m) { if (c) { ok++; console.log('  ✓ ' + m); } else { ko+
     const c = await p.evaluate(([x, y]) => window.BIOME_JEU.etat.tuiles[y * window.BiomeCore.N + x].c, [cible.x, cible.y]);
     verifier(c === 'herbe', 'un clic sur l\'île sème de l\'herbe sur la tuile visée');
   } else verifier(false, 'tuile nue trouvée pour le clic');
-  await p.screenshot({ path: path.join(DOS, 'webgl-1-debut.png') });
+  await p.screenshot({ path: path.join(DOS, 'webgl-1-debut.png'), timeout: 120000 });
   await p.close();
 
   console.log('Scènes (captures)');
   p = await ouvrir('');
   const data = Core.preparer(require('./donnees.js')());
   const avecMoment = (e, dansJour) => { const c = JSON.parse(JSON.stringify(e)); const j = 240; c.temps = Math.floor(c.temps / j) * j + dansJour * j; return c; };
-  const CAS = [['prairie', scenes[0].etat], ['lisiere', scenes[1].etat], ['mure', scenes[2].etat], ['crepuscule', avecMoment(scenes[2].etat, 0.72)], ['nuit', avecMoment(scenes[2].etat, 0.86)]];
-  for (const [nom, e] of CAS) {
+  const CAS = [['prairie', scenes[0].etat], ['lisiere', scenes[1].etat], ['mure', scenes[2].etat], ['crepuscule', avecMoment(scenes[2].etat, 0.72)], ['nuit', avecMoment(scenes[2].etat, 0.86)], ['pres', scenes[2].etat, 'window.BIOME_JEU.rendu.zoomer(0.42, 640, 380)']];
+  for (const [nom, e, js] of CAS) {
     await charger(p, e);
+    if (js) await p.evaluate(js);
     await p.waitForTimeout(2500);
     const info = await p.evaluate(() => { const g = window.BIOME_JEU.rendu.moteur; return { lots: g.lots.size, ombres: g.gl.shadowMap.enabled && g.soleil.castShadow, tris: g.triangles() }; });
     verifier(info.ombres && info.tris > 2000, `${nom} : ${info.tris} triangles, ${info.lots} modèles, ombres portées`);
-    await p.screenshot({ path: path.join(DOS, 'webgl-' + nom + '.png') });
+    if (nom === 'nuit') verifier(await p.evaluate(() => window.BIOME_JEU.rendu.moteur.lampe.intensity) > 0, 'la nuit, la lampe de la cabane est allumée');
+    await p.screenshot({ path: path.join(DOS, 'webgl-' + nom + '.png'), timeout: 120000 });
   }
   void data;
+
+  // Sprint 8b : rendu papier (grain, arêtes, eau, lampe), effet maquette, qualité qui baisse seule.
+  const b = await p.evaluate(() => {
+    const g = window.BIOME_JEU.rendu.moteur, prog = g.gl.info.programs.map(x => x.name + ' ' + x.cacheKey).join(' ');
+    return { qualite: g.qualite, flou: !!g.flou, papier: /papierAC/.test(prog) && /papierDC/.test(prog) && /papierS/.test(prog) };
+  });
+  verifier(b.papier, 'matériaux papier compilés : faces (grain, arêtes, contact), faces douces, sol avec l\'eau');
+  verifier(b.qualite === 2 && b.flou, 'ordinateur : effet maquette actif (qualité 2)');
+  const q = await p.evaluate(() => { const g = window.BIOME_JEU.rendu.moteur; const r = [g.baisserQualite(), g.qualite, g.baisserQualite(), g.qualite, g.gl.shadowMap.enabled, g.baisserQualite()]; return r; });
+  verifier(q[0] && q[1] === 1 && q[2] && q[3] === 0 && !q[4] && q[5] === false, 'qualité qui baisse : sans flou, puis sans ombres, puis plus rien à baisser');
+  await p.waitForTimeout(1500);
+  await p.screenshot({ path: path.join(DOS, 'webgl-qualite0.png'), timeout: 120000 });
 
   // Travail du processeur par image (la carte graphique fait le reste).
   const mesure = () => p.evaluate(() => { const R = window.BIOME_JEU.rendu, e = window.BIOME_JEU.etat; R.dessiner(e, 0.016, {}); const t0 = performance.now(); for (let k = 0; k < 10; k++) R.dessiner(e, 0.016, {}); return (performance.now() - t0) / 10; });

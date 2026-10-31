@@ -9,7 +9,7 @@
   const N = Core.N;
   const CLE_SAUVEGARDE = 'biome-foret-papier-v2', CLE_LANGUE = 'biome-langue';
   // Version affichée dans les réglages et annoncée au premier lancement après une mise à jour (sprint 6).
-  const VERSION = '8.0';
+  const VERSION = '8.1';
   const ETAPES_PROTO = data.etapes.map(e => e.id);
   const ORDRE_ESPECES = data.etapes.flatMap(e => e.debloque.especes).filter(id => data.especes[id]);
   const ACTIONS = ['semer_herbe', 'semer_fleurs', 'tas_pierres', 'mare', 'hotel_insectes', 'paillis', 'semer_ronce', 'planter_bouleau', 'tas_bois', 'nichoir'];
@@ -74,6 +74,9 @@
     webgl: !qRendu.has('canvas2d') && !!window.BiomeMoteur3D && window.BiomeMoteur3D.disponible(),
     mobile, capture: qRendu.has('capture'),
   });
+  // ?qualite=0, 1 ou 2 fixe la qualité du rendu WebGL (tests, comparaisons) : elle ne baisse plus seule.
+  const qualiteFixee = qRendu.has('qualite');
+  if (qualiteFixee) rendu.qualite = Math.max(0, Math.min(2, +qRendu.get('qualite') || 0));
   const cam = rendu.camera;
 
   // =====================================================================
@@ -1477,7 +1480,7 @@
     if (!b) return;
     const moy = fpsSecondes.length ? fpsSecondes.reduce((a, v) => a + v, 0) / fpsSecondes.length : fps;
     const min = fpsSecondes.length ? Math.min(...fpsSecondes) : fps;
-    b.textContent = T('mesure.detail', { fps: Math.round(moy), min: Math.round(min), dpr: (Math.min(window.devicePixelRatio || 1, rendu.dprMax || 2)).toFixed(1) }) + ' · ' + rendu.nom;
+    b.textContent = T('mesure.detail', { fps: Math.round(moy), min: Math.round(min), dpr: (Math.min(window.devicePixelRatio || 1, rendu.dprMax || 2)).toFixed(1) }) + ' · ' + rendu.nom + (rendu.webgl ? ' · ' + T('mesure.qualite', { q: rendu.qualite }) : '');
   }
   window.biomeFps = () => ({ moyenne: fpsSecondes.length ? fpsSecondes.reduce((a, v) => a + v, 0) / fpsSecondes.length : fps, secondes: fpsSecondes.slice() });
   function changerLangue(l) {
@@ -1755,7 +1758,13 @@
     derniereImage = reel;
     fps += (1 / Math.max(dt, 1e-3) - fps) * 0.05;
     compterImage(now);
-    if (now > 4000 && now - dernierReglage > 3000 && fps < 45 && rendu.dprMax > 1) { rendu.dprMax = Math.max(1, rendu.dprMax - 0.5); dernierReglage = now; }
+    // Appareil qui peine (moins de 45 images/s) : d'abord sans effet maquette, puis définition plus basse, puis sans ombres (sprint 8b).
+    if (now > 4000 && now - dernierReglage > 3000 && fps < 45 && !qualiteFixee) {
+      if (rendu.qualite >= 2) rendu.baisserQualite();
+      else if (rendu.dprMax > 1) rendu.dprMax = Math.max(1, rendu.dprMax - 0.5);
+      else if (fps < 32) rendu.baisserQualite();
+      dernierReglage = now;
+    }
     if (!pause && !rapportRetour) {
       const s0 = etat.seve;
       Core.tick(etat, data, dt * vitesse);

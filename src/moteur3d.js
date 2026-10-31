@@ -9,6 +9,9 @@
 // - Deux calques 2D restent autour : le ciel derrière, et devant les étoiles des spécimens rares,
 //   les « z » du hérisson, l'éclair et la brume de chaleur.
 // La caméra reste celle d'engine.js (project, groundAt) : clics, bulles et repères ne changent pas.
+// Sprint 8b (rendu papier) : grain et fibres du papier sur chaque face, arêtes de pli, ombre de contact au pied
+// des modèles, eau qui reflète le ciel (avec des reflets de soleil), lumière de la cabane la nuit,
+// effet maquette (haut et bas de l'image légèrement flous), et qualité qui baisse seule si l'appareil peine.
 (function (racine, fabrique) {
   if (typeof module === 'object' && module.exports) module.exports = fabrique(require('./engine.js'));
   else racine.BiomeMoteur3D = fabrique(racine.BiomeEngine);
@@ -38,6 +41,102 @@
     COULEURS.set(s, c);
     return c;
   }
+
+  // ---------- Papier (sprint 8b) ----------
+  // Texture de papier en niveaux de gris (128 = neutre) : grain, petites taches et fibres. Elle se répète sans couture.
+  function texturePapier(doc) {
+    const T = 256, c = doc.createElement('canvas'); c.width = c.height = T;
+    const g = c.getContext('2d');
+    g.fillStyle = 'rgb(128,128,128)'; g.fillRect(0, 0, T, T);
+    let h = 11;
+    const rnd = () => { h = (h * 9301 + 49297) % 233280; return h / 233280; };
+    // Grain : points clairs et sombres.
+    for (let k = 0; k < 9000; k++) {
+      const v = rnd() < 0.5 ? 255 : 0;
+      g.fillStyle = 'rgba(' + v + ',' + v + ',' + v + ',' + (0.05 + rnd() * 0.12).toFixed(3) + ')';
+      g.fillRect(rnd() * T, rnd() * T, 1 + rnd() * 1.6, 1 + rnd() * 1.6);
+    }
+    // Fibres : traits fins et courbes, dessinés aussi de l'autre côté du bord (raccord invisible).
+    for (let k = 0; k < 260; k++) {
+      const x = rnd() * T, y = rnd() * T, a = rnd() * Math.PI, L = 8 + rnd() * 30, clair = rnd() < 0.7;
+      g.strokeStyle = clair ? 'rgba(255,255,255,' + (0.12 + rnd() * 0.2).toFixed(3) + ')' : 'rgba(0,0,0,' + (0.06 + rnd() * 0.1).toFixed(3) + ')';
+      g.lineWidth = 0.6 + rnd() * 0.8;
+      for (const dx of [-T, 0, T]) for (const dy of [-T, 0, T]) {
+        g.beginPath(); g.moveTo(x + dx, y + dy);
+        g.quadraticCurveTo(x + dx + Math.cos(a + 0.5) * L * 0.5, y + dy + Math.sin(a + 0.5) * L * 0.5, x + dx + Math.cos(a) * L, y + dy + Math.sin(a) * L);
+        g.stroke();
+      }
+    }
+    return c;
+  }
+
+  // Code ajouté aux matériaux Lambert de Three.js. o : { douce, aretes, contact, sol }.
+  const GLSL_ENTETE_V = 'varying vec3 vLoc;\nvarying vec3 vLocN;\nvarying float vMondeY;\n';
+  const GLSL_ENTETE_F = [
+    'uniform sampler2D uGrain;', 'uniform float uForceGrain;', 'uniform float uAretes;', 'uniform float uTemps;',
+    'uniform vec3 uCielEau;', 'uniform float uJour;',
+    'varying vec3 vLoc;', 'varying vec3 vLocN;', 'varying float vMondeY;',
+    // Le motif suit le modèle (coordonnées propres au modèle) : il ne « glisse » pas quand l'animal bouge.
+    'float grainPapier() {',
+    '  vec3 n = abs(normalize(vLocN)) + 0.001; n /= (n.x + n.y + n.z);',
+    '  vec3 p = vLoc * 1.6;',
+    '  float g = texture2D(uGrain, p.yz).r * n.x + texture2D(uGrain, p.xz).r * n.y + texture2D(uGrain, p.xy).r * n.z;',
+    '  return 1.0 + (g - 0.5) * uForceGrain;',
+    '}', ''].join('\n');
+  function papier(m, o, U) {
+    m.onBeforeCompile = sh => {
+      for (const k in U) sh.uniforms[k] = U[k];
+      let v = sh.vertexShader, f = sh.fragmentShader;
+      v = v.replace('#include <common>', '#include <common>\n' + GLSL_ENTETE_V +
+        (o.aretes ? 'attribute vec3 bary;\nvarying vec3 vBary;\n' : '') + (o.sol ? 'attribute float eau;\nvarying float vEau;\n' : ''));
+      v = v.replace('#include <begin_vertex>', '#include <begin_vertex>\n\tvLoc = transformed; vLocN = objectNormal;' +
+        (o.aretes ? ' vBary = bary;' : '') + (o.sol ? ' vEau = eau;' : ''));
+      v = v.replace('#include <project_vertex>', '#include <project_vertex>\n\t{ vec4 wp = vec4(transformed, 1.0);\n#ifdef USE_INSTANCING\n\twp = instanceMatrix * wp;\n#endif\n\twp = modelMatrix * wp; vMondeY = wp.y; }');
+      f = f.replace('#include <common>', '#include <common>\n' + GLSL_ENTETE_F +
+        (o.aretes ? 'varying vec3 vBary;\n' : '') + (o.sol ? 'varying float vEau;\n' : ''));
+      let apres = '\tdiffuseColor.rgb *= grainPapier();\n';
+      // Arête de pli : bord de chaque face (pas les diagonales internes), toujours fine à l'écran.
+      if (o.aretes) apres += '\t{ float d = min(vBary.x, min(vBary.y, vBary.z)); float w = fwidth(d); float e = 1.0 - smoothstep(w * 0.5, w * 1.5, d); diffuseColor.rgb *= 1.0 - 0.17 * e * uAretes; }\n';
+      // Ombre de contact : le pied des modèles est un peu plus sombre (comme un objet posé sur la table).
+      if (o.contact) apres += '\tdiffuseColor.rgb *= mix(' + (o.douce ? '0.82' : '0.74') + ', 1.0, smoothstep(0.0, 0.42, vMondeY));\n';
+      f = f.replace('#include <color_fragment>', '#include <color_fragment>\n' + apres);
+      if (o.douce) f = f.replace('#include <lights_fragment_end>',
+        '#include <lights_fragment_end>\n\treflectedLight.directDiffuse *= 0.5;\n\treflectedLight.indirectDiffuse *= 1.45;');
+      if (o.sol) f = f.replace('#include <opaque_fragment>', [
+        // Eau : reflet du ciel (plus fort quand on la regarde de biais), petites ondes, étincelles de soleil.
+        '\tif (vEau > 0.5) {',
+        '\t\tfloat c = clamp(dot(normalize(vViewPosition), normal), 0.0, 1.0);',
+        '\t\tfloat fr = 0.14 + 0.42 * pow(1.0 - c, 2.0);',
+        '\t\tfloat ond = sin(vLoc.x * 3.1 + vLoc.z * 1.7 + uTemps * 1.6) * sin(vLoc.z * 2.3 - vLoc.x * 0.9 - uTemps * 1.1);',
+        '\t\toutgoingLight = mix(outgoingLight * (1.0 + 0.06 * ond) * mix(0.6, 1.0, uJour), uCielEau * (1.0 + 0.1 * ond), fr);',
+        '\t\tfloat gl1 = texture2D(uGrain, vLoc.xz * 0.45 + vec2(uTemps * 0.012, -uTemps * 0.008)).r;',
+        '\t\tfloat gl2 = texture2D(uGrain, vLoc.zx * 0.6 - vec2(uTemps * 0.01, uTemps * 0.014)).r;',
+        '\t\toutgoingLight += vec3(1.0, 0.97, 0.88) * smoothstep(0.6, 0.72, gl1 * gl2 * 2.0) * 0.55 * uJour;',
+        '\t}',
+        '#include <opaque_fragment>'].join('\n'));
+      sh.vertexShader = v; sh.fragmentShader = f;
+    };
+    m.customProgramCacheKey = () => 'papier' + (o.douce ? 'D' : '') + (o.aretes ? 'A' : '') + (o.contact ? 'C' : '') + (o.sol ? 'S' : '');
+    if (o.aretes) m.extensions = Object.assign(m.extensions || {}, { derivatives: true });
+    return m;
+  }
+
+  // Effet maquette : le haut et le bas de l'image sont légèrement flous, comme une photo de maquette.
+  const FLOU_V = 'varying vec2 vUv;\nvoid main() { vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }';
+  const FLOU_F = [
+    'uniform sampler2D tCouleur; uniform vec2 uPas; uniform float uFoyer; uniform float uBande; uniform float uForce;',
+    'varying vec2 vUv;',
+    'void main() {',
+    '  vec4 s = texture2D(tCouleur, vUv);',
+    '  float r = smoothstep(uBande, uBande + 0.34, abs(vUv.y - uFoyer)) * uForce;',
+    '  if (r < 0.2) { gl_FragColor = s; return; }',
+    '  vec4 acc = s;',
+    '  for (int i = 0; i < 12; i++) {',
+    '    float a = float(i) * 2.39996, rr = sqrt((float(i) + 0.5) / 12.0);',
+    '    acc += texture2D(tCouleur, vUv + vec2(cos(a), sin(a)) * rr * r * uPas);',
+    '  }',
+    '  gl_FragColor = acc / 13.0;',
+    '}'].join('\n');
 
   // Calque 2D posé sous ou sur le canvas WebGL, de même taille, qui ne capte pas les clics.
   function calque(canvas, devant) {
@@ -105,22 +204,26 @@
       t.anisotropy = 4;
       textures[id] = t;
     }
-    const douce = m => {
-      m.onBeforeCompile = sh => {
-        // Comme engine.js : k = 0,84 + 0,26 × éclairement, au lieu de 0,58 + 0,52 × éclairement.
-        sh.fragmentShader = sh.fragmentShader.replace('#include <lights_fragment_end>',
-          '#include <lights_fragment_end>\n\treflectedLight.directDiffuse *= 0.5;\n\treflectedLight.indirectDiffuse *= 1.45;');
-      };
-      m.customProgramCacheKey = () => 'douce';
-      return m;
+    // Uniformes partagés par tous les matériaux papier (sprint 8b).
+    const grain = new T.CanvasTexture(texturePapier(document));
+    grain.wrapS = grain.wrapT = T.RepeatWrapping;
+    grain.anisotropy = 4;
+    const U = this.U = {
+      uGrain: { value: grain }, uForceGrain: { value: 0.16 }, uAretes: { value: 1 }, uTemps: { value: 0 },
+      uCielEau: { value: new T.Color(0.75, 0.85, 0.88) }, uJour: { value: 1 },
     };
-    const fabriquer = (papier, alpha) => {
+    // Faces « douces » : comme engine.js, k = 0,84 + 0,26 × éclairement, au lieu de 0,58 + 0,52 × éclairement.
+    const fabriquer = (papierRare, alpha) => {
       const base = { vertexColors: true, side: T.DoubleSide };
-      if (papier) base.map = textures[papier];
+      if (papierRare) base.map = textures[papierRare];
       if (alpha) { base.transparent = true; base.depthWrite = false; }
-      const ms = [new T.MeshLambertMaterial(base), douce(new T.MeshLambertMaterial(base)), new T.MeshBasicMaterial(Object.assign({}, base, { map: null }))];
-      return ms;
+      return [
+        papier(new T.MeshLambertMaterial(base), { aretes: true, contact: true }, U),
+        papier(new T.MeshLambertMaterial(base), { douce: true, contact: true }, U),
+        new T.MeshBasicMaterial(Object.assign({}, base, { map: null })),
+      ];
     };
+    this.matSol = papier(new T.MeshLambertMaterial({ vertexColors: true, side: T.DoubleSide }), { sol: true }, U);
     this.materiaux = {};
     this._mat = (papier, alpha) => {
       const cle = (papier || '') + '|' + (alpha || 0);
@@ -134,6 +237,24 @@
     this.nbIds = 0;
     this.lots = new Map();
     this.textures = textures;
+
+    // Lumière de la cabane, la nuit (sprint 8b).
+    this.lampe = new T.PointLight(0xffc27a, 0, 7.5, 1.3);
+    this.lampe.castShadow = false;
+    scene.add(this.lampe);
+    this.forceLampe = 0;
+
+    // Effet maquette et qualité (sprint 8b). qualite : 2 = tout, 1 = sans flou, 0 = sans ombres portées.
+    this.qualite = opts.mobile ? 1 : 2;
+    this.flou = null;
+    const pq = new T.Mesh(new T.PlaneGeometry(2, 2), new T.ShaderMaterial({
+      vertexShader: FLOU_V, fragmentShader: FLOU_F, depthTest: false, depthWrite: false, blending: T.NoBlending,
+      uniforms: { tCouleur: { value: null }, uPas: { value: new T.Vector2() }, uFoyer: { value: 0.5 }, uBande: { value: 0.16 }, uForce: { value: 3 } },
+    }));
+    pq.frustumCulled = false;
+    this.scenePost = new T.Scene(); this.scenePost.add(pq);
+    this.camPost = new T.OrthographicCamera(-1, 1, 1, -1, 0, 1);
+    this.matPost = pq.material;
 
     // Décalques au sol.
     this.dec = { pos: new Float32Array(3 * 3 * 4000), col: new Float32Array(4 * 3 * 4000), n: 0 };
@@ -149,6 +270,7 @@
     this.sansOmbre = false;
     this.np = 0;
     this.taille = [0, 0, 0];
+    this.tmp = [0, 0, 0];
   }
 
   // ---------- Géométries (une fois par maillage et par papier) ----------
@@ -175,22 +297,30 @@
       const ul = Math.hypot(ux, uy, uz) || 1, e1 = [ux / ul, uy / ul, uz / ul];
       const e2 = [ny * e1[2] - nz * e1[1], nz * e1[0] - nx * e1[2], nx * e1[1] - ny * e1[0]];
       const l = gr[f.ne ? 2 : f.doux ? 1 : 0];
-      for (let k = 1; k < ids.length - 1; k++) {
-        for (const id of [ids[0], ids[k], ids[k + 1]]) {
-          const p = V[id];
+      const nf = ids.length;
+      for (let k = 1; k < nf - 1; k++) {
+        // Coordonnées barycentriques pour les arêtes de pli : une diagonale interne (éventail) n'est pas une arête,
+        // sa coordonnée est alors fixée à 1 sur tout le triangle.
+        const sans = [k + 1 < nf - 1 ? 1 : 0, 0, k > 1 ? 1 : 0]; // arêtes opposées à ids[0], ids[k], ids[k+1]
+        const tri = [ids[0], ids[k], ids[k + 1]];
+        for (let q = 0; q < 3; q++) {
+          const p = V[tri[q]];
           const dx = p[0] - a[0], dy = p[1] - a[1], dz = p[2] - a[2];
-          l.push(p[0], p[1], p[2], nx, ny, nz, r, gg, bb, (dx * e1[0] + dy * e1[1] + dz * e1[2]) / ech, (dx * e2[0] + dy * e2[1] + dz * e2[2]) / ech);
+          l.push(p[0], p[1], p[2], nx, ny, nz, r, gg, bb, (dx * e1[0] + dy * e1[1] + dz * e1[2]) / ech, (dx * e2[0] + dy * e2[1] + dz * e2[2]) / ech,
+            q === 0 || sans[0] ? 1 : 0, q === 1 || sans[1] ? 1 : 0, q === 2 || sans[2] ? 1 : 0);
         }
       }
     }
-    const n = (gr[0].length + gr[1].length + gr[2].length) / 11;
-    const pos = new Float32Array(n * 3), nor = new Float32Array(n * 3), col = new Float32Array(n * 3), uv = new Float32Array(n * 2);
+    const TL = 14;
+    const n = (gr[0].length + gr[1].length + gr[2].length) / TL;
+    const pos = new Float32Array(n * 3), nor = new Float32Array(n * 3), col = new Float32Array(n * 3), uv = new Float32Array(n * 2), bar = new Float32Array(n * 3);
     const geo = new T.BufferGeometry();
     let o = 0;
     for (let q = 0; q < 3; q++) {
-      const l = gr[q], m = l.length / 11;
+      const l = gr[q], m = l.length / TL;
       for (let k = 0; k < m; k++) {
-        const s = k * 11, d = o + k;
+        const s = k * TL, d = o + k;
+        bar[d * 3] = l[s + 11]; bar[d * 3 + 1] = l[s + 12]; bar[d * 3 + 2] = l[s + 13];
         pos[d * 3] = l[s]; pos[d * 3 + 1] = l[s + 1]; pos[d * 3 + 2] = l[s + 2];
         nor[d * 3] = l[s + 3]; nor[d * 3 + 1] = l[s + 4]; nor[d * 3 + 2] = l[s + 5];
         col[d * 3] = l[s + 6]; col[d * 3 + 1] = l[s + 7]; col[d * 3 + 2] = l[s + 8];
@@ -202,6 +332,7 @@
     geo.setAttribute('position', new T.BufferAttribute(pos, 3));
     geo.setAttribute('normal', new T.BufferAttribute(nor, 3));
     geo.setAttribute('color', new T.BufferAttribute(col, 3));
+    geo.setAttribute('bary', new T.BufferAttribute(bar, 3));
     if (papier) geo.setAttribute('uv', new T.BufferAttribute(uv, 2));
     geo.computeBoundingSphere();
     g[cle] = geo;
@@ -288,7 +419,7 @@
       for (let k = 1; k < n - 1; k++) this._decTri(pts[0], h, pts[1], pts[k * 2], h, pts[k * 2 + 1], pts[k * 2 + 2], h, pts[k * 2 + 3], c);
     }
     if (stroke) {
-      const c = couleurCSS(stroke), cam = this.cam, t = this.taille;
+      const c = couleurCSS(stroke), cam = this.cam, t = this.tmp;
       for (let k = 0; k < n; k++) {
         const x0 = pts[k * 2], z0 = pts[k * 2 + 1], m = (k + 1) % n, x1 = pts[m * 2], z1 = pts[m * 2 + 1];
         cam.project((x0 + x1) / 2, h, (z0 + z1) / 2, t);
@@ -310,12 +441,15 @@
 
   // ---------- Sol plié ----------
   // V : sommets [x, y, z] ; tris : [{ v: [a, b, c], n: [nx, ny, nz] }]. Reconstruit quand l'île change de forme.
-  Renderer3D.prototype.definirSol = function (V, tris) {
+  // eau(t) : vrai si le triangle t est de l'eau (reflet du ciel, sprint 8b).
+  Renderer3D.prototype.definirSol = function (V, tris, eau) {
     const T = this.T;
     if (this.sol) { this.scene.remove(this.sol); this.sol.geometry.dispose(); }
-    const n = tris.length * 3, pos = new Float32Array(n * 3), nor = new Float32Array(n * 3), col = new Float32Array(n * 3);
+    const n = tris.length * 3, pos = new Float32Array(n * 3), nor = new Float32Array(n * 3), col = new Float32Array(n * 3), ea = new Float32Array(n);
     tris.forEach((t, k) => {
+      const e = eau && eau(t) ? 1 : 0;
       for (let m = 0; m < 3; m++) {
+        ea[k * 3 + m] = e;
         const p = V[t.v[m]], d = (k * 3 + m) * 3;
         pos[d] = p[0]; pos[d + 1] = p[1]; pos[d + 2] = p[2];
         nor[d] = t.n[0]; nor[d + 1] = t.n[1]; nor[d + 2] = t.n[2];
@@ -325,8 +459,9 @@
     g.setAttribute('position', new T.BufferAttribute(pos, 3));
     g.setAttribute('normal', new T.BufferAttribute(nor, 3));
     g.setAttribute('color', new T.BufferAttribute(col, 3).setUsage(T.DynamicDrawUsage));
+    g.setAttribute('eau', new T.BufferAttribute(ea, 1));
     g.computeBoundingSphere();
-    this.sol = new T.Mesh(g, this._mat('', 0)[0]);
+    this.sol = new T.Mesh(g, this.matSol);
     this.sol.receiveShadow = true;
     this.scene.add(this.sol);
   };
@@ -361,6 +496,7 @@
     this.gl.setSize(w, h, false);
     for (const c of [this.fond, this.dessus]) { c.width = Math.round(w * dpr); c.height = Math.round(h * dpr); }
     this.taille = [w, h, dpr];
+    if (this.flou) { this.flou.dispose(); this.flou = null; }
   };
   Renderer3D.prototype.preparerCalques = function () {
     const dpr = this.taille[2] || 1;
@@ -381,6 +517,40 @@
       0, 0, -(far + near) / (far - near), -2 * far * near / (far - near),
       0, 0, -1, 0);
     camera.projectionMatrixInverse.copy(camera.projectionMatrix).invert();
+  };
+  // Ambiance passée par rendu.js à chaque image (sprint 8b) : couleur du ciel pour l'eau, nuit, lampe de la cabane.
+  // ciel : [r, g, b] (0-255) ; jour : 0 (nuit) à 1 ; lampe : { x, y, z, force (0 à 1) }.
+  Renderer3D.prototype.reglerAmbiance = function (ciel, jour, temps, lampe) {
+    if (ciel) this.U.uCielEau.value.setRGB(ciel[0] / 255, ciel[1] / 255, ciel[2] / 255);
+    this.U.uJour.value = jour;
+    this.U.uTemps.value = temps;
+    if (lampe) { this.lampe.position.set(lampe.x, lampe.y, lampe.z); this.forceLampe = lampe.force; }
+  };
+  // Baisse d'un cran la qualité (appareil trop lent) : d'abord l'effet maquette, puis les ombres portées.
+  Renderer3D.prototype.baisserQualite = function () {
+    if (this.qualite <= 0) return false;
+    this.qualite--;
+    if (this.qualite < 1) { this.gl.shadowMap.enabled = false; this.soleil.castShadow = false; for (const m of Object.values(this.materiaux)) for (const x of m) x.needsUpdate = true; this.matSol.needsUpdate = true; }
+    return true;
+  };
+  Renderer3D.prototype._rendreAvecFlou = function () {
+    const T = this.T, gl = this.gl, t = this.taille, W = Math.round(t[0] * t[2]), H = Math.round(t[1] * t[2]);
+    if (W < 2 || H < 2) { gl.render(this.scene, this.camera); this.nbTri = gl.info.render.triangles; return; }
+    if (!this.flou) {
+      this.flou = new T.WebGLRenderTarget(W, H, { samples: self.BIOME_MSAA === undefined ? (gl.capabilities.isWebGL2 ? 4 : 0) : self.BIOME_MSAA, depthBuffer: true });
+    }
+    gl.setRenderTarget(this.flou);
+    gl.clear();
+    gl.render(this.scene, this.camera);
+    this.nbTri = gl.info.render.triangles;
+    gl.setRenderTarget(null);
+    const u = this.matPost.uniforms, cam = this.cam;
+    u.tCouleur.value = this.flou.texture;
+    u.uPas.value.set(1 / W, 1 / H);
+    u.uFoyer.value = 1 - cam.cy / cam.h;
+    // Plus fort de loin (l'île entière ressemble à une maquette), discret de près.
+    u.uForce.value = (1.6 + 2.4 * Math.max(0, Math.min(1, (cam.dist - 10) / 25))) * t[2];
+    gl.render(this.scenePost, this.camPost);
   };
   Renderer3D.prototype.flush = function () {
     const T = this.T;
@@ -411,12 +581,17 @@
     const sc = this.soleil.shadow.camera;
     if (sc.right !== R) { sc.left = -R; sc.right = R; sc.top = R; sc.bottom = -R; sc.near = 5; sc.far = 80; sc.updateProjectionMatrix(); }
     this.soleil.target.updateMatrixWorld();
+    // Lampe de la cabane : chaude, seulement la nuit ; arêtes de pli plus discrètes de loin.
+    // (toujours présente, intensité nulle le jour : changer le nombre de lumières recompilerait tous les matériaux)
+    this.lampe.intensity = this.forceLampe * 2.6 * k;
+    this.U.uAretes.value = Math.max(0, Math.min(1, (34 - this.cam.dist) / 14));
     this._synchroniserCamera();
-    this.gl.render(this.scene, this.camera);
+    if (this.qualite >= 2) this._rendreAvecFlou();
+    else { this.gl.render(this.scene, this.camera); this.nbTri = this.gl.info.render.triangles; }
     void T; void cam;
     return this.np;
   };
-  Renderer3D.prototype.triangles = function () { return this.gl.info.render.triangles; };
+  Renderer3D.prototype.triangles = function () { return this.nbTri || 0; };
 
   return { disponible, Renderer3D, couleurCSS };
 });

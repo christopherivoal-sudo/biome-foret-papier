@@ -93,7 +93,7 @@
       pr.prism(0, 0, 9, 1.04, 1.05, -0.42, -0.16, ['#c9a878', '#c2a070'], 0.2);
       for (const f of pr.f) f.doux = true;
       terrain = { sig: signatureEau(etat), Re, V, P: V.map(() => [0, 0, 0]), tris, jupe: sk.build(), promontoire: pr.build(), cabane: { x: cxp, z: czp, dir: -ang - Math.PI / 2 } };
-      if (GL) { GL.definirSol(V, tris); GL.reglerSoleil(undefined, Re + 2.5); }
+      if (GL) { GL.definirSol(V, tris, t => etat.tuiles[t.cell].c === 'eau'); GL.reglerSoleil(undefined, Re + 2.5); }
       odile.x = cxp + 0.6; odile.z = czp;
     }
 
@@ -486,6 +486,16 @@
       const s = v => 'rgb(' + (v[0] | 0) + ',' + (v[1] | 0) + ',' + (v[2] | 0) + ')';
       g.addColorStop(0, s(c[0])); g.addColorStop(1, s(c[1]));
       ctx.fillStyle = g; ctx.fillRect(0, 0, w, h);
+      couleurCiel = mel(c[0], c[1], 0.4);
+      // Sprint 8b : étoiles la nuit (fixes, scintillent un peu), sauf par temps d'orage.
+      if (A.nuit > 0.25 && A.orage < 0.5) {
+        const al = (A.nuit - 0.25) / 0.75 * (1 - A.orage);
+        for (let k = 0; k < 90; k++) {
+          const sx = hash(k, 41) * w, sy = hash(k, 42) * h * 0.75, sc = 0.6 + hash(k, 43) * 1.3;
+          ctx.fillStyle = 'rgba(255,250,230,' + (al * (0.45 + 0.4 * Math.sin(temps * (1 + hash(k, 44) * 2) + k))).toFixed(2) + ')';
+          ctx.fillRect(sx, sy, sc, sc);
+        }
+      }
       // Sprint 6 : grain de papier et halo doux au centre (le plateau ressort du fond).
       const v = ctx.createRadialGradient(w / 2, h * 0.55, Math.min(w, h) * 0.2, w / 2, h * 0.55, Math.max(w, h) * 0.75);
       v.addColorStop(0, 'rgba(255,252,242,0.35)'); v.addColorStop(1, 'rgba(90,70,45,0.12)');
@@ -500,7 +510,7 @@
         ctx.fillStyle = grain; ctx.fillRect(0, 0, w, h);
       }
     }
-    let grain = null;
+    let grain = null, couleurCiel = null;
     function emettre(etat, A, dt) {
       const Re = terrain.Re;
       const ajouter = (n, f) => { for (let k = 0; k < n; k++) particules.push(f()); };
@@ -561,7 +571,8 @@
         }
         if (p.t === 'pluie') R3.add(PART.trait, p.x, p.y, p.z, cam.yaw, 1, 1, { couleur: PLUIE, alpha: 0.6, ombre: false });
         else {
-          const c = p.t === 'neige' ? BLANC : (COUL[p.c] || (COUL[p.c] = E.hex(p.c)));
+          const c0 = p.t === 'neige' ? BLANC : (COUL[p.c] || (COUL[p.c] = E.hex(p.c))), te = R3.teinte || [1, 1, 1];
+          const c = [c0[0] * te[0], c0[1] * te[1], c0[2] * te[2]]; // la nuit, pétales et flocons s'assombrissent aussi
           const s = p.t === 'neige' ? 0.07 : 0.095;
           R3.add(PART.losange, p.x, p.y, p.z, cam.yaw, s, s, { couleur: c, roll: temps * 2 + p.ph, ombre: false });
         }
@@ -757,6 +768,9 @@
       const liste = Core.tuilesIle(etat), rares = indexRares(etat);
       GL.preparerCalques();
       ctx = GL.fondCtx; ciel(w, h, A); ctx = ctxPrincipal;
+      // Sprint 8b : l'eau reflète le ciel ; la cabane s'éclaire la nuit.
+      const cb = terrain.cabane;
+      GL.reglerAmbiance(couleurCiel, (1 - A.nuit) * (1 - A.orage * 0.8), temps, { x: cb.x * 0.92, y: 0.75, z: cb.z * 0.92, force: A.nuit });
       R3.begin();
       R3.add(terrain.jupe, 0, 0, 0, 0, 1, 1, { ombre: false });
       colorerSolGL(etat, A);
@@ -906,7 +920,13 @@
     // Position à l'écran d'un point du monde exprimé en tuiles (pour les bulles et les effets de l'interface).
     function ecran(tx, ty, hauteur) { const o = cam.project(tx - C, hauteur || 0, ty - C, [0, 0, 0]); return { x: o[0], y: o[1] }; }
     function ecranCabane() { if (!terrain) return null; const o = cam.project(terrain.cabane.x, 1.6, terrain.cabane.z, [0, 0, 0]); return { x: o[0], y: o[1] }; }
-    const api = { nom: GL ? 'WebGL' : 'Canvas 2D', webgl: !!GL, dessiner, tuileSous, cadrer, deplacer, zoomer, penteAuto, grossir: 1.35, cibleSous, ecran, ecranCabane, get cibles() { return cibles; }, camera: cam, moteur: R3, modeles: M, dprMax: 2 };
+    const api = {
+      nom: GL ? 'WebGL' : 'Canvas 2D', webgl: !!GL,
+      // Qualité du rendu WebGL (sprint 8b) : 2 = tout, 1 = sans effet maquette, 0 = sans ombres portées.
+      get qualite() { return GL ? GL.qualite : 0; },
+      set qualite(q) { if (!GL) return; while (GL.qualite > q && GL.baisserQualite()); if (q > GL.qualite) GL.qualite = Math.min(q, GL.gl.shadowMap.enabled ? 2 : 0); },
+      baisserQualite: () => (GL ? GL.baisserQualite() : false),
+      dessiner, tuileSous, cadrer, deplacer, zoomer, penteAuto, grossir: 1.35, cibleSous, ecran, ecranCabane, get cibles() { return cibles; }, camera: cam, moteur: R3, modeles: M, dprMax: 2 };
     return api;
   }
 
