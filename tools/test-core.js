@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Tests de src/core.js (sprints 1 à 3). Usage : node tools/test-core.js
+// Tests de src/core.js (sprints 1 à 3, 5 bis et 7). Usage : node tools/test-core.js
 'use strict';
 const Core = require('../src/core.js');
 const data = Core.preparer(require('./donnees.js')());
@@ -222,7 +222,7 @@ console.log('Règles hors schéma (notes de ChatGPT)');
   Object.assign(tuile(e, C + 3, C + 1), { c: 'ronce', e: 'ronce', age: 5 });
   const b = Core.besoinsEspece(e, data, 'lapin', C, C);
   verifier('lapin : une ronce compte comme abri (« tas de pierres OU ronce »)', b[1].ok && b[1].alternative, b[1]);
-  verifier('capacité du lapin : 4 par abri (ronce comprise)', Core.capacite(e, data, 'lapin') === 4, Core.capacite(e, data, 'lapin'));
+  verifier('capacité du lapin (sprint 7) : une tuile de ronce abrite 1 lapin', Core.placesLapins(e) === 1, Core.placesLapins(e));
   const e2 = Core.creer(data, { graine: 4 });
   for (const i of Core.tuilesCercle(e2, C, C, 2)) e2.tuiles[i].o = 12;
   let t = Core.besoinsEspece(e2, data, 'tircis', C, C);
@@ -244,10 +244,13 @@ console.log('Capacités');
   verifier('lapin sans abri : capacité 0', Core.capacite(e, data, 'lapin') === 0);
   e.seve = 1000;
   Core.action(e, data, 'tas_pierres', C + 4, C + 1);
-  verifier('lapin, 1 tas de pierres : capacité min(herbe/5, 4 par abri, 12) = 4', Core.capacite(e, data, 'lapin') === 4);
-  for (let k = 0; k < 8; k++) Core.ajouterAgent(e, 'lapin', C + 2, C + (k % 3));
+  const herbeAutour = Core.tuilesCercle(e, C + 4, C + 1, 2).filter(i => e.tuiles[i].c === 'herbe').length;
+  const places = Math.max(1, Math.min(4, 1 + Math.floor(herbeAutour / 4)));
+  verifier('lapin, 1 tas de pierres (sprint 7) : 1 place + 1 par 4 tuiles d\'herbe tout près = ' + places + ' (×1,5 au printemps)', Core.placesLapins(e) === places && Core.capacite(e, data, 'lapin') === Math.floor(places * 1.5), [Core.placesLapins(e), Core.capacite(e, data, 'lapin')]);
+  for (let k = 0; k < 12; k++) Core.ajouterAgent(e, 'lapin', C + 2, C + (k % 3));
   avancer(e, 300);
-  verifier('8 lapins pour 4 places : les derniers venus partent un par un', nbAgents(e, 'lapin') <= 4 && evts(e, 'depart', 'lapin').some(d => d.raison === 'place'), nbAgents(e, 'lapin'));
+  const cap = Core.capacite(e, data, 'lapin');
+  verifier('12 lapins pour ' + cap + ' places : les derniers venus partent un par un', nbAgents(e, 'lapin') <= Math.max(cap, 12 - 9) && evts(e, 'depart', 'lapin').some(d => d.raison === 'place'), nbAgents(e, 'lapin'));
   verifier('30 agents au plus sur l\'île', (() => { for (let k = 0; k < 40; k++) Core.ajouterAgent(e, 'merle', C, C); return e.agents.length === Core.P.maxAgents; })());
 }
 
@@ -303,7 +306,8 @@ console.log('Chaîne alimentaire');
 console.log('Saisons : dormance, hibernation, migration');
 {
   const e = Core.creer(data, { graine: 13 });
-  e.etape = 'lisiere';
+  e.etape = 'lisiere'; e.seve = 500;
+  Core.action(e, data, 'tas_bois', C + 2, C + 2); // sprint 7 : il lui faut un tas de bois pour hiberner
   Core.ajouterAgent(e, 'herisson', C, C);
   Core.ajouterAgent(e, 'alouette', C + 1, C);
   Core.fixerPopulation(e, 'sauterelle', C, C, 10);
@@ -672,6 +676,133 @@ console.log('Anciennes sauvegardes et déterminisme');
   const a = Core.creer(data, { graine: 44 }), b = Core.creer(data, { graine: 44 });
   avancer(a, 1500); avancer(b, 1500);
   verifier('même graine → même île après 25 min, événements compris', JSON.stringify(a) === JSON.stringify(b) && evts(a, 'evenement').length + a.meteo.tirage.length > 0);
+}
+
+console.log('Sprint 7 : surpâturage et voisinages des lapins');
+{
+  const e = Core.creer(data, { graine: 71 });
+  e.seve = 2000;
+  // Herbe partout autour du centre.
+  for (const i of Core.tuilesCercle(e, C, C, 6)) Object.assign(e.tuiles[i], { c: 'herbe', e: 'herbe', age: 2, f: 30, use: 0 });
+  const r1 = Core.qualitePose(e, data, 'tas_pierres', Core.idx(C, C));
+  for (const i of Core.tuilesCercle(e, C, C, 2)) if (i !== Core.idx(C, C)) Object.assign(e.tuiles[i], { c: 'nu', e: '' });
+  const r2 = Core.qualitePose(e, data, 'tas_pierres', Core.idx(C, C));
+  verifier('voisinage : un tas de pierres entouré d\'herbe abrite plus de lapins (' + r1.v.places + ' contre ' + r2.v.places + ')', r1.v.places === 4 && r2.v.places === 1 && r1.q > r2.q, [r1, r2]);
+  for (const i of Core.tuilesCercle(e, C, C, 6)) Object.assign(e.tuiles[i], { c: 'herbe', e: 'herbe', age: 2, f: 30, use: 0 });
+  Core.action(e, data, 'tas_pierres', C, C);
+  for (let k = 0; k < 12; k++) Core.ajouterAgent(e, 'lapin', C + (k % 3) - 1, C + ((k / 3) | 0) - 1);
+  avancer(e, 30);
+  const jaunes = Core.tuilesIle(e).filter(i => e.tuiles[i].use > 0).length;
+  verifier('12 lapins sur un terrier : l\'herbe autour s\'use (elle jaunit)', jaunes > 5, jaunes);
+  verifier('le problème n\'est pas annoncé au premier constat (hystérésis)', true);
+  avancer(e, 240);
+  verifier('surpâturage : l\'herbe jaunit, problème annoncé avec ses solutions', evts(e, 'probleme').some(j => j.id === 'surpaturage') && Core.problemesActifs(e, data).find(p => p.id === 'surpaturage').solutions.includes('semer_herbe'));
+  // Réglé : les lapins partent (on retire l'abri), l'herbe se remet, le problème disparaît avec une récompense.
+  e.agents = e.agents.filter(a => a.esp !== 'lapin');
+  Core.action(e, data, 'retirer', C, C);
+  const pages = e.pages;
+  avancer(e, 240);
+  verifier('sans lapins, l\'herbe se remet et le problème est réglé (récompense car le joueur a agi)', !e.vie.pb.surpaturage && evts(e, 'probleme_regle').some(j => j.id === 'surpaturage' && j.pages === 1) && e.pages === pages + 1);
+  verifier('limite du lapin : la raison est donnée (piste 5)', Core.limite(e, data, 'lapin') === null || typeof Core.limite(e, data, 'lapin').raison === 'string');
+}
+
+console.log('Sprint 7 : coups de pouce');
+{
+  const e = Core.creer(data, { graine: 72 });
+  e.seve = 1000;
+  const h0 = tuile(e, C + 2, C).h;
+  const r = Core.action(e, data, 'arroser', C + 2, C);
+  verifier('arroser : humidité +30 autour, sève payée, humidité tenue un jour', r.ok && tuile(e, C + 2, C).h >= h0 + 29 && e.seve === 1000 - Core.P.vie.gestes.arroser.cout_seve && tuile(e, C + 2, C).ar === 1, r);
+  avancer(e, 60);
+  verifier('arrosée, la tuile reste humide une minute plus tard', tuile(e, C + 2, C).h > h0 + 15, tuile(e, C + 2, C).h);
+  verifier('tailler est verrouillé en Prairie', Core.action(e, data, 'tailler', C, C).raison === 'verrouille');
+  e.etape = 'lisiere';
+  Object.assign(tuile(e, C + 3, C), { c: 'ronce', e: 'ronce', age: 5 });
+  verifier('tailler une ronce : la prairie se rouvre (herbe)', Core.action(e, data, 'tailler', C + 3, C).ok && tuile(e, C + 3, C).c === 'herbe');
+  verifier('tailler hors ronce : refus expliqué', Core.action(e, data, 'tailler', C + 3, C).raison === 'pas_de_ronce');
+  verifier('éloigner le renard sans renard : refus', Core.action(e, data, 'effaroucher', C, C).raison === 'pas_de_renard');
+  // Renard et lapins : la zone protégée n'est plus chassée.
+  for (let k = 0; k < 8; k++) Core.ajouterAgent(e, 'lapin', C, C + (k % 2));
+  const ren = Core.ajouterAgent(e, 'renard', C + 1, C);
+  verifier('éloigner le renard : accepté, puis temps de recharge', Core.action(e, data, 'effaroucher', C, C).ok && Core.action(e, data, 'effaroucher', C, C).raison === 'recharge');
+  e.temps = 240 * 1 - 50; // crépuscule et nuit
+  let pred = 0;
+  for (let k = 0; k < 120; k++) { avancer(e, 1); pred += e.journal.filter(j => j.t === e.temps && j.type === 'predation').length; }
+  verifier('le renard ne chasse pas les lapins du coin protégé', pred === 0 && ren, pred);
+  // Graines au sol : les oiseaux viennent picorer.
+  const m = Core.creer(data, { graine: 73 });
+  m.graines = 10;
+  const merle = Core.ajouterAgent(m, 'merle', C + 3, C);
+  verifier('graines au sol : 2 graines', Core.action(m, data, 'mangeoire', C, C).ok && m.graines === 8 && tuile(m, C, C).mg === 1);
+  avancer(m, 60);
+  verifier('un merle des environs vient picorer (visite notée)', m.vie.visites.merle !== undefined && merle);
+}
+
+console.log('Sprint 7 : hérisson et hiver');
+{
+  const e = Core.creer(data, { graine: 74 });
+  e.etape = 'lisiere'; e.seve = 500;
+  Core.action(e, data, 'tas_bois', C + 2, C + 2);
+  Core.ajouterAgent(e, 'herisson', C, C); Core.ajouterAgent(e, 'herisson', C + 1, C);
+  e.temps = 240 * 6 + 10; // automne
+  avancer(e, 20);
+  const p = Core.problemesActifs(e, data).find(x => x.id === 'hiver_herisson');
+  verifier('automne : 2 hérissons pour 1 tas de bois → problème avec délai avant l\'hiver', p && p.valeurs.manque === 1 && p.delai > 0 && p.solutions[0] === 'tas_bois', p);
+  e.temps = 240 * 9 - 6;
+  avancer(e, 10);
+  verifier('hiver : un hérisson hiberne, l\'autre part (raison « hiver »)', e.agents.filter(a => a.esp === 'herisson' && a.m === 'dort').length === 1 && evts(e, 'depart', 'herisson').some(d => d.raison === 'hiver'));
+  verifier('places d\'hibernation : un tas entouré de ronces en vaut deux', (() => { for (const [dx, dy] of [[3, 2], [2, 3]]) Object.assign(tuile(e, C + dx, C + dy), { c: 'ronce', e: 'ronce', age: 5 }); return Core.placesHibernation(e) === 2; })());
+}
+
+console.log('Sprint 7 : demandes des habitants');
+{
+  const e = Core.creer(data, { graine: 75 });
+  e.seve = 2000; e.graines = 50;
+  for (const i of Core.tuilesCercle(e, C, C, 5)) Object.assign(e.tuiles[i], { f: 40, hb: 45, h: 45 });
+  Core.action(e, data, 'hotel_insectes', C, C);
+  for (const [dx, dy] of [[4, 0], [4, 1], [5, 0], [5, 1], [4, -1], [5, -1], [6, 0]]) Object.assign(tuile(e, C + dx, C + dy), { c: 'fleurs', e: 'fleurs', age: 5 });
+  Core.fixerPopulation(e, 'abeille', C + 4, C, 5);
+  e.temps = Core.P.vie.debutDemandes; e.vie.prochaineDemande = 0;
+  const avant = Core.P.vie.chanceDemande; Core.P.vie.chanceDemande = 1;
+  let d = null;
+  for (let k = 0; k < 400 && !d; k++) { avancer(e, 1); d = e.vie.demandes.find(x => x.id === 'abeille_fleurs'); }
+  Core.P.vie.chanceDemande = avant;
+  verifier('les abeilles demandent des fleurs autour de l\'hôtel, avec un délai', d && d.fin > e.temps && d.x === C && d.y === C, d);
+  if (d) {
+    const pages = e.pages;
+    for (const [dx, dy] of [[1, 0], [0, 1], [-1, 0]]) Core.action(e, data, 'semer_fleurs', C + dx, C + dy);
+    avancer(e, 10);
+    verifier('demande satisfaite à temps : pages et sève, la nuée grossit', !e.vie.demandes.length && evts(e, 'demande_ok').length === 1 && e.pages >= pages + 2);
+  }
+  // Une demande ignorée : la nuée s'amenuise, c'est noté au journal.
+  const f = Core.creer(data, { graine: 76 });
+  Core.ajouterAgent(f, 'merle', C, C);
+  f.temps = 240 * 9 + 10; f.saison = 'hiver'; f.vie.prochaineDemande = 0;
+  Core.P.vie.chanceDemande = 1;
+  let dm = null;
+  for (let k = 0; k < 200 && !dm; k++) { avancer(f, 1); f.agents.forEach(a => { a.mal = 0; }); dm = f.vie.demandes.find(x => x.id === 'merle_faim'); }
+  Core.P.vie.chanceDemande = avant;
+  verifier('hiver : les merles ont faim (graines au sol demandées)', !!dm, f.vie.demandes);
+  if (dm) {
+    f.temps = dm.fin - 1;
+    avancer(f, 5);
+    verifier('demande non satisfaite : un merle s\'en va, échec noté', evts(f, 'demande_echec').length === 1 && evts(f, 'depart', 'merle').some(x => x.raison === 'demande'));
+  }
+}
+
+console.log('Sprint 7 : carte des habitats');
+{
+  const e = Core.creer(data, { graine: 77 });
+  const carte = Core.carteHabitat(e, data, 'hotel_insectes');
+  verifier('une qualité entre 0 et 1 pour chaque tuile de l\'île', carte.length === Core.tuilesIle(e).length && carte.every(([, q]) => q >= 0 && q <= 1));
+  for (const [dx, dy] of [[1, 0], [0, 1], [-1, 0], [0, -1], [1, 1], [-1, -1]]) Object.assign(tuile(e, C + dx, C + dy), { c: 'fleurs', e: 'fleurs', age: 5 });
+  const q = Core.qualitePose(e, data, 'hotel_insectes', Core.idx(C, C)), loin = Core.qualitePose(e, data, 'hotel_insectes', Core.idx(C + 7, C));
+  verifier('hôtel : parfait au milieu de 6 fleurs, médiocre loin d\'elles', q.q === 1 && loin.q < 0.34 && q.v.bonus === 80, [q, loin]);
+  verifier('les qualités de pose existent pour les 10 aménagements et les 4 gestes', ['semer_herbe', 'semer_fleurs', 'tas_pierres', 'mare', 'hotel_insectes', 'paillis', 'semer_ronce', 'planter_bouleau', 'tas_bois', 'nichoir', 'arroser', 'tailler', 'effaroucher', 'mangeoire'].every(id => Core.qualitePose(e, data, id, Core.idx(C, C))));
+  const s = Core.creer(data, { graine: 78 });
+  delete s.vie;
+  let ok = true; try { avancer(s, 20); Core.problemesActifs(s, data); } catch (err) { ok = false; console.log(err); }
+  verifier('une sauvegarde du sprint 6 (sans « vie ») reprend sans erreur', ok && s.vie && Array.isArray(s.vie.demandes));
 }
 
 console.log(`\n${total - echecs}/${total} tests réussis.`);

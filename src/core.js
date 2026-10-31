@@ -87,6 +87,42 @@
     },
     habitatsAttendus: { prairie: ['prairie', 'eau'], lisiere: ['prairie', 'lisiere', 'eau'] },
     seuilHabitat: { prairie: 0.1, lisiere: 0.1, sous_bois: 0.1, eau: 0.01 },
+    // --- Sprint 7 : l'île vit, se dérègle, et le joueur répond (pistes 1 à 5 de docs/idees-gameplay-agir.md) ---
+    vie: {
+      // Voisinages qui comptent (piste 2)
+      rayonVoisinage: 3,          // rayon où l'on regarde autour d'un aménagement
+      herbeParPlace: 4,           // tas de pierres : 1 place de lapin + 1 par 4 tuiles d'herbe tout près (rayon 2)
+      placesAbriMax: 4,
+      placesRonce: 1,             // une tuile de ronce abrite 1 lapin
+      printempsLapins: 1.5,       // au printemps les portées dépassent la capacité ordinaire
+      hotelBonus: [0.2, 0.6],     // hôtel à insectes : +20 % de pollinisateurs, jusqu'à +80 % avec 6 fleurs autour
+      fleursHotel: 6,
+      verQualite: { base: 0.7, eau: 0.4, paillis: 0.3, miOmbre: 0.2 }, // « coin à vers »
+      alouetteParTuiles: 25,      // 1 alouette par 25 tuiles de la plus grande prairie d'un seul tenant
+      // Surpâturage (piste 1)
+      herbeParLapin: 5,           // en dessous, autour du terrier, l'herbe s'use
+      usure: 2,                   // usure par jour à pression maximale (1 = l'herbe disparaît)
+      repousse: 0.5,              // l'herbe se remet de l'usure, par jour, quand la pression cesse
+      seuilJauni: 0.35,
+      // Coups de pouce (piste 4)
+      gestes: {
+        arroser: { etape: 'prairie', cout_seve: 8, rayon: 1.5, humidite: 30, bonus: 25, duree_jours: 1 },
+        mangeoire: { etape: 'prairie', cout_graines: 2, duree_jours: 1, rayon: 7 },
+        tailler: { etape: 'lisiere', cout_seve: 2 },
+        effaroucher: { etape: 'lisiere', cout_seve: 20, rayon: 5, duree_jours: 1, recharge_jours: 1 },
+      },
+      // Problèmes (piste 1)
+      dureeRecompense: 20,        // s : un problème doit avoir duré pour que sa résolution rapporte
+      recompenseProbleme: { pages: 1, seve: 15 },
+      // Demandes des habitants (piste 3)
+      debutDemandes: 360,         // s : pas de demande pendant les premières minutes (le guide)
+      intervalleDemandes: 60,     // s entre deux occasions de nouvelle demande
+      chanceDemande: 0.5,
+      maxDemandes: 2,
+      reposDemande: 2,            // jours avant qu'une même demande puisse revenir
+      recompenseDemande: { pages: 2, seve: 25 },
+      chanceRareDemande: 0.34,    // une demande satisfaite : un spécimen rare devient plus probable
+    },
   };
   // Foyer préféré des agents (sinon : n'importe quelle tuile où les besoins sont réunis).
   const FOYER = { alouette: ['herbe', 'fleurs'], merle: ['ronce', 'arbre'], renard: ['ronce'], herisson: ['ronce', 'bois_mort'] };
@@ -160,7 +196,7 @@
   }
   function tuileVide(fert) {
     // c : couvert ; e : espèce végétale ; age : jours ; a : aménagement ; ancre : tuile d'origine (mare 2×2)
-    return { c: 'nu', e: '', age: 0, a: '', ancre: -1, f: fert, h: P.humiditeBase, hb: P.humiditeBase, o: 0, op: 0, champi: '', paillis: 0, nichoir: false, graines: 0, mal: 0, cm: 0 };
+    return { c: 'nu', e: '', age: 0, a: '', ancre: -1, f: fert, h: P.humiditeBase, hb: P.humiditeBase, o: 0, op: 0, champi: '', paillis: 0, nichoir: false, graines: 0, mal: 0, cm: 0, use: 0, ar: 0, mg: 0 };
   }
 
   // ---------- Création ----------
@@ -197,6 +233,7 @@
     if (!etat.meteo) etat.meteo = { actif: null, prevu: null, tirage: '', humidite: 0, derniere: {}, garantie: {} };
     if (!etat.rares) etat.rares = [];
     if (!etat.collection) etat.collection = {};
+    if (!etat.vie) etat.vie = { pb: {}, demandes: [], repos: {}, recompenses: {}, effroi: null, tailles: 0, visites: {}, dernierGeste: -1, prochaineDemande: 0 };
     return etat;
   }
 
@@ -428,6 +465,7 @@
     if (id === 'retirer') return retirer(etat, data, x, y);
     if (id === 'agrandir') return agrandir(etat, data);
     if (id === 'recolter') { const r = recolter(etat, x, y); if (r.ok) noter(etat, data, 'recolte', '', r.graines); return r; }
+    if (P.vie.gestes[id]) { const r = geste(etat, data, id, x, y); if (r.ok) completer(etat).vie.dernierGeste = etat.temps; return r; }
     const a = data.actions[id];
     if (!a) return refus('action_inconnue');
     if (!etapeAtteinte(etat, data, a.etape)) return refus('verrouille', { etape: a.etape });
@@ -445,6 +483,7 @@
       if (!p.ok) return p;
       planter(etat, data, i, fiche.id);
       noter(etat, data, 'semis', fiche.id);
+      completer(etat).vie.dernierGeste = etat.temps;
       return { ok: true };
     }
 
@@ -462,6 +501,7 @@
       const p = payer(etat, a.cout_seve, 0); if (!p.ok) return p;
       t.paillis = a.effets.duree_jours;
       noter(etat, data, 'construction', id);
+      completer(etat).vie.dernierGeste = etat.temps;
       return { ok: true };
     }
     const cases = [];
@@ -479,12 +519,13 @@
     }
     calculerOmbre(etat, data);
     noter(etat, data, 'construction', id);
+    completer(etat).vie.dernierGeste = etat.temps;
     return { ok: true };
   }
 
   function planter(etat, data, i, id) {
     const t = etat.tuiles[i];
-    Object.assign(t, { c: COUVERT_PLANTE[id] || 'arbre', e: id, age: 0, graines: 0, mal: 0, nichoir: false });
+    Object.assign(t, { c: COUVERT_PLANTE[id] || 'arbre', e: id, age: 0, graines: 0, mal: 0, nichoir: false, use: 0 });
     if (data.especes[id].croissance.ombre_projetee) calculerOmbre(etat, data);
     nouveauSpecimen(etat, data, id, { tuile: i });
   }
@@ -505,6 +546,7 @@
     } else if (t.c === 'roche') t.c = 'nu';
     else return refus('rien_a_retirer');
     etat.seve += Math.floor(rendu * P.remboursement);
+    completer(etat).vie.dernierGeste = etat.temps;
     calculerOmbre(etat, data);
     return { ok: true, rendu: Math.floor(rendu * P.remboursement) };
   }
@@ -598,10 +640,16 @@
     const tz = zoneTuiles(etat, z);
     let k = c.par === 'tuiles' ? compterCouvert(etat, c.couvert, tz) / c.nombre : c.nombre;
     // Hôtel à insectes : capacité des pollinisateurs +50 % dans son rayon.
+    // Sprint 7 : l'hôtel compte d'autant plus qu'il y a de fleurs autour de lui (voisinage).
     if (f.roles.includes('pollinisateur')) {
       const hotel = data.actions.hotel_insectes.effets, ci = zoneCentre(etat, z);
-      if (ci >= 0 && compterAmenagement(etat, 'hotel_insectes', tuilesCercle(etat, ci % N, (ci / N) | 0, hotel.rayon)) > 0) k *= 1 + hotel.capacite_pollinisateurs;
+      if (ci >= 0) {
+        let best = -1;
+        for (const j of tuilesCercle(etat, ci % N, (ci / N) | 0, hotel.rayon)) if (etat.tuiles[j].a === 'hotel_insectes') best = Math.max(best, qualiteHotel(etat, j));
+        if (best >= 0) k *= 1 + best;
+      }
     }
+    if (id === 'ver') k *= qualiteVer(etat, z);
     return k;
   }
   // Capacité totale d'une espèce sur l'île (agents : individus ; tuiles : nombre de tuiles).
@@ -616,7 +664,10 @@
     else if (c.par === 'amenagement') v = compterAmenagement(etat, c.id, tuilesIle(etat)) * c.nombre;
     else v = Math.floor(presence(etat, data, c.id) / c.nombre);
     // Règles hors schéma (notes de ChatGPT).
-    if (id === 'lapin') v = Math.min(v, P.lapinsParAbri * (compterAmenagement(etat, 'tas_pierres', tuilesIle(etat)) + compterCouvert(etat, 'ronce')));
+    // Sprint 7 (voisinages qui comptent) : un tas de pierres abrite d'autant plus de lapins qu'il y a d'herbe autour ;
+    // l'herbe elle-même n'est plus un plafond global : trop de lapins usent l'herbe autour du terrier (surpâturage).
+    if (id === 'lapin') { v = placesLapins(etat); if (horloge(etat).saison === 'printemps') v = Math.floor(v * P.vie.printempsLapins); }
+    if (id === 'alouette') v = Math.min(v, Math.floor(plusGrandePrairie(etat) / P.vie.alouetteParTuiles));
     if (id === 'merle') v += data.actions.nichoir.effets.capacite_merle * compterAmenagement(etat, 'nichoir', tuilesIle(etat));
     if (id === 'coulemelle') v = c.nombre * (compterAmenagement(etat, 'tas_bois', tuilesIle(etat)) + presence(etat, data, 'bouleau'));
     if (c.max) v = Math.min(v, c.max);
@@ -703,6 +754,7 @@
 
   // ---------- Agents : déplacements (chaque seconde) ----------
   function pasAgents(etat, data, dt) {
+    const mg = mangeoires(etat);
     for (const a of etat.agents) {
       if (a.m === 'dort') continue;
       const v = (P.vitesse[a.esp] || P.vitesse.defaut) * dt;
@@ -713,6 +765,20 @@
       else if (a.m === 'part') a.sorti = true;
       else if (etat.meteo.abri) { a.tx = a.hx; a.ty = a.hy; } // à l'abri : retour au foyer, on ne flâne pas
       else if ((a.attente -= dt) <= 0) {
+        // Sprint 7 : des graines au sol attirent les oiseaux des environs (coup de pouce « Graines au sol »).
+        const m = OISEAUX.includes(a.esp) && mg.find(i => Math.hypot(i % N - a.hx, ((i / N) | 0) - a.hy) <= P.vie.gestes.mangeoire.rayon);
+        if (m !== undefined && m !== false && alea(etat) < 0.6) {
+          a.tx = m % N + (alea(etat) - 0.5); a.ty = ((m / N) | 0) + (alea(etat) - 0.5);
+          a.attente = 3 + alea(etat) * 4; a.mange = m;
+          continue;
+        }
+        if (a.mange !== undefined) {
+          // Il a picoré les graines : visite notée (demande « les merles ont faim »), comportement visible.
+          const vie = completer(etat).vie;
+          vie.visites[a.esp] = etat.temps;
+          if (alea(etat) < 0.5) journal(etat, { type: 'repas', id: a.esp, agent: a.id, proie: 'graines', x: a.mange % N, y: (a.mange / N) | 0 });
+          delete a.mange;
+        }
         // Flâne autour de son foyer.
         const ang = alea(etat) * 2 * Math.PI, r = alea(etat) * 2;
         const nx = Math.round(a.hx + r * Math.cos(ang)), ny = Math.round(a.hy + r * Math.sin(ang));
@@ -740,6 +806,7 @@
     pasChampignons(etat, data, h, jour);
     pasFertilisation(etat, data, h, jour);
     calculerPollinisation(etat, data, h);
+    pasVie(etat, data, h);
     if (etat.temps % P.controleArrivee === 0) controleArrivees(etat, data, h);
     // Une espèce a quitté l'île : le carnet note ce qui manquait.
     const apres = new Set(especesPresentes(etat, data));
@@ -753,12 +820,23 @@
   // Saisons : migration, hibernation, réveil.
   function changerSaison(etat, data, saison) {
     etat.saison = saison;
+    // Sprint 7 : un hérisson ne passe l'hiver que s'il trouve un tas de bois libre (problème annoncé à l'automne).
+    let places = placesHibernation(etat);
     for (const a of etat.agents) {
       const f = data.especes[a.esp];
       if (actifEnSaison(f, saison)) { if (a.m === 'dort') { a.m = 'vit'; journal(etat, { type: 'reveil', id: a.esp, agent: a.id }); } continue; }
       if (a.m === 'part') continue;
       if (f.hiver === 'migre') { const b = pointBord(etat, a.x, a.y); Object.assign(a, { m: 'part', tx: b.x, ty: b.y }); journal(etat, { type: 'migration', id: a.esp, agent: a.id }); }
-      else if (f.hiver === 'hiberne') { Object.assign(a, { m: 'dort', x: a.hx, y: a.hy, tx: a.hx, ty: a.hy }); journal(etat, { type: 'hibernation', id: a.esp, agent: a.id }); }
+      else if (f.hiver === 'hiberne') {
+        if (a.esp === 'herisson' && places <= 0) {
+          const k = f.besoins.findIndex(b => b.type === 'amenagement' && b.id === 'tas_bois');
+          carnet(etat, a.esp).manque = k;
+          fairePartir(etat, a, 'hiver', k);
+          continue;
+        }
+        if (a.esp === 'herisson') places--;
+        Object.assign(a, { m: 'dort', x: a.hx, y: a.hy, tx: a.hx, ty: a.hy }); journal(etat, { type: 'hibernation', id: a.esp, agent: a.id });
+      }
     }
   }
 
@@ -849,22 +927,6 @@
           nouveauSpecimen(etat, data, id, { agent: b.id });
         }
       }
-      // Lapins trop nombreux pour l'herbe : surpâturage, des tuiles deviennent nues.
-      if (id === 'lapin') {
-        const exces = n - Math.floor(compterCouvert(etat, 'herbe') / f.capacite.nombre);
-        if (exces > 0) {
-          st.broute += exces * P.broutage * jour;
-          while (st.broute >= 1) {
-            st.broute -= 1;
-            const a = liste[Math.floor(alea(etat) * n)];
-            const l = tuilesCercle(etat, Math.round(a.hx), Math.round(a.hy), 3).filter(i => etat.tuiles[i].e === 'herbe');
-            if (!l.length) break;
-            const i = l[Math.floor(alea(etat) * l.length)];
-            Object.assign(etat.tuiles[i], { c: 'nu', e: '', age: 0, graines: 0, mal: 0 });
-            journal(etat, { type: 'surpaturage', id: 'lapin', x: i % N, y: (i / N) | 0 });
-          }
-        } else st.broute = 0;
-      }
     }
     // Chaîne alimentaire.
     for (const a of etat.agents.slice()) {
@@ -906,9 +968,13 @@
     if (h.moment === 'jour' || etat.meteo.abri) return;
     const proies = etat.agents.filter(b => b.esp === it.cible && b.m === 'vit');
     if (proies.length <= P.plancherProies) return;
+    // Sprint 7 : le renard éloigné d'un coin n'y chasse plus (coup de pouce « Éloigner le renard »).
+    const ef = etat.vie && etat.vie.effroi;
+    const chassables = ef && etat.temps < ef.fin ? proies.filter(b => Math.hypot(b.x - ef.x, b.y - ef.y) > P.vie.gestes.effaroucher.rayon) : proies;
+    if (!chassables.length) return;
     // Taux journalier concentré sur le tiers de journée où il chasse.
     if (alea(etat) >= it.intensite * proies.length * jour * 3) return;
-    const p = proies[Math.floor(alea(etat) * proies.length)];
+    const p = chassables[Math.floor(alea(etat) * chassables.length)];
     p.sorti = true;
     journal(etat, { type: 'predation', id: a.esp, agent: a.id, proie: p.esp, proieAgent: p.id, x: Math.round(p.x), y: Math.round(p.y) });
     etat.agents = etat.agents.filter(b => !b.sorti);
@@ -1466,10 +1532,13 @@
         t.hb = Math.min(100, t.hb + paillis.humidite * part);
         t.paillis = Math.max(0, t.paillis - jour);
       }
+      // Sprint 7 : arrosage (humidité tenue un moment) et graines au sol, qui s'épuisent.
+      if (t.ar > 0) t.ar = Math.max(0, t.ar - jour);
+      if (t.mg > 0) t.mg = Math.max(0, t.mg - jour);
       // Humidité : rejoint l'équilibre (sol + eau voisine).
       if (t.c === 'eau') t.h = 100;
       else {
-        let cible = Math.min(100, t.hb + eau[i] + etat.meteo.humidite + P.humusEau * Math.max(0, t.f - 10));
+        let cible = Math.min(100, t.hb + eau[i] + etat.meteo.humidite + P.humusEau * Math.max(0, t.f - 10) + (t.ar > 0 ? P.vie.gestes.arroser.bonus : 0));
         if (plancher !== null) cible = Math.max(cible, Math.min(plancher, t.h)); // la sécheresse ne descend pas sous le plancher
         t.h += (cible - t.h) * Math.min(1, dt / P.relaxHumidite);
         t.h = Math.max(0, Math.min(100, t.h));
@@ -1512,7 +1581,7 @@
     for (const [i, id] of naissances) {
       const x = i % N, y = (i / N) | 0;
       const voisins = [[1, 0], [-1, 0], [0, 1], [0, -1]].map(([dx, dy]) => [x + dx, y + dy])
-        .filter(([vx, vy]) => dansIle(etat, vx, vy) && etat.tuiles[idx(vx, vy)].c === 'nu' && !etat.tuiles[idx(vx, vy)].a);
+        .filter(([vx, vy]) => { if (!dansIle(etat, vx, vy)) return false; const v = etat.tuiles[idx(vx, vy)]; return !v.a && (v.c === 'nu' || (id === 'ronce' && v.c === 'herbe')); });
       if (!voisins.length) continue;
       const [vx, vy] = voisins[Math.floor(alea(etat) * voisins.length)];
       if (data.especes[id].besoins.every(c => evaluer(etat, data, c, { x: vx, y: vy, soi: idx(vx, vy) }).ok)) planter(etat, data, idx(vx, vy), id);
@@ -1545,6 +1614,423 @@
     }
     if (etat.journal.length > 200) etat.journal.splice(0, etat.journal.length - 200);
     return etat;
+  }
+
+  // =====================================================================
+  // ---------- Sprint 7 : l'île vit, se dérègle, et le joueur répond ----------
+  // Pistes de docs/idees-gameplay-agir.md validées par Christophe le 31/10 :
+  // 1. des problèmes visibles à régler (surpâturage, ronces envahissantes, sol sec, hérisson sans abri d'hiver,
+  //    renard qui vide le terrier), 2. les voisinages comptent (capacités selon ce qui entoure un aménagement),
+  // 3. les habitants demandent (avec délai, récompense ou départ expliqué), 4. coups de pouce (arroser, tailler,
+  // éloigner le renard, graines au sol), 5. voir l'effet de chaque geste (qualité d'une pose, ce qui limite une espèce).
+  // =====================================================================
+  const OISEAUX = ['merle', 'alouette'];
+  const autour = (etat, i, r) => tuilesCercle(etat, i % N, (i / N) | 0, r);
+  const compterAutour = (etat, i, r, f) => autour(etat, i, r).filter(j => f(etat.tuiles[j])).length;
+  const ancres = (etat, id) => { const s = new Set(); for (const i of tuilesIle(etat)) { const t = etat.tuiles[i]; if (t.a === id) s.add(t.ancre >= 0 ? t.ancre : i); } return [...s]; };
+
+  // ---------- Voisinages qui comptent (piste 2) ----------
+  // Places de lapins d'un tas de pierres : 1, plus 1 par 6 tuiles d'herbe dans un rayon de 3 (5 au plus).
+  // Places de lapins d'un tas de pierres : 1, plus 1 par 4 tuiles d'herbe tout près (rayon 2), 4 au plus.
+  // Les lapins broutent plus loin (rayon 3) : semer de l'herbe autour du terrier les nourrit sans en attirer davantage.
+  function placesAbri(etat, i) {
+    const h = compterAutour(etat, i, 2, t => t.c === 'herbe');
+    return Math.max(1, Math.min(P.vie.placesAbriMax, 1 + Math.floor(h / P.vie.herbeParPlace)));
+  }
+  function placesLapins(etat) {
+    return ancres(etat, 'tas_pierres').reduce((s, i) => s + placesAbri(etat, i), 0) + P.vie.placesRonce * compterCouvert(etat, 'ronce');
+  }
+  // Hôtel à insectes : bonus de capacité des pollinisateurs selon les fleurs autour (0,2 à 0,8).
+  function qualiteHotel(etat, i) {
+    const f = compterAutour(etat, i, P.vie.rayonVoisinage, t => t.c === 'fleurs');
+    return P.vie.hotelBonus[0] + P.vie.hotelBonus[1] * Math.min(1, f / P.vie.fleursHotel);
+  }
+  // « Coin à vers » : une zone près de l'eau, paillée, à mi-ombre accueille plus de vers (× 0,7 à 1,6).
+  function qualiteVer(etat, z) {
+    const q = P.vie.verQualite, tz = zoneTuiles(etat, z);
+    let k = q.base;
+    if (tz.some(i => compterAutour(etat, i, 2, t => t.c === 'eau') > 0)) k += q.eau;
+    if (tz.filter(i => etat.tuiles[i].paillis > 0).length >= 2) k += q.paillis;
+    if (tz.filter(i => { const o = etat.tuiles[i].o; return o >= 20 && o <= 60; }).length >= 2) k += q.miOmbre;
+    return k;
+  }
+  // Plus grande prairie d'un seul tenant (herbe et fleurs reliées par un côté) : les alouettes en ont besoin.
+  function plusGrandePrairie(etat) {
+    const vu = new Set(); let best = 0;
+    const ok = i => { const t = etat.tuiles[i]; return t && (t.c === 'herbe' || t.c === 'fleurs'); };
+    for (const i of tuilesIle(etat)) {
+      if (vu.has(i) || !ok(i)) continue;
+      let n = 0; const pile = [i]; vu.add(i);
+      while (pile.length) {
+        const k = pile.pop(); n++;
+        const x = k % N, y = (k / N) | 0;
+        for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+          if (!dansIle(etat, x + dx, y + dy)) continue;
+          const j = idx(x + dx, y + dy);
+          if (!vu.has(j) && ok(j)) { vu.add(j); pile.push(j); }
+        }
+      }
+      best = Math.max(best, n);
+    }
+    return best;
+  }
+  // Places d'hibernation : un hérisson par tas de bois, deux si des ronces l'entourent (rayon 2).
+  function placesHibernation(etat) {
+    return ancres(etat, 'tas_bois').reduce((s, i) => s + 1 + (compterAutour(etat, i, 2, t => t.c === 'ronce') >= 2 ? 1 : 0), 0);
+  }
+  function mangeoires(etat) { const l = []; for (const i of tuilesIle(etat)) if (etat.tuiles[i].mg > 0) l.push(i); return l; }
+
+  // ---------- Surpâturage (piste 1) ----------
+  // Autour de chaque terrier (rayon 3), l'herbe est partagée entre les lapins qui y vivent. En dessous de
+  // 5 tuiles par lapin, elle s'use : elle jaunit (use > 0,35) puis disparaît (use = 1). Sans pression, elle se remet.
+  function paturage(etat, data, liste, h, jour) {
+    const R = P.vie.rayonVoisinage, presse = new Map();
+    const vivants = liste.filter(a => a.m === 'vit' || a.m === 'arrive');
+    for (const a of vivants) {
+      const i = idx(Math.round(a.hx), Math.round(a.hy));
+      if (!etat.tuiles[i]) continue;
+      const herbe = autour(etat, i, R).filter(j => etat.tuiles[j].c === 'herbe');
+      const voisins = vivants.filter(b => Math.hypot(b.hx - a.hx, b.hy - a.hy) <= R).length;
+      const part = herbe.length / Math.max(1, voisins);
+      const p = Math.max(0, 1 - part / P.vie.herbeParLapin);
+      if (p > 0) for (const j of herbe) presse.set(j, Math.max(presse.get(j) || 0, p));
+    }
+    const hiver = h.saison === 'hiver' ? 0.5 : 1;
+    for (const i of tuilesIle(etat)) {
+      const t = etat.tuiles[i];
+      if (t.c !== 'herbe') { if (t.use) t.use = 0; continue; }
+      const p = presse.get(i) || 0;
+      if (p > 0) t.use = (t.use || 0) + p * P.vie.usure * hiver * jour;
+      else if (t.use) t.use = Math.max(0, t.use - P.vie.repousse * jour);
+      if (t.use >= 1) {
+        Object.assign(t, { c: 'nu', e: '', age: 0, graines: 0, mal: 0, use: 0 });
+        journal(etat, { type: 'surpaturage', id: 'lapin', x: i % N, y: (i / N) | 0 });
+      }
+    }
+  }
+
+  // ---------- Coups de pouce (piste 4) ----------
+  function geste(etat, data, id, x, y) {
+    const g = P.vie.gestes[id], vie = completer(etat).vie;
+    if (!etapeAtteinte(etat, data, g.etape)) return refus('verrouille', { etape: g.etape });
+    if (!dansIle(etat, x, y)) return refus('hors_ile');
+    const i = idx(x, y), t = etat.tuiles[i];
+    if (id === 'arroser') {
+      const l = autour(etat, i, g.rayon).filter(j => { const c = etat.tuiles[j].c; return c !== 'eau' && c !== 'roche'; });
+      if (!l.length) return refus('rien_a_arroser');
+      const p = payer(etat, g.cout_seve, 0); if (!p.ok) return p;
+      let gain = 0;
+      for (const j of l) { const u = etat.tuiles[j], avant = u.h; u.h = Math.min(100, u.h + g.humidite); u.ar = g.duree_jours; gain += u.h - avant; }
+      journal(etat, { type: 'arrosage', x, y });
+      return { ok: true, tuiles: l.length, humidite: Math.round(gain / l.length) };
+    }
+    if (id === 'tailler') {
+      if (t.c !== 'ronce') return refus('pas_de_ronce');
+      const p = payer(etat, g.cout_seve, 0); if (!p.ok) return p;
+      // La ronce taillée laisse place à l'herbe : la prairie se rouvre aussitôt (une graine toutes les 2 tailles).
+      if (t.nichoir) etat.seve += data.actions.nichoir.cout_seve;
+      Object.assign(t, { c: 'herbe', e: 'herbe', age: 1, graines: 0, mal: 0, nichoir: false, use: 0 });
+      vie.tailles = (vie.tailles || 0) + 1;
+      let graines = 0;
+      if (vie.tailles % 2 === 0) { etat.graines += 1; graines = 1; }
+      calculerOmbre(etat, data);
+      journal(etat, { type: 'taille', x, y });
+      return { ok: true, graines };
+    }
+    if (id === 'effaroucher') {
+      const renards = etat.agents.filter(a => a.esp === 'renard' && a.m !== 'part');
+      if (!renards.length) return refus('pas_de_renard');
+      if (vie.effroi && etat.temps < vie.effroi.recharge) return refus('recharge', { secondes: Math.ceil(vie.effroi.recharge - etat.temps) });
+      const p = payer(etat, g.cout_seve, 0); if (!p.ok) return p;
+      vie.effroi = { x, y, fin: etat.temps + g.duree_jours * P.dureeJour, recharge: etat.temps + g.recharge_jours * P.dureeJour };
+      // Les renards qui vivaient dans le coin vont s'installer plus loin (si un autre foyer leur convient).
+      for (const a of renards) {
+        if (Math.hypot(a.hx - x, a.hy - y) > g.rayon + 1) continue;
+        for (let k = 0; k < 6; k++) {
+          const j = chercherFoyer(etat, data, 'renard');
+          if (j >= 0 && Math.hypot(j % N - x, ((j / N) | 0) - y) > g.rayon + 1) { Object.assign(a, { hx: j % N, hy: (j / N) | 0, tx: j % N, ty: (j / N) | 0 }); break; }
+        }
+      }
+      journal(etat, { type: 'effroi', x, y });
+      return { ok: true };
+    }
+    if (id === 'mangeoire') {
+      if (!t || t.a || t.c === 'eau' || t.c === 'roche' || t.c === 'arbre' || t.mg > 0) return refus('tuile_occupee');
+      const p = payer(etat, 0, g.cout_graines); if (!p.ok) return p;
+      t.mg = g.duree_jours;
+      journal(etat, { type: 'mangeoire', x, y });
+      return { ok: true };
+    }
+    return refus('action_inconnue');
+  }
+
+  // ---------- Problèmes (piste 1) ----------
+  // Chaque problème : { id, x, y, gravite (1 ou 2), especes, valeurs, solutions (actions conseillées), delai? }.
+  function problemes(etat, dataBrute) {
+    const data = preparer(dataBrute), l = [], ile = tuilesIle(etat), h = horloge(etat);
+    const centre = liste => {
+      let x = 0, y = 0; for (const i of liste) { x += i % N; y += (i / N) | 0; }
+      x /= liste.length; y /= liste.length;
+      let best = liste[0], bd = Infinity;
+      for (const i of liste) { const d = Math.hypot(i % N - x, ((i / N) | 0) - y); if (d < bd) { bd = d; best = i; } }
+      return { x: best % N, y: (best / N) | 0 };
+    };
+    // Surpâturage : de l'herbe qui jaunit autour des terriers.
+    const jaunes = ile.filter(i => etat.tuiles[i].c === 'herbe' && (etat.tuiles[i].use || 0) >= P.vie.seuilJauni);
+    if (jaunes.length >= 3) l.push(Object.assign({ id: 'surpaturage', gravite: jaunes.length >= 8 ? 2 : 1, especes: ['lapin'], valeurs: { n: jaunes.length, lapins: presence(etat, data, 'lapin') }, solutions: ['semer_herbe', 'retirer'] }, centre(jaunes)));
+    // Ronces envahissantes : elles mangent la prairie ouverte de l'alouette.
+    if (etapeAtteinte(etat, data, 'lisiere')) {
+      const ronces = ile.filter(i => etat.tuiles[i].c === 'ronce');
+      const ouvert = ile.filter(i => aCouvert(etat.tuiles[i], 'ouvert')).length / ile.length;
+      const besoinOuvert = (data.especes.alouette.besoins.find(b => b.couvert === 'ouvert') || { min: 0.4 }).min;
+      // Les ronces s'étendent dans l'herbe et le merle en sème : passé 8 % de l'île, elles mangent la prairie de l'alouette.
+      const part = ronces.length / ile.length;
+      if (part >= 0.08 || (ronces.length && ouvert < besoinOuvert + 0.1)) {
+        // La ronce qui avance le plus dans la prairie (le plus de voisines en herbe ou en fleurs).
+        let best = ronces[0], bv = -1;
+        for (const i of ronces) { const v = compterAutour(etat, i, 1.5, t => t.c === 'herbe' || t.c === 'fleurs'); if (v > bv) { bv = v; best = i; } }
+        l.push({ id: 'ronces', x: best % N, y: (best / N) | 0, gravite: part >= 0.15 || ouvert < besoinOuvert + 0.05 ? 2 : 1, especes: ['alouette'], valeurs: { part: Math.round(part * 100), ouvert: Math.round(ouvert * 100), min: Math.round(besoinOuvert * 100), ronces: ronces.length }, solutions: ['tailler'] });
+      }
+    }
+    // Sol qui sèche : des fleurs ou des vers près de leur limite d'humidité.
+    const fl = data.especes.fleurs.besoins.find(b => b.stat === 'humidite'), ve = data.especes.ver.besoins.find(b => b.stat === 'humidite');
+    const secs = [];
+    for (const i of ile) { const t = etat.tuiles[i]; if (t.e === 'fleurs' && t.h < fl.valeur + 3) secs.push([i, t.mal > 0 ? 2 : 1]); }
+    for (const [z, a] of Object.entries(etat.popAncre.ver || {})) {
+      if (!(etat.populations.ver && etat.populations.ver[z] >= 1) || !etat.tuiles[a]) continue;
+      const hm = autour(etat, a, 1).reduce((s, j) => s + etat.tuiles[j].h, 0) / autour(etat, a, 1).length;
+      if (hm < ve.valeur + 3) secs.push([a, (etat.popMal.ver && etat.popMal.ver[z] > 0) ? 2 : 1]);
+    }
+    if (secs.length >= 3 || secs.some(s => s[1] === 2)) {
+      const pire = secs.slice().sort((a, b) => etat.tuiles[a[0]].h - etat.tuiles[b[0]].h)[0][0];
+      l.push({ id: 'sec', x: pire % N, y: (pire / N) | 0, gravite: secs.some(s => s[1] === 2) ? 2 : 1, especes: ['fleurs', 'ver'], valeurs: { n: secs.length, h: Math.round(etat.tuiles[pire].h) }, solutions: ['arroser', 'paillis', 'mare'] });
+    }
+    // Hérisson sans abri d'hiver : à l'automne, plus de hérissons que de places dans les tas de bois.
+    if (h.saison === 'automne') {
+      const her = etat.agents.filter(a => a.esp === 'herisson' && a.m === 'vit');
+      const places = placesHibernation(etat);
+      if (her.length > places) {
+        const a = her[places] || her[0];
+        const finSaison = (Math.floor(etat.temps / (P.joursParSaison * P.dureeJour)) + 1) * P.joursParSaison * P.dureeJour;
+        l.push({ id: 'hiver_herisson', x: Math.round(a.hx), y: Math.round(a.hy), gravite: finSaison - etat.temps < P.dureeJour ? 2 : 1, especes: ['herisson'], valeurs: { manque: her.length - places, places, herissons: her.length }, delai: finSaison - etat.temps, solutions: ['tas_bois'] });
+      }
+    }
+    // Le renard vide le terrier : les lapins sont au plus bas, le renard risque de partir à son tour.
+    const renards = etat.agents.filter(a => a.esp === 'renard' && a.m === 'vit'), lapins = etat.agents.filter(a => a.esp === 'lapin' && a.m === 'vit');
+    if (renards.length && lapins.length <= P.plancherProies + 1 && h.saison !== 'hiver') {
+      const ref = lapins.length ? lapins : renards;
+      const c = centre(ref.map(a => idx(Math.round(a.hx), Math.round(a.hy))));
+      l.push(Object.assign({ id: 'renard', gravite: lapins.length <= P.plancherProies ? 2 : 1, especes: ['lapin', 'renard'], valeurs: { lapins: lapins.length }, solutions: ['effaroucher', 'tas_pierres', 'semer_herbe'] }, c));
+    }
+    return l;
+  }
+
+  // ---------- Demandes des habitants (piste 3) ----------
+  // Une demande : un besoin ponctuel d'une espèce présente, avec un délai. Satisfaite à temps : pages, sève,
+  // naissances et un spécimen rare plus probable. Sinon : un départ (ou une nuée qui s'amenuise), expliqué.
+  const nbVivants = (etat, id) => etat.agents.filter(a => a.esp === id && a.m === 'vit').length;
+  const DEMANDES = {
+    merle_nid: {
+      esp: 'merle', saisons: ['printemps'], delai: 2, solutions: ['nichoir'],
+      eligible(etat, data) {
+        const n = nbVivants(etat, 'merle'), ni = compterAmenagement(etat, 'nichoir', tuilesIle(etat));
+        const bouleaux = tuilesIle(etat).some(i => { const t = etat.tuiles[i]; return t.e === 'bouleau' && estAdulte(t, data.especes.bouleau) && !t.nichoir; });
+        return n >= 2 && ni < Math.ceil(n / 2) && bouleaux;
+      },
+      base: etat => compterAmenagement(etat, 'nichoir', tuilesIle(etat)),
+      ok: (etat, d) => compterAmenagement(etat, 'nichoir', tuilesIle(etat)) > d.base,
+      naissances: 2,
+    },
+    abeille_fleurs: {
+      esp: 'abeille', saisons: ['printemps', 'ete'], delai: 1.5, solutions: ['semer_fleurs'],
+      lieu(etat) { const h = ancres(etat, 'hotel_insectes'); return h.length ? h.reduce((a, i) => qualiteHotel(etat, i) < qualiteHotel(etat, a) ? i : a) : -1; },
+      eligible(etat) { const i = this.lieu(etat); return Object.keys(etat.populations.abeille || {}).length > 0 && i >= 0 && compterAutour(etat, i, P.vie.rayonVoisinage, t => t.c === 'fleurs') < P.vie.fleursHotel; },
+      base: (etat, d) => compterAutour(etat, d.i, P.vie.rayonVoisinage, t => t.c === 'fleurs'),
+      ok: (etat, d) => compterAutour(etat, d.i, P.vie.rayonVoisinage, t => t.c === 'fleurs') >= Math.min(d.base + 3, P.vie.fleursHotel + 2),
+      population: 3,
+    },
+    lapin_abri: {
+      esp: 'lapin', saisons: ['printemps', 'ete'], delai: 2, solutions: ['tas_pierres'],
+      eligible(etat, data) { const n = nbVivants(etat, 'lapin'); return n >= 2 && n >= capacite(etat, data, 'lapin') && placesLapins(etat) < 12 && !(etat.vie.pb.surpaturage); },
+      base: etat => placesLapins(etat),
+      ok: (etat, d) => placesLapins(etat) > d.base,
+      naissances: 2,
+    },
+    merle_faim: {
+      esp: 'merle', saisons: ['hiver'], delai: 1.5, solutions: ['mangeoire'],
+      eligible: etat => nbVivants(etat, 'merle') >= 1,
+      base: () => 0,
+      ok: (etat, d) => (etat.vie.visites.merle || -1) >= d.debut,
+    },
+    ver_sec: {
+      esp: 'ver', saisons: ['ete'], delai: 1, solutions: ['arroser', 'paillis'],
+      lieu(etat, data) {
+        const ve = data.especes.ver.besoins.find(b => b.stat === 'humidite').valeur;
+        let best = -1, bh = Infinity;
+        for (const [z, a] of Object.entries(etat.popAncre.ver || {})) {
+          if (!(etat.populations.ver && etat.populations.ver[z] >= 1) || !etat.tuiles[a]) continue;
+          const hm = humiditeAutour(etat, a);
+          if (hm < ve + 8 && hm < bh) { bh = hm; best = a; }
+        }
+        return best;
+      },
+      eligible(etat, data) { return this.lieu(etat, data) >= 0; },
+      base: (etat, d) => Math.round(humiditeAutour(etat, d.i)),
+      ok: (etat, d) => humiditeAutour(etat, d.i) >= d.base + 12,
+      population: 3,
+    },
+  };
+  function humiditeAutour(etat, i) { const l = autour(etat, i, 1); return l.reduce((s, j) => s + etat.tuiles[j].h, 0) / l.length; }
+  // Lieu d'une demande (pour l'icône sur l'île) : celui de la règle, sinon le foyer d'un individu ou d'une nuée.
+  function lieuDemande(etat, data, r, esp) {
+    if (r.lieu) { const i = r.lieu(etat, data); if (i >= 0) return i; }
+    const a = etat.agents.find(b => b.esp === esp && b.m === 'vit');
+    if (a) return idx(Math.round(a.hx), Math.round(a.hy));
+    const z = Object.keys(etat.popAncre[esp] || {})[0];
+    return z !== undefined ? etat.popAncre[esp][z] : -1;
+  }
+  function pasDemandes(etat, data, h) {
+    const vie = etat.vie;
+    for (const d of vie.demandes.slice()) {
+      const r = DEMANDES[d.id];
+      const fin = k => { vie.demandes.splice(vie.demandes.indexOf(d), 1); vie.repos[d.id] = etat.temps + P.vie.reposDemande * P.dureeJour; journal(etat, Object.assign({ type: k, id: d.esp, demande: d.id, x: d.x, y: d.y }, d.res || {})); };
+      if (presence(etat, data, d.esp) === 0) { fin('demande_annulee'); continue; }
+      if (r.ok(etat, d)) { d.res = recompenserDemande(etat, data, d, r); fin('demande_ok'); continue; }
+      if (etat.temps >= d.fin) { echouerDemande(etat, data, d); fin('demande_echec'); }
+    }
+    if (etat.temps < P.vie.debutDemandes || etat.temps < vie.prochaineDemande || vie.demandes.length >= P.vie.maxDemandes) return;
+    vie.prochaineDemande = etat.temps + P.vie.intervalleDemandes;
+    if (etat.meteo.actif || alea(etat) >= P.vie.chanceDemande) return;
+    const candidates = Object.entries(DEMANDES).filter(([id, r]) => r.saisons.includes(h.saison) && !(vie.repos[id] > etat.temps)
+      && !vie.demandes.some(d => d.id === id || d.esp === r.esp) && presence(etat, data, r.esp) > 0 && r.eligible(etat, data));
+    if (!candidates.length) return;
+    const [id, r] = candidates[Math.floor(alea(etat) * candidates.length)];
+    const i = lieuDemande(etat, data, r, r.esp);
+    if (i < 0) return;
+    const d = { id, esp: r.esp, debut: etat.temps, fin: etat.temps + Math.round(r.delai * P.dureeJour), i, x: i % N, y: (i / N) | 0 };
+    // La fin ne déborde pas sur la saison suivante (sinon la demande n'aurait plus de sens).
+    const finSaison = (Math.floor(etat.temps / (P.joursParSaison * P.dureeJour)) + 1) * P.joursParSaison * P.dureeJour;
+    d.fin = Math.min(d.fin, finSaison - 5);
+    if (d.fin - etat.temps < 90) return;
+    d.base = r.base(etat, d);
+    vie.demandes.push(d);
+    journal(etat, { type: 'demande', id: r.esp, demande: id, x: d.x, y: d.y, fin: d.fin });
+  }
+  function recompenserDemande(etat, data, d, r) {
+    const rc = P.vie.recompenseDemande, f = data.especes[d.esp], res = { pages: rc.pages, seve: rc.seve, naissances: 0, rare: '' };
+    etat.pages += rc.pages; etat.seve += rc.seve;
+    if (r.naissances && f.mode === 'agent') {
+      const parent = etat.agents.find(a => a.esp === d.esp && a.m === 'vit');
+      for (let k = 0; parent && k < r.naissances && etat.agents.length < P.maxAgents; k++) {
+        const b = ajouterAgent(etat, d.esp, parent.hx, parent.hy);
+        journal(etat, { type: 'naissance', id: d.esp, agent: b.id, x: parent.hx, y: parent.hy });
+        res.naissances++;
+        nouveauSpecimen(etat, data, d.esp, { agent: b.id });
+      }
+    }
+    if (r.population && etat.populations[d.esp]) {
+      const z = zoneDe(d.x, d.y), zones = etat.populations[d.esp];
+      const cle = zones[z] !== undefined ? z : Object.keys(zones)[0];
+      zones[cle] += r.population;
+    }
+    // Un spécimen rare plus probable : une chance sur trois qu'un individu prenne un papier rare (journal ou washi).
+    if (data.rares.length && alea(etat) < P.vie.chanceRareDemande) {
+      const papiers = data.rares.filter(p => f.papiers_rares.includes(p.id));
+      const papier = papiers[Math.floor(alea(etat) * papiers.length)].id;
+      const fin = etat.temps + P.dureeRare * P.dureeJour;
+      let ou = null;
+      if (f.mode === 'agent') { const a = etat.agents.find(b => b.esp === d.esp && b.m === 'vit' && !etat.rares.some(x => x.agent === b.id)); if (a) ou = { agent: a.id }; }
+      else if (f.mode === 'population') { const z = Object.keys(etat.populations[d.esp] || {})[0]; if (z !== undefined) ou = { zone: +z }; }
+      if (ou) { etat.rares.push(Object.assign({ id: d.esp, papier, fin }, ou)); res.rare = papier; journal(etat, Object.assign({ type: 'rare', id: d.esp, papier }, positionSpecimen(etat, Object.assign({ id: d.esp }, ou)) || {})); }
+    }
+    return res;
+  }
+  function echouerDemande(etat, data, d) {
+    const f = data.especes[d.esp];
+    if (f.mode === 'agent') {
+      const a = etat.agents.filter(b => b.esp === d.esp && b.m === 'vit').pop();
+      if (a) fairePartir(etat, a, 'demande', -1);
+    } else if (f.mode === 'population' && etat.populations[d.esp]) {
+      for (const z of Object.keys(etat.populations[d.esp])) etat.populations[d.esp][z] = Math.max(1, etat.populations[d.esp][z] * 0.5);
+    }
+  }
+
+  // ---------- Pas de la vie de l'île (toutes les 5 s) ----------
+  function pasVie(etat, data, h) {
+    const vie = completer(etat).vie;
+    // Trop de lapins autour d'un terrier usent l'herbe (elle jaunit puis disparaît par plaques) ; sans eux, elle se remet.
+    paturage(etat, data, etat.agents.filter(a => a.esp === 'lapin'), h, P.pasEcologie / P.dureeJour);
+    // Hystérésis : un problème est annoncé après 2 constats de suite (10 s) et réglé après 3 absences de suite (15 s),
+    // pour qu'une valeur qui hésite autour d'un seuil ne fasse pas clignoter l'icône.
+    const actuels = problemes(etat, data), avant = vie.pb;
+    vie.pb = {};
+    for (const p of actuels) {
+      const a = avant[p.id];
+      const n = a ? (a.n || 0) + 1 : 1;
+      vie.pb[p.id] = { depuis: a ? a.depuis : etat.temps, x: p.x, y: p.y, gravite: p.gravite, n, absent: 0, annonce: !!(a && a.annonce) };
+      if (!vie.pb[p.id].annonce && n >= 2) { vie.pb[p.id].annonce = true; vie.pb[p.id].depuis = etat.temps; journal(etat, { type: 'probleme', id: p.id, x: p.x, y: p.y, gravite: p.gravite }); }
+    }
+    for (const [id, a] of Object.entries(avant)) {
+      if (vie.pb[id]) continue;
+      if (!a.annonce) continue;
+      if ((a.absent || 0) < 2) { vie.pb[id] = Object.assign({}, a, { absent: (a.absent || 0) + 1 }); continue; }
+      // Réglé : une petite récompense si le joueur y est pour quelque chose (un geste depuis le début du problème).
+      const duree = etat.temps - a.depuis, merite = vie.dernierGeste >= a.depuis && duree >= P.vie.dureeRecompense && !(vie.recompenses[id] > etat.temps - P.dureeJour);
+      const o = { type: 'probleme_regle', id, x: a.x, y: a.y, duree };
+      if (merite) { const r = P.vie.recompenseProbleme; etat.pages += r.pages; etat.seve += r.seve; o.pages = r.pages; o.seve = r.seve; vie.recompenses[id] = etat.temps; }
+      journal(etat, o);
+    }
+    pasDemandes(etat, data, h);
+  }
+
+  // Problèmes annoncés (ceux que le jeu montre) : la liste de problemes() filtrée par l'hystérésis.
+  function problemesActifs(etat, dataBrute) {
+    const vie = completer(etat).vie;
+    return problemes(etat, dataBrute).filter(p => vie.pb[p.id] && vie.pb[p.id].annonce).map(p => Object.assign(p, { depuis: vie.pb[p.id].depuis }));
+  }
+
+  // ---------- Effet d'une pose (pistes 2 et 5) ----------
+  // Qualité d'une pose de 0 à 1 sur une tuile (carte des habitats) et la valeur qui l'explique.
+  function qualitePose(etat, dataBrute, id, i) {
+    const data = preparer(dataBrute), t = etat.tuiles[i];
+    if (!t) return null;
+    const R = P.vie.rayonVoisinage, borne = v => Math.max(0, Math.min(1, v));
+    const nb = (r, f) => compterAutour(etat, i, r, f);
+    switch (id) {
+      case 'tas_pierres': { const p = placesAbri(etat, i); return { q: (p - 1) / (P.vie.placesAbriMax - 1), v: { places: p }, especes: ['lapin'] }; }
+      case 'hotel_insectes': { const f = nb(R, u => u.c === 'fleurs'); return { q: borne(f / P.vie.fleursHotel), v: { fleurs: f, bonus: Math.round(qualiteHotel(etat, i) * 100) }, especes: ['abeille', 'tircis'] }; }
+      case 'mare': { const n = autour(etat, i, data.actions.mare.effets.rayon).filter(j => { const u = etat.tuiles[j]; return u.c !== 'eau' && u.c !== 'roche' && u.h < 35; }).length; return { q: borne(n / 12), v: { n }, especes: ['ver', 'fleurs'] }; }
+      case 'paillis': return { q: borne((t.h + data.actions.paillis.effets.humidite - 25) / 20), v: { h: Math.round(t.h) }, especes: ['ver'] };
+      case 'semer_herbe': { const v = nb(1, u => u.c === 'herbe' || u.c === 'fleurs') - (t.c === 'herbe' ? 1 : 0); return { q: borne(v / 4), v: { voisines: v }, especes: ['alouette', 'lapin', 'sauterelle'] }; }
+      case 'semer_fleurs': { const h = ancres(etat, 'hotel_insectes').some(j => Math.hypot(j % N - i % N, ((j / N) | 0) - ((i / N) | 0)) <= data.actions.hotel_insectes.effets.rayon); return { q: h ? 1 : 0.4, v: { hotel: h ? 1 : 0 }, especes: ['abeille', 'tircis'] }; }
+      case 'semer_ronce': { const pr = nb(2, u => u.c === 'herbe' || u.c === 'fleurs') / Math.max(1, autour(etat, i, 2).length); return { q: borne(1.2 - pr), v: { prairie: Math.round(pr * 100) }, especes: ['herisson', 'merle', 'renard'] }; }
+      case 'planter_bouleau': { const r = nb(2, u => u.c === 'ronce'); return { q: r > 0 ? 1 : 0.5, v: { ronce: r }, especes: ['merle', 'coulemelle', 'tircis'] }; }
+      case 'tas_bois': { const r = nb(R, u => u.c === 'ronce'); return { q: borne(r / 3), v: { ronce: r }, especes: ['herisson', 'coulemelle'] }; }
+      case 'nichoir': { const r = nb(R, u => u.c === 'ronce'); return { q: r >= 2 ? 1 : 0.4, v: { ronce: r }, especes: ['merle'] }; }
+      case 'arroser': { const l = autour(etat, i, P.vie.gestes.arroser.rayon).filter(j => etat.tuiles[j].e || etat.tuiles[j].champi); const hm = l.length ? l.reduce((s, j) => s + etat.tuiles[j].h, 0) / l.length : 100; return { q: borne((45 - hm) / 25), v: { h: Math.round(hm) }, especes: ['fleurs', 'ver'] }; }
+      case 'tailler': { const pr = nb(2, u => u.c === 'herbe' || u.c === 'fleurs') / Math.max(1, autour(etat, i, 2).length); return { q: borne(pr * 1.4), v: { prairie: Math.round(pr * 100) }, especes: ['alouette'] }; }
+      case 'effaroucher': { const n = etat.agents.filter(a => a.esp === 'lapin' && a.m === 'vit' && Math.hypot(a.hx - i % N, a.hy - ((i / N) | 0)) <= P.vie.gestes.effaroucher.rayon).length; return { q: borne(n / 4), v: { lapins: n }, especes: ['lapin'] }; }
+      case 'mangeoire': { const n = etat.agents.filter(a => OISEAUX.includes(a.esp) && a.m === 'vit' && Math.hypot(a.hx - i % N, a.hy - ((i / N) | 0)) <= P.vie.gestes.mangeoire.rayon).length; return { q: borne(n / 2), v: { oiseaux: n }, especes: OISEAUX.slice() }; }
+    }
+    return null;
+  }
+  // Carte des habitats : qualité de la pose sur chaque tuile de l'île (le jeu ne garde que les tuiles où elle est possible).
+  function carteHabitat(etat, dataBrute, id) {
+    const data = preparer(dataBrute), l = [];
+    for (const i of tuilesIle(etat)) { const r = qualitePose(etat, data, id, i); if (r) l.push([i, r.q]); }
+    return l;
+  }
+  // Ce qui limite une espèce (piste 5) : effectif, capacité, et la raison du plafond.
+  function limite(etat, dataBrute, id) {
+    const data = preparer(dataBrute), f = data.especes[id];
+    if (!f || f.mode === 'tuile') return null;
+    const n = Math.round(effectif(etat, data, id)), cap = Math.round(capacite(etat, data, id));
+    let raison = f.capacite.par === 'tuiles' ? 'couvert_' + f.capacite.couvert : f.capacite.par === 'amenagement' ? 'amenagement_' + f.capacite.id : 'espece_' + f.capacite.id;
+    if (id === 'lapin') raison = problemes(etat, data).some(p => p.id === 'surpaturage') ? 'herbe_usee' : 'abris';
+    if (id === 'alouette') raison = Math.floor(plusGrandePrairie(etat) / P.vie.alouetteParTuiles) < Math.floor(presence(etat, data, 'sauterelle') / f.capacite.nombre) ? 'prairie' : 'espece_sauterelle';
+    if (id === 'merle') raison = 'ronce_nichoir';
+    if (f.capacite.max && cap >= f.capacite.max) raison = 'max';
+    return { n, cap, raison };
   }
 
   // ---------- Résumé de l'île (interface, tests, équilibrage) ----------
@@ -1582,5 +2068,7 @@
     meteo, chancesRares, raresPresents, horsLigne, doublerRetour, productionSeve, completer,
     reserveMax, rendement, secondesHorsLigne, ajouterProduction, teaser, TEASER,
     tirerPapier: (etat, dataBrute, id) => tirerPapier(etat, preparer(dataBrute), id), // pour les tests
+    // Sprint 7
+    problemes, problemesActifs, qualitePose, carteHabitat, limite, placesLapins, placesHibernation, plusGrandePrairie, DEMANDES,
   };
 });

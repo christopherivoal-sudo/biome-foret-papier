@@ -760,4 +760,14 @@ Précisions du sprint 6 (retours de Christophe après ses premiers tests) :
 4. **Missions** : un personnage, la garde forestière (section 1.9).
 5. **Roblox** : 6 joueurs par serveur ; priorité à maximiser les achats, sans tirage opaque (section 7.4).
 
+### Décisions du 31/10 (lancement du sprint 7)
+6. **Gameplay actif** (réponse au constat « on ajoute les éléments et on attend ») : on fait, dans cet ordre, les pistes de `docs/idees-gameplay-agir.md` :
+   1. **L'île se dérègle et le joueur répare** (surpâturage, ronces envahissantes, sécheresse à arroser, abri du hérisson avant l'hiver), avec les **coups de pouce actifs** qui vont avec (piste 4 : arroser, tailler, éloigner le renard, graines au sol) ;
+   2. **L'endroit où l'on pose compte** : carte des habitats quand on choisit un aménagement, voisinages qui changent la taille des populations ;
+   3. **Les habitants demandent** : bulles de besoin avec délai, récompense si on répond à temps, départ expliqué sinon ;
+   4. **Voir l'effet de chaque geste** (piste 5), au fil de l'eau.
+   Section 12 (sprint 7) pour le détail.
+7. **Choix de Claude du sprint 6 validés** : textes du guide et des aides écrits directement par Claude en français et en anglais ; réactions d'Odile aux espèces rangées dans le journal du carnet.
+8. **Graphismes** : passage du rendu en **WebGL avec Three.js** juste après le sprint 7. D'ici là, aucune retouche graphique.
+
 Aucune question ouverte pour le moment.

@@ -2,7 +2,7 @@
 
 Une copie de cette note est dans le dépôt GitHub (`docs/etat-du-projet.md`, avec `docs/idees-gameplay-agir.md`), pour les sessions Claude qui n'ont pas accès au projet claude.ai. Toute session met à jour les deux quand elle le peut ; une session sans accès au projet met à jour la copie du dépôt et le signale à Christophe.
 
-Dernière mise à jour : 31 octobre 2026 (16 h 55, sprint 6, quatre séries de corrections faites)
+Dernière mise à jour : 31 octobre 2026 (17 h, sprint 7 lancé)
 
 ## Décisions prises
 - Jeu de gestion d'écosystème de forêt, style origami (3D à facettes, couleurs de papier unies).
@@ -11,6 +11,7 @@ Dernière mise à jour : 31 octobre 2026 (16 h 55, sprint 6, quatre séries de c
 - **Document de conception v2** (référence, version 1.6) : `docs/gdd-biome-v2.md` dans ce dépôt (document entier, le plus à jour). Dans le projet claude.ai, il est coupé en deux (`claude/gdd-biome-v2.md` et `claude/gdd-biome-v2-prototype.md`).
 - Décisions de design du 30/10 : grille de tuiles ; hors ligne plafonné à 8 h ; pas de mort ni d'extinction (une espèce part et peut revenir) ; Lisière en ~15 min, Forêt ancienne en 3 à 5 h ; incendie gardé (GDD 5.2, désactivable) ; prédation visible et stylisée (froissement de papier) ; monnaie « sève » ; missions données par la garde forestière (GDD 1.9) ; Roblox : 6 joueurs par serveur, maximiser les achats sans tirage opaque (GDD 7.4).
 - Exceptions validées par Christophe (30/10) : le tircis a 4 besoins au lieu de 3 ; règles hors schéma notées par ChatGPT dans `chatgpt/especes-prairie-lisiere-notes.md` (codées au sprint 2).
+- **Décisions du 31/10 (sprint 7)** : pistes de gameplay validées dans l'ordre : 1) l'île se dérègle et on répare, avec les coups de pouce actifs ; 2) l'endroit où l'on pose compte (carte des habitats, voisinages) ; 3) les habitants demandent ; piste 5 (voir l'effet de chaque geste) au fil de l'eau. Choix de Claude du sprint 6 validés (textes du guide écrits par Claude en FR et EN, réactions d'Odile dans le journal). Graphismes : passage à WebGL (Three.js) juste après le sprint 7, aucune retouche graphique d'ici là. Voir GDD section 11.
 - **Une seule tâche à la fois (décision de Christophe, 30/10)** : jamais de travail en parallèle entre Claude et ChatGPT. Chaque étape est finie avant de lancer la suivante, et Christophe n'a jamais plus d'une action en attente.
 
 ## Dépôt commun GitHub (depuis le 30/10)
@@ -50,16 +51,16 @@ Christophe a un abonnement Claude Pro (quota limité) et un abonnement ChatGPT. 
 - Retours 2 : herbe à 3 sève, plus productive (0,015 sève/s) et qui s'étend plus vite ; 60 % d'herbe en 3 min au lieu de 7 ; débit de sève affiché.
 - Retours 3 : bouton « Récolter (n) » ; bouleaux adultes en 20 min (au lieu de 48), croissance et blocage affichés ; bug des bulles invisibles qui captaient les clics corrigé ; sol adouci, île lisible de loin.
 - Retours 4 (navigation) : molette qui zoome vers le curseur, pince qui zoome vers les doigts, double-clic ou double toucher pour plonger vers un point, glissé avec inertie, inclinaison qui suit le zoom, île centrée dans l'espace libre entre les barres.
-- **Choix de Claude** (à valider) : textes du guide et des nouvelles aides écrits directement en français et en anglais par Claude ; réactions d'Odile aux espèces dans le journal du carnet plutôt qu'en bulle.
+- **Choix de Claude** (validés le 31/10) : textes du guide et des nouvelles aides écrits directement en français et en anglais par Claude ; réactions d'Odile aux espèces dans le journal du carnet plutôt qu'en bulle.
 - **Limite connue des graphismes** : le moteur dessine des facettes plates en Canvas 2D. Pour un vrai saut de qualité, il faudrait passer le rendu en WebGL (Three.js) : chantier d'environ 3 sprints.
 - Tests : 167 (`core.js`), 542 (modèles), 43 vérifications dans le navigateur, sans erreur.
 
 ## En cours
-Rien.
+Sprint 7 (gameplay actif), par Claude.
 
 ## Questions ouvertes
-- **Gameplay** (retour de Christophe : « on ajoute les éléments et on attend ») : 6 pistes dans **`claude/idees-gameplay-agir.md`** (copie : `docs/idees-gameplay-agir.md`). Proposition de Claude pour le sprint 7 : 1) l'île se dérègle (problèmes visibles à régler), 2) vue des habitats et voisinages qui comptent, 3) demandes des habitants avec délai. À choisir par Christophe (sa décision arrive dans le message qui lance le sprint 7).
-- Graphismes : continuer par petites touches en Canvas 2D, ou lancer un chantier WebGL ?
+- Aucune pour le moment (gameplay et graphismes tranchés le 31/10).
 
 ## Prochaines étapes, dans l'ordre
-1. **Sprint 7 : gameplay actif**, selon le choix de Christophe.
+1. **Sprint 7 : gameplay actif** (en cours).
+2. **Sprint 8 : rendu WebGL avec Three.js** (environ 3 sprints).

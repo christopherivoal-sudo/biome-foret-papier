@@ -13,6 +13,8 @@ const { N, CENTRE: C } = Core;
 const args = process.argv.slice(2);
 const opt = (nom, def) => { const k = args.indexOf('--' + nom); return k >= 0 ? Number(args[k + 1]) : def; };
 const PARTIES = opt('parties', 20), MINUTES = opt('minutes', 60), GRAINE = opt('graine', 1), DETAIL = args.includes('--detail');
+// Sprint 7 : --passif = joueur qui ne répond ni aux problèmes ni aux demandes (pour comparer).
+const PASSIF = args.includes('--passif');
 const DELAI_JOUEUR = 4;
 
 const coord = i => [i % N, (i / N) | 0];
@@ -29,6 +31,7 @@ function joueur(e) {
   // 1. Missions remplies, photos, récolte : gestes gratuits du joueur attentif.
   const m = e.missions.actives.find(a => a.remplie);
   if (m) return Core.reclamerMission(e, data, m.id);
+  if (!PASSIF && reagir(e, T, essayer)) return;
   const aPhotographier = Core.especesPresentes(e, data).find(id => !(e.carnet[id] && e.carnet[id].photo));
   if (aPhotographier) return Core.photographier(e, data, aPhotographier);
   const rare = Core.raresPresents(e, data).find(r => !e.collection[r.id + ':' + r.papier]);
@@ -100,11 +103,38 @@ function joueur(e) {
   }
 }
 
+// Sprint 7 : le joueur attentif répond aux demandes des habitants et aux problèmes signalés (après 20 s).
+function reagir(e, T, essayer) {
+  const pres = (x, y, r, f) => T.filter(o => dist(o.i, x, y) <= r && f(o.t)).sort((a, b) => dist(a.i, x, y) - dist(b.i, x, y));
+  const tenter = (action, l) => { for (const o of l.slice(0, 8)) if (essayer(action, o.i)) return true; return false; };
+  const libre = t => (t.c === 'nu' || t.c === 'herbe') && !t.a;
+  for (const d of e.vie.demandes) {
+    if (e.temps - d.debut < 20) continue;
+    if (d.id === 'merle_nid' && tenter('nichoir', T.filter(o => o.t.e === 'bouleau' && o.t.age >= data.especes.bouleau.croissance.jours_adulte && !o.t.nichoir))) return true;
+    if (d.id === 'abeille_fleurs' && tenter('semer_fleurs', pres(d.x, d.y, 3, libre))) return true;
+    if (d.id === 'lapin_abri' && tenter('tas_pierres', pres(d.x, d.y, 6, t => t.c === 'nu' && !t.a).filter(o => dist(o.i, d.x, d.y) >= 3))) return true;
+    if (d.id === 'merle_faim' && tenter('mangeoire', pres(d.x, d.y, 3, libre))) return true;
+    if (d.id === 'ver_sec' && essayer('arroser', d.i)) return true;
+  }
+  for (const [id, p] of Object.entries(e.vie.pb)) {
+    if (e.temps - p.depuis < 20) continue;
+    const i = p.x + p.y * N;
+    if (id === 'sec' && essayer('arroser', i)) return true;
+    if (id === 'surpaturage' && tenter('semer_herbe', pres(p.x, p.y, 5, t => t.c === 'nu' && !t.a))) return true;
+    // Plus de place pour semer : on éloigne un abri (le tas de pierres le plus proche du problème, une fois par problème).
+    if (id === 'surpaturage' && p.retire !== p.depuis && e.temps - p.depuis > 60) { const l = pres(p.x, p.y, 5, t => t.a === 'tas_pierres'); if (l.length && essayer('retirer', l[0].i)) { p.retire = p.depuis; return true; } }
+    if (id === 'ronces' && tenter('tailler', pres(p.x, p.y, 3, t => t.c === 'ronce'))) return true;
+    if (id === 'hiver_herisson' && tenter('tas_bois', pres(p.x, p.y, 4, t => t.c === 'nu' && !t.a))) return true;
+    if (id === 'renard' && essayer('effaroucher', i)) return true;
+  }
+  return false;
+}
+
 // ---------- Une partie ----------
 function partie(graine) {
   const e = Core.creer(data, { graine });
   const r = { graine, premiereArrivee: null, lisiere: null, venues: {}, partis: {}, departsIndiv: {}, evenements: [], seve: {}, a15: null, maxTrou: 0,
-    meteo: [], rares: 0, raresManques: 0, humMin: 100, retour: null };
+    meteo: [], rares: 0, raresManques: 0, humMin: 100, retour: null, pb: {}, pbRegles: {}, dem: {} };
   let attente = 0, dernierEvt = 0, lu = 0;
   const VISIBLES = new Set(['arrivee', 'renfort', 'naissance', 'predation', 'dispersion', 'repas', 'mission', 'depart', 'migration', 'hibernation', 'reveil', 'etape', 'pollinisation', 'graines', 'surpaturage',
     'annonce', 'evenement', 'evenement_fin', 'foudre', 'rare', 'collection']);
@@ -124,6 +154,9 @@ function partie(graine) {
       if (j.type === 'foudre') r.meteo[r.meteo.length - 1].foudre = true;
       if (j.type === 'rare') r.rares++;
       if (j.type === 'chene') r.chene = e.temps;
+      if (j.type === 'probleme') r.pb[j.id] = (r.pb[j.id] || 0) + 1;
+      if (j.type === 'probleme_regle') { (r.pbRegles[j.id] = r.pbRegles[j.id] || []).push(j.duree); }
+      if (j.type === 'demande' || j.type === 'demande_ok' || j.type === 'demande_echec') { const k = j.demande; r.dem[k] = r.dem[k] || { n: 0, ok: 0, echec: 0 }; if (j.type === 'demande') r.dem[k].n++; else if (j.type === 'demande_ok') r.dem[k].ok++; else r.dem[k].echec++; }
       r.evenements.push(j.type);
     }
     // Plantes semées : « venue » au premier semis.
@@ -213,4 +246,16 @@ if (ch.length < PARTIES) {
 }
 const ret = res.map(r => r.retour).filter(Boolean);
 if (ret.length) console.log(`Retour après 10 h d'absence à 30 min (plafond 8 h ${ret.every(x => x.plafonne) ? 'appliqué' : 'NON appliqué'}) : +${med(ret.map(x => x.seve))} sève (réserve avant ${med(ret.map(x => x.seveAvant))}), ${med(ret.map(x => x.arrivees))} arrivées dont ${med(ret.map(x => x.nouvelles))} nouvelles espèces, espèces ${med(ret.map(x => x.especesAvant))} → ${med(ret.map(x => x.especesApres))}, départs dans la minute qui suit : ${ret.reduce((s, x) => s + x.departs1min, 0)}`);
+// Sprint 7
+console.log(`\nJoueur ${PASSIF ? 'passif (ne répond à rien)' : 'attentif (répond aux problèmes et aux demandes après 20 s)'}.`);
+console.log('Problèmes par partie (apparitions ; durée médiane avant de se régler) :');
+for (const id of ['surpaturage', 'ronces', 'sec', 'hiver_herisson', 'renard']) {
+  const n = res.reduce((s, r) => s + (r.pb[id] || 0), 0) / PARTIES;
+  console.log(`  ${id.padEnd(15)} ${n.toFixed(1)} ; ${mmss(med(res.flatMap(r => r.pbRegles[id] || [])))}`);
+}
+console.log('Demandes par partie (faites ; satisfaites ; échouées) :');
+for (const id of Object.keys(Core.DEMANDES)) {
+  const n = moy(r => (r.dem[id] || {}).n || 0), ok = moy(r => (r.dem[id] || {}).ok || 0), ko = moy(r => (r.dem[id] || {}).echec || 0);
+  console.log(`  ${id.padEnd(15)} ${n.toFixed(1)} ; ${ok.toFixed(1)} ; ${ko.toFixed(1)}`);
+}
 if (DETAIL) for (const r of res) console.log(JSON.stringify({ graine: r.graine, trou: [r.trouA, r.maxTrou], lisiere: r.lisiere, venues: r.venues, partis: r.partis, effectifs: r.fin.effectifs, harmonie: r.fin.harmonieDetail }));

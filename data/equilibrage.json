@@ -3,7 +3,17 @@
   "especes": {
     "tircis": {
       "_pourquoi": "La moyenne d'ombre ≥ 20 dans un rayon de 2 était plus stricte que le GDD (« au moins 3 tuiles de mi-ombre »). On garde la règle des 3 tuiles entre 20 et 50 et on abaisse la moyenne à 10.",
-      "besoins": { "1": { "valeur": 10 } }
+      "besoins": {
+        "1": {
+          "valeur": 10
+        }
+      }
+    },
+    "ronce": {
+      "_pourquoi": "Sprint 7 (gameplay actif) : les ronces gagnent aussi l'herbe et s'étendent plus vite (0,04 → 0,12 par jour) ; passé 12 % de l'île, elles mangent la prairie de l'alouette et le joueur doit tailler.",
+      "croissance": {
+        "extension_par_jour": 0.12
+      }
     }
   }
 }
