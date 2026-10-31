@@ -2,7 +2,7 @@
 
 Une copie de cette note est dans le dépôt GitHub (`docs/etat-du-projet.md`, avec `docs/idees-gameplay-agir.md`), pour les sessions Claude qui n'ont pas accès au projet claude.ai. Toute session met à jour les deux quand elle le peut ; une session sans accès au projet met à jour la copie du dépôt et le signale à Christophe.
 
-Dernière mise à jour : 31 octobre 2026 (21 h 15, sprint 8c fait : chantier WebGL terminé)
+Dernière mise à jour : 31 octobre 2026 (21 h 30, travail arrêté par Christophe)
 
 ## Décisions prises
 - Jeu de gestion d'écosystème de forêt, style origami (3D à facettes, couleurs de papier unies).
@@ -87,18 +87,8 @@ Christophe a un abonnement Claude Pro (quota limité) et un abonnement ChatGPT. 
 - Tests : 167 (`core.js`), 542 (modèles), 43 vérifications dans le navigateur, sans erreur.
 
 ## En cours
-Rien. Le sprint 8c est publié : le chantier WebGL (8a, 8b, 8c) est terminé.
+**Arrêt décidé par Christophe le 31/10 à 21 h 30** : « on a perdu trop de temps pour rien ». Constat : le chantier WebGL (8a, 8b, 8c) ne donne pas d'amélioration graphique visible par rapport au sprint 7, parce que le rendu a été calé pour reproduire l'ancien moteur (mêmes modèles, mêmes couleurs) et que les ajouts sont trop discrets. Dernière version publiée : 8.3 (vent renforcé), https://claude.ai/artifact/URgRFoWRdTCcS2hCEBTGJ2. Aucune étape suivante n'est lancée ; ne rien reprendre sans demande de Christophe.
 
-## Questions ouvertes
-- Retours de Christophe et de ses proches sur tout le chantier WebGL : ombres, grain, arêtes, eau, effet maquette, vent, dépliage, passage d'étape, fluidité sur ordinateur et téléphone.
-
-## Prochaines étapes, dans l'ordre
-1. **Test de tout le chantier WebGL** par Christophe et ses proches (ordinateur et téléphone), à la nouvelle adresse.
-2. **Sprint 9 : corrections** d'après ces retours (une conversation Claude).
-3. Puis : choisir la suite (Jeune forêt, préparation des portails Poki et CrazyGames...).
-
-## Action suivante pour Christophe
-1. Ouvrir le jeu à sa **nouvelle adresse** : https://claude.ai/artifact/URgRFoWRdTCcS2hCEBTGJ2 (la partie recommence : l'ancienne sauvegarde reste à l'ancienne adresse). Jouer 15 à 30 min sur ordinateur et sur téléphone, faire essayer à des proches, noter ce qui plaît ou gêne. Dans les Réglages, relever « images par seconde » et le palier, surtout sur téléphone.
-2. Ouvrir une **nouvelle conversation Claude dans le projet « Jeu Biome Forest »** et coller :
-
-> Sprint 9 : corrections après les tests du rendu WebGL (version 8.2). Commence par lire claude/etat-du-projet.md. Mes retours et ceux de mes proches : [vos remarques ; sur téléphone : modèle, images par seconde et palier lus dans les Réglages]. Corrige, publie le jeu et donne-moi l'action suivante et le texte à coller.
+## Si Christophe veut reprendre un jour
+- Piste proposée et non validée : un sprint « direction artistique » qui commence par 2 ou 3 images de styles différents de la même île, à choisir avant de coder (lumière franche, ambiance colorée, vraie herbe en brins fins, modèles plus détaillés).
+- Le jeu reste jouable tel quel ; tout le code est dans le dépôt (dernier commit d2a9916).
