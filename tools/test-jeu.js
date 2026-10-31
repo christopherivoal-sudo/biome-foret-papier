@@ -15,6 +15,10 @@ const scenes = require('./scenes.js');
 
 const R = path.resolve(__dirname, '..');
 const URL = 'file://' + path.join(R, 'dist', 'jeu.html');
+// Sprint 8a : l'interface est testée avec le moteur Canvas 2D (le repli quand WebGL manque), car le navigateur
+// de test n'a pas de carte graphique : en WebGL, il ne dessine que 3 images par seconde et les gestes deviennent
+// trop lents. --webgl lance quand même tout en WebGL (lent). Le rendu WebGL a son propre test : tools/test-webgl.js.
+const MODE = process.argv.includes('--webgl') ? '' : '&canvas2d';
 const DOS = path.join(R, 'dist', 'captures');
 fs.mkdirSync(DOS, { recursive: true });
 
@@ -51,14 +55,18 @@ function prairiePrete() {
   const capture = (p, nom) => p.screenshot({ path: path.join(DOS, 'jeu-' + nom + '.png') });
   const charger = (p, etat) => p.evaluate(e => { window.BIOME_JEU.etat = e; }, etat);
   // Clique sur l'écran au centre d'une tuile de l'île.
-  const clicTuile = async (p, x, y) => {
-    // Attend que la caméra soit immobile (le guide peut la faire glisser vers une espèce qui arrive).
-    for (let k = 0; k < 30; k++) {
+  // Attend que la caméra soit immobile (le guide peut la faire glisser vers une espèce qui arrive).
+  // En WebGL sans carte graphique (navigateur de test), une image prend ~0,3 s : on attend plus longtemps.
+  const attendreCamera = async p => {
+    for (let k = 0; k < 120; k++) {
       const a1 = await p.evaluate(() => { const c = window.BIOME_JEU.rendu.camera; return c.tx + ',' + c.tz + ',' + c.dist; });
-      await p.waitForTimeout(80);
+      await p.waitForTimeout(MODE ? 80 : 400);
       const a2 = await p.evaluate(() => { const c = window.BIOME_JEU.rendu.camera; return c.tx + ',' + c.tz + ',' + c.dist; });
       if (a1 === a2) break;
     }
+  };
+  const clicTuile = async (p, x, y) => {
+    await attendreCamera(p);
     const s = await p.evaluate(([x, y]) => window.BIOME_JEU.rendu.ecran(x, y, 0), [x, y]);
     await p.mouse.click(s.x, s.y);
     await p.waitForTimeout(150);
@@ -68,7 +76,7 @@ function prairiePrete() {
   console.log('Nouvelle partie (ordinateur)');
   const ctx = await nav.newContext({ viewport: { width: 1280, height: 820 } });
   let p = await ctx.newPage(); suivre(p);
-  await p.goto(URL + '?nouvelle=1&graine=7&langue=fr');
+  await p.goto(URL + '?nouvelle=1&graine=7&langue=fr' + MODE);
   await p.waitForTimeout(1500);
   verifier(await p.locator('.guide.ouverte').count() === 1, 'le guide accueille le joueur (sprint 6)');
   verifier(await p.locator('.odile.ouverte').count() === 0, 'une seule bulle à la fois : pas de bulle d\'Odile en même temps');
@@ -111,7 +119,7 @@ function prairiePrete() {
   // ---------- 1 bis. Sprint 6 : guide, semis en glissant, déplacement de la caméra ----------
   console.log('Guide et semis en glissant (ordinateur)');
   p = await ctx.newPage(); suivre(p);
-  await p.goto(URL + '?nouvelle=1&graine=3&langue=fr');
+  await p.goto(URL + '?nouvelle=1&graine=3&langue=fr' + MODE);
   await p.waitForTimeout(800);
   await p.evaluate(() => { window.BIOME_JEU.vitesse = 20; });
   await p.waitForFunction(() => window.BIOME_JEU.guide && window.BIOME_JEU.guide.k >= 1, null, { timeout: 20000 });
@@ -158,7 +166,7 @@ function prairiePrete() {
   // ---------- 2. Île de la Lisière (partie de 2 h) : photo, carnet, missions, bonus ----------
   console.log('Lisière (ordinateur)');
   p = await ctx.newPage(); suivre(p);
-  await p.goto(URL + '?nouvelle=1&langue=fr');
+  await p.goto(URL + '?nouvelle=1&langue=fr' + MODE);
   await p.waitForTimeout(600);
   await charger(p, S[2].etat);
   await p.waitForTimeout(1800);
@@ -245,7 +253,7 @@ function prairiePrete() {
   verifier(!!pret, 'le joueur automatique remplit les conditions de la Lisière');
   if (pret) {
     p = await ctx.newPage(); suivre(p);
-    await p.goto(URL + '?nouvelle=1&langue=fr');
+    await p.goto(URL + '?nouvelle=1&langue=fr' + MODE);
     await p.waitForTimeout(600);
     await charger(p, pret);
     await p.waitForTimeout(800);
@@ -267,7 +275,7 @@ function prairiePrete() {
   // ---------- 3 bis. Sprint 5 bis : teaser de la Jeune forêt, réserve pleine, images par seconde ----------
   console.log('Teaser de la Jeune forêt, réserve, images par seconde');
   p = await ctx.newPage(); suivre(p);
-  await p.goto(URL + '?nouvelle=1&langue=fr');
+  await p.goto(URL + '?nouvelle=1&langue=fr' + MODE);
   await p.waitForTimeout(600);
   await charger(p, S[1].etat);
   await p.waitForTimeout(700);
@@ -325,7 +333,7 @@ function prairiePrete() {
     for (const j of e.journal) j.vu = 1;
     const ctx = await nav.newContext({ viewport: { width: 1280, height: 800 } });
     p = await ctx.newPage(); suivre(p);
-    await p.goto(URL + '?nouvelle=1&langue=fr');
+    await p.goto(URL + '?nouvelle=1&langue=fr' + MODE);
     await p.waitForTimeout(500);
     await charger(p, e);
     await p.evaluate(() => { window.BIOME_JEU.vitesse = 0; window.BIOME_JEU.majReperes(); });
@@ -337,6 +345,7 @@ function prairiePrete() {
     await p.waitForTimeout(300);
     verifier(await p.locator('.carte-repere.ouvert [data-sol="semer_herbe"]').count() === 1, 'toucher le repère : explication et solutions (semer de l\'herbe, retirer un abri)');
     await capture(p, '15-sprint7-probleme');
+    await attendreCamera(p);
     await p.click('.carte-repere.ouvert [data-sol="semer_herbe"]');
     await p.waitForTimeout(1200);
     verifier(await p.evaluate(() => window.BIOME_JEU.etat && document.querySelector('.action.choisie').dataset.id) === 'semer_herbe', 'la solution choisit l\'action correspondante');
@@ -365,7 +374,7 @@ function prairiePrete() {
 
   console.log('Absence et sauvegarde');
   p = await ctx.newPage(); suivre(p);
-  await p.goto(URL + '?nouvelle=1&langue=fr');
+  await p.goto(URL + '?nouvelle=1&langue=fr' + MODE);
   await p.waitForTimeout(600);
   await charger(p, S[0].etat);
   await p.evaluate(() => window.BIOME_JEU.retourHorsLigne(2 * 3600));
@@ -380,7 +389,7 @@ function prairiePrete() {
   verifier(await p.evaluate(() => window.BIOME_JEU.etat.seve) > seve1, 'retour doublé après la pub');
   await p.click('.continuer');
   const temps = await p.evaluate(() => { window.BIOME_JEU.sauver(); return window.BIOME_JEU.etat.temps; });
-  await p.goto(URL + '?langue=fr');
+  await p.goto(URL + '?langue=fr' + MODE);
   await p.waitForTimeout(800);
   verifier(await p.evaluate(() => window.BIOME_JEU.etat.temps) >= temps, 'la partie est rechargée depuis la sauvegarde');
   await p.close();
@@ -390,7 +399,7 @@ function prairiePrete() {
   console.log('Téléphone (390 × 844, tactile)');
   const tel = await nav.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, deviceScaleFactor: 2 });
   p = await tel.newPage(); suivre(p);
-  await p.goto(URL + '?nouvelle=1&langue=fr');
+  await p.goto(URL + '?nouvelle=1&langue=fr' + MODE);
   await p.waitForTimeout(600);
   await charger(p, S[1].etat);
   await p.waitForTimeout(1500);

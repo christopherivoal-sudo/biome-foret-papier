@@ -24,9 +24,14 @@
   const HERBE = { printemps: [136, 190, 96], ete: [116, 172, 84], automne: [146, 162, 88], hiver: [150, 160, 112] };
   const HERBE_SECHE = [204, 188, 118], NEIGE = [243, 241, 235], EAU = [104, 160, 196], GLACE = [190, 216, 228];
 
-  function creer(canvas, dataBrute, Core) {
+  // options.webgl (sprint 8a) : dessine avec le moteur WebGL (moteur3d.js, Three.js) ; repli Canvas 2D s'il échoue.
+  function creer(canvas, dataBrute, Core, options) {
     const data = Core.preparer(dataBrute);
-    const R3 = new E.Renderer(canvas), cam = R3.cam, ctxPrincipal = R3.ctx;
+    let GL = null;
+    if (options && options.webgl && typeof self !== 'undefined' && self.BiomeMoteur3D) {
+      try { GL = new self.BiomeMoteur3D.Renderer3D(canvas, options); } catch (e) { GL = null; if (typeof console !== 'undefined') console.warn('WebGL indisponible, repli Canvas 2D', e); }
+    }
+    const R3 = GL || new E.Renderer(canvas), cam = R3.cam, ctxPrincipal = R3.ctx;
     let ctx = ctxPrincipal;
     const M = Modeles.creer(dataBrute);
     const N = Core.N, C = Core.CENTRE;
@@ -88,6 +93,7 @@
       pr.prism(0, 0, 9, 1.04, 1.05, -0.42, -0.16, ['#c9a878', '#c2a070'], 0.2);
       for (const f of pr.f) f.doux = true;
       terrain = { sig: signatureEau(etat), Re, V, P: V.map(() => [0, 0, 0]), tris, jupe: sk.build(), promontoire: pr.build(), cabane: { x: cxp, z: czp, dir: -ang - Math.PI / 2 } };
+      if (GL) { GL.definirSol(V, tris); GL.reglerSoleil(undefined, Re + 2.5); }
       odile.x = cxp + 0.6; odile.z = czp;
     }
 
@@ -107,7 +113,7 @@
       const orage = meteo === 'orage' ? 1 : annonce === 'orage' ? 0.45 : 0;
       const tierce = Math.floor(((h.jour % 3) + h.dansJour) / 3 * 3); // 0, 1, 2 : début, milieu, fin de saison
       const finSaison = ((h.jour % 3) + h.dansJour) / 3;
-      return { h, saison, nuit, crep, meteo, annonce, orage, decalH, finSaison, tierce, abri: m.abri };
+      return { t, h, saison, nuit, crep, meteo, annonce, orage, decalH, finSaison, tierce, abri: m.abri };
     }
     function teinte(A) {
       let r = 1, g = 1, b = 1;
@@ -169,21 +175,25 @@
         couleursSommets[j * M1 + i] = n ? [r / n, g / n, b / n] : null;
       }
     }
+    function couleurTri(etat, t) {
+      const cell = t.cell, col = couleursTuiles[cell];
+      if (etat.tuiles[cell].c === 'eau') { const w = 1 + 0.07 * Math.sin(temps * 2 + t.k * 1.7); return [col[0] * w, col[1] * w, col[2] * w]; }
+      let r = 0, g = 0, b = 0, n = 0;
+      for (const v of t.v) { const cv = couleursSommets[v]; if (cv) { r += cv[0]; g += cv[1]; b += cv[2]; n++; } }
+      return n ? [col[0] * 0.45 + r / n * 0.55, col[1] * 0.45 + g / n * 0.55, col[2] * 0.45 + b / n * 0.55] : col;
+    }
+    function colorerSolGL(etat, A) {
+      preparerCouleurs(etat, A);
+      const tris = terrain.tris;
+      GL.colorerSol(k => couleurTri(etat, tris[k]));
+    }
     function dessinerTerrain(etat, A) {
       const T = terrain, P = T.P, V = T.V, te = R3.teinte;
       for (let k = 0; k < V.length; k++) cam.project(V[k][0], V[k][1], V[k][2], P[k]);
       preparerCouleurs(etat, A);
       ctx.lineJoin = 'round'; ctx.lineWidth = 0.8;
-      let cell = -1, col = null;
       for (const t of T.tris) {
-        if (t.cell !== cell) { cell = t.cell; col = couleursTuiles[cell]; }
-        let c = col;
-        if (etat.tuiles[cell].c !== 'eau') {
-          let r = 0, g = 0, b = 0, n = 0;
-          for (const v of t.v) { const cv = couleursSommets[v]; if (cv) { r += cv[0]; g += cv[1]; b += cv[2]; n++; } }
-          if (n) c = [col[0] * 0.45 + r / n * 0.55, col[1] * 0.45 + g / n * 0.55, col[2] * 0.45 + b / n * 0.55];
-        }
-        if (etat.tuiles[cell].c === 'eau') { const w = 1 + 0.07 * Math.sin(temps * 2 + t.k * 1.7); c = [col[0] * w, col[1] * w, col[2] * w]; }
+        const c = couleurTri(etat, t);
         const a = P[t.v[0]], b = P[t.v[1]], d = P[t.v[2]];
         const s = E.shade(c, t.n[0], t.n[1], t.n[2], undefined, te);
         ctx.beginPath(); ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]); ctx.lineTo(d[0], d[1]); ctx.closePath();
@@ -193,7 +203,8 @@
 
     // ---------- Décors plats (dessinés sur le sol, avant les objets) ----------
     const OMBRE = 'rgba(34, 44, 26, 0.16)';
-    function ombre(x, z, r, h) { R3.ellipse(x + 0.18 * h, z - 0.14 * h, r, r * 0.8, OMBRE, null, 0, 10); }
+    // En WebGL, les ombres sont de vraies ombres portées : plus besoin des taches au sol.
+    function ombre(x, z, r, h) { if (GL) return; R3.ellipse(x + 0.18 * h, z - 0.14 * h, r, r * 0.8, OMBRE, null, 0, 10); }
     function decors(etat, A, liste) {
       for (const i of liste) {
         const t = etat.tuiles[i], x = (i % N) - C, z = ((i / N) | 0) - C, hv = t.h + A.decalH;
@@ -529,13 +540,40 @@
         }
       }
     }
+    // Sprint 8a : en WebGL, pluie, neige, pétales et feuilles sont de petites cartes de papier dans la scène 3D
+    // (cachées par les arbres et la cabane), tournées vers la caméra.
+    const PART = (function () {
+      const lo = new E.Builder();
+      lo.face([lo.vert(-1, 0, 0), lo.vert(0, 0.6, 0), lo.vert(1, 0, 0), lo.vert(0, -0.6, 0)], [255, 255, 255], true, true);
+      const tr = new E.Builder();
+      tr.face([tr.vert(-0.012, 0, 0), tr.vert(0.012, 0, 0), tr.vert(0.062, 0.35, 0), tr.vert(0.038, 0.35, 0)], [255, 255, 255], true, true);
+      return { losange: lo.build(), trait: tr.build() };
+    })();
+    const PLUIE = [214, 224, 238], BLANC = [255, 255, 255], COUL = {};
+    function particulesGL(dt) {
+      for (let k = particules.length - 1; k >= 0; k--) {
+        const p = particules[k];
+        p.vie -= dt; p.y += p.vy * dt;
+        if (p.t !== 'pluie') { p.x += Math.sin(temps * 1.3 + p.ph) * dt * 0.3; p.z += Math.cos(temps + p.ph) * dt * 0.2; }
+        if (p.vie <= 0 || p.y < 0) {
+          if (p.t === 'pluie' && Math.random() < 0.15) effets.push({ t: 'goutte', x: p.x, z: p.z, age: 0 });
+          particules.splice(k, 1); continue;
+        }
+        if (p.t === 'pluie') R3.add(PART.trait, p.x, p.y, p.z, cam.yaw, 1, 1, { couleur: PLUIE, alpha: 0.6, ombre: false });
+        else {
+          const c = p.t === 'neige' ? BLANC : (COUL[p.c] || (COUL[p.c] = E.hex(p.c)));
+          const s = p.t === 'neige' ? 0.07 : 0.095;
+          R3.add(PART.losange, p.x, p.y, p.z, cam.yaw, s, s, { couleur: c, roll: temps * 2 + p.ph, ombre: false });
+        }
+      }
+    }
     function nuages(A) {
       if (A.orage <= 0) return;
       // Nuages au fond de la scène (côté opposé à la caméra), pour ne pas cacher l'île.
       const Re = terrain.Re, n = A.meteo === 'orage' ? 5 : 3, fondA = Math.atan2(-Math.cos(cam.yaw), -Math.sin(cam.yaw));
       for (let k = 0; k < n; k++) {
         const a = fondA + (k - (n - 1) / 2) * 0.42 + Math.sin(temps * 0.05 + k) * 0.08, r = Re + 1.5 + (k % 2) * 1.5;
-        R3.add((A.meteo === 'orage' ? M.nuageOrage : M.nuage)[k % 2], Math.cos(a) * r, 4.2 + (k % 3) * 0.7, Math.sin(a) * r, a, 1.5 + (k % 3) * 0.25, 1.4, { biais: 1000 });
+        R3.add((A.meteo === 'orage' ? M.nuageOrage : M.nuage)[k % 2], Math.cos(a) * r, 4.2 + (k % 3) * 0.7, Math.sin(a) * r, a, 1.5 + (k % 3) * 0.25, 1.4, { biais: 1000, ombre: false });
       }
     }
 
@@ -663,43 +701,8 @@
       R3.begin(); objetsTuiles(etat, A, liste, indexRares(etat), 'bas'); R3.flush();
     }
 
-    // ---------- Image ----------
-    // opts : { saison, moment, meteo ('auto' ou forcé), survol: {x, y} tuile survolée, sansGarde }
-    function dessiner(etat, dt, opts) {
-      opts = opts || {};
-      dt = Math.max(0, Math.min(0.1, dt || 0));
-      image++; temps += dt;
-      const w = canvas.clientWidth, h = canvas.clientHeight;
-      const dpr = Math.min((typeof window !== 'undefined' && window.devicePixelRatio) || 1, api.dprMax);
-      if (canvas.width !== Math.round(w * dpr) || canvas.height !== Math.round(h * dpr)) { canvas.width = Math.round(w * dpr); canvas.height = Math.round(h * dpr); }
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      cam.update(w, h);
-      if (!terrain || terrain.sig !== signatureEau(etat)) construireTerrain(etat);
-      const A = ambiance(etat, opts);
-      R3.teinte = teinte(A);
-      R3.aretes = cam.dist < 22;
-      lireJournal(etat);
-      cibles = [];
-      const liste = Core.tuilesIle(etat), rares = indexRares(etat);
-
-      // 1. Ciel, tranche de l'îlot, sol plié, décors plats et ombres fixes : « fond » mis en cache
-      // tant que la caméra ne bouge pas (rafraîchi toutes les 1,5 s pour l'eau, la lumière, l'humidité).
-      fondAge += dt;
-      const cle = [cam.yaw, cam.pitch, cam.dist, cam.tx, cam.tz, canvas.width, canvas.height, terrain.sig].join(',');
-      if (opts.sansCache || typeof document === 'undefined') dessinerFond(etat, A, liste, w, h);
-      else {
-        if (!fond) fond = document.createElement('canvas');
-        if (cle !== fondCle || fondAge >= 1.5) {
-          if (fond.width !== canvas.width || fond.height !== canvas.height) { fond.width = canvas.width; fond.height = canvas.height; }
-          const fc = fond.getContext('2d');
-          fc.setTransform(dpr, 0, 0, dpr, 0, 0);
-          ctx = R3.ctx = fc;
-          dessinerFond(etat, A, liste, w, h);
-          ctx = R3.ctx = ctxPrincipal;
-          fondCle = cle; fondAge = 0;
-        }
-        ctx.drawImage(fond, 0, 0, w, h);
-      }
+    // Décalques posés sur le sol : effets, graines au sol, carte des habitats, renard éloigné, guide, survol.
+    function decalques(etat, opts, liste, dt) {
       dessinerEffetsSol(dt);
       // Sprint 7 : graines laissées au sol pour les oiseaux (petits grains dorés).
       for (const i of liste) {
@@ -736,6 +739,87 @@
         const ok = !opts.survol.refus, c1 = ok ? 'rgba(255,248,221,0.18)' : 'rgba(200,70,50,0.16)', c2 = ok ? 'rgba(255,248,221,0.95)' : 'rgba(205,80,60,0.95)';
         R3.groundPoly([x - 0.5, z - 0.5, x + k, z - 0.5, x + k, z + k, x - 0.5, z + k], c1, c2, 2, 0.04);
       }
+    }
+
+    // ---------- Image (WebGL, sprint 8a) ----------
+    // Tout est redessiné à chaque image par la carte graphique : plus de fond mis en cache.
+    function dessinerGL(etat, dt, opts) {
+      const w = canvas.clientWidth, h = canvas.clientHeight;
+      const dpr = Math.min((typeof window !== 'undefined' && window.devicePixelRatio) || 1, api.dprMax);
+      GL.redimensionner(w, h, dpr);
+      cam.update(w, h);
+      if (!terrain || terrain.sig !== signatureEau(etat)) construireTerrain(etat);
+      const A = ambiance(etat, opts);
+      R3.teinte = teinte(A);
+      GL.reglerSoleil(A.t);
+      lireJournal(etat);
+      cibles = [];
+      const liste = Core.tuilesIle(etat), rares = indexRares(etat);
+      GL.preparerCalques();
+      ctx = GL.fondCtx; ciel(w, h, A); ctx = ctxPrincipal;
+      R3.begin();
+      R3.add(terrain.jupe, 0, 0, 0, 0, 1, 1, { ombre: false });
+      colorerSolGL(etat, A);
+      decors(etat, A, liste);
+      // Herbe et fleurs : reçoivent les ombres sans en projeter (trop petites, et 1 500 touffes).
+      GL.sansOmbre = true; objetsTuiles(etat, A, liste, rares, 'bas'); GL.sansOmbre = false;
+      decalques(etat, opts, liste, dt);
+      objetsTuiles(etat, A, liste, rares, 'haut');
+      const zzz = dessinerAgents(etat, A, dt, rares);
+      dessinerPopulations(etat, A, rares);
+      if (!opts.sansGarde) dessinerGarde(etat, A, dt);
+      dessinerEffetsObjets();
+      nuages(A);
+      emettre(etat, A, dt);
+      particulesGL(dt);
+      R3.flush();
+      // Par-dessus (calque 2D) : étincelles des rares, ronflements, brume, éclair.
+      etincelles(positionsRares(etat, rares));
+      dessinerZzz(zzz);
+      if (A.meteo === 'secheresse') brumeChaude(w, h);
+      dessinerEclair(w, h, A, dt);
+      return { polygones: GL.triangles(), ambiance: { saison: A.saison, meteo: A.meteo, nuit: A.nuit } };
+    }
+
+    // ---------- Image ----------
+    // opts : { saison, moment, meteo ('auto' ou forcé), survol: {x, y} tuile survolée, sansGarde }
+    function dessiner(etat, dt, opts) {
+      opts = opts || {};
+      dt = Math.max(0, Math.min(0.1, dt || 0));
+      image++; temps += dt;
+      if (GL) return dessinerGL(etat, dt, opts);
+      const w = canvas.clientWidth, h = canvas.clientHeight;
+      const dpr = Math.min((typeof window !== 'undefined' && window.devicePixelRatio) || 1, api.dprMax);
+      if (canvas.width !== Math.round(w * dpr) || canvas.height !== Math.round(h * dpr)) { canvas.width = Math.round(w * dpr); canvas.height = Math.round(h * dpr); }
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      cam.update(w, h);
+      if (!terrain || terrain.sig !== signatureEau(etat)) construireTerrain(etat);
+      const A = ambiance(etat, opts);
+      R3.teinte = teinte(A);
+      R3.aretes = cam.dist < 22;
+      lireJournal(etat);
+      cibles = [];
+      const liste = Core.tuilesIle(etat), rares = indexRares(etat);
+
+      // 1. Ciel, tranche de l'îlot, sol plié, décors plats et ombres fixes : « fond » mis en cache
+      // tant que la caméra ne bouge pas (rafraîchi toutes les 1,5 s pour l'eau, la lumière, l'humidité).
+      fondAge += dt;
+      const cle = [cam.yaw, cam.pitch, cam.dist, cam.tx, cam.tz, canvas.width, canvas.height, terrain.sig].join(',');
+      if (opts.sansCache || typeof document === 'undefined') dessinerFond(etat, A, liste, w, h);
+      else {
+        if (!fond) fond = document.createElement('canvas');
+        if (cle !== fondCle || fondAge >= 1.5) {
+          if (fond.width !== canvas.width || fond.height !== canvas.height) { fond.width = canvas.width; fond.height = canvas.height; }
+          const fc = fond.getContext('2d');
+          fc.setTransform(dpr, 0, 0, dpr, 0, 0);
+          ctx = R3.ctx = fc;
+          dessinerFond(etat, A, liste, w, h);
+          ctx = R3.ctx = ctxPrincipal;
+          fondCle = cle; fondAge = 0;
+        }
+        ctx.drawImage(fond, 0, 0, w, h);
+      }
+      decalques(etat, opts, liste, dt);
       // 4. Objets triés par profondeur.
       R3.begin();
       objetsTuiles(etat, A, liste, rares, 'haut');
@@ -822,7 +906,7 @@
     // Position à l'écran d'un point du monde exprimé en tuiles (pour les bulles et les effets de l'interface).
     function ecran(tx, ty, hauteur) { const o = cam.project(tx - C, hauteur || 0, ty - C, [0, 0, 0]); return { x: o[0], y: o[1] }; }
     function ecranCabane() { if (!terrain) return null; const o = cam.project(terrain.cabane.x, 1.6, terrain.cabane.z, [0, 0, 0]); return { x: o[0], y: o[1] }; }
-    const api = { dessiner, tuileSous, cadrer, deplacer, zoomer, penteAuto, grossir: 1.35, cibleSous, ecran, ecranCabane, get cibles() { return cibles; }, camera: cam, moteur: R3, modeles: M, dprMax: 2 };
+    const api = { nom: GL ? 'WebGL' : 'Canvas 2D', webgl: !!GL, dessiner, tuileSous, cadrer, deplacer, zoomer, penteAuto, grossir: 1.35, cibleSous, ecran, ecranCabane, get cibles() { return cibles; }, camera: cam, moteur: R3, modeles: M, dprMax: 2 };
     return api;
   }
 

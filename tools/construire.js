@@ -1,7 +1,7 @@
 #!/usr/bin/env node
-// Construction en un seul fichier HTML, sans dépendance (GDD 10.4) : données + core.js + moteur + modèles + rendu + interface.
+// Construction en un seul fichier HTML, sans dépendance externe (GDD 10.4) : données + core.js + moteur + modèles + rendu + interface.
 // Produit :
-//   dist/jeu.html     le jeu (sprint 5 : game.js, ads.js, game.css)
+//   dist/jeu.html     le jeu (sprint 5 : game.js, ads.js, game.css ; sprint 8a : Three.js et moteur3d.js)
 //   dist/vitrine.html la vitrine du rendu du sprint 4 (avec --vitrine)
 // Usage : node tools/construire.js [--vitrine] [--graine 1]
 'use strict';
@@ -15,6 +15,8 @@ const graine = k >= 0 ? Number(args[k + 1]) : 1;
 // Un </script> dans une chaîne casserait la page : on échappe le chevron.
 const json = o => JSON.stringify(o).replace(/</g, '\\u003c');
 const data = require('./donnees.js')();
+// Sprint 8a : Three.js (vendor/three, MIT) transformé en script classique (window.THREE).
+const three = require('./three-global.js')();
 fs.mkdirSync(path.join(R, 'dist'), { recursive: true });
 
 const jeu = `<!DOCTYPE html>
@@ -32,6 +34,8 @@ const jeu = `<!DOCTYPE html>
 <script>${lire('src/core.js')}</script>
 <script>${lire('src/engine.js')}</script>
 <script>${lire('src/models.js')}</script>
+<script>${three}</script>
+<script>${lire('src/moteur3d.js')}</script>
 <script>${lire('src/rendu.js')}</script>
 <script>${lire('src/ads.js')}</script>
 <script>${lire('src/game.js')}</script>
