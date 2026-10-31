@@ -1,6 +1,6 @@
 # Biome, la forêt de papier : document de conception v2
 
-Version 1.8, 31 octobre 2026 (précisions du sprint 3 en 5.1 et 8.5, du sprint 4 en 1.9 et 10.4, du sprint 5 en 10.4, du sprint 5 bis en 4.3, 5.1, 6.2 et 10.4, du sprint 6 en 10.4 ; gameplay actif du sprint 7 en section 12 ; rendu WebGL du sprint 8a en 10.4 et 10.5). Rédigé par Claude, décisions de Christophe intégrées (section 11).
+Version 1.9, 31 octobre 2026 (précisions du sprint 3 en 5.1 et 8.5, du sprint 4 en 1.9 et 10.4, du sprint 5 en 10.4, du sprint 5 bis en 4.3, 5.1, 6.2 et 10.4, du sprint 6 en 10.4 ; gameplay actif du sprint 7 en section 12 ; rendu WebGL des sprints 8a et 8b en 10.4 et 10.5). Rédigé par Claude, décisions de Christophe intégrées (section 11).
 
 Repères de lecture :
 - **[PROTO]** : construit dans le prototype v2.
@@ -741,6 +741,18 @@ Précisions du sprint 8a (rendu WebGL, `src/moteur3d.js`, Three.js r160) :
 - **Mesures** : processeur par image sur une île de 2 h, 3 ms en WebGL contre 67 ms en Canvas 2D (sans le cache du fond) ; environ 70 commandes de dessin et 12 000 triangles.
 - **Tests** : `tools/test-webgl.js` (14 vérifications : WebGL choisi, calques, caméra identique, clic qui sème, 5 scènes avec ombres, repli Canvas 2D sans Three.js et avec `?canvas2d`, aucune erreur). Le navigateur de test n'a pas de carte graphique (3 images par seconde en WebGL) : `tools/test-jeu.js` teste donc l'interface avec le moteur Canvas 2D (`--webgl` pour forcer WebGL).
 
+Précisions du sprint 8b (rendu papier, `src/moteur3d.js`) :
+- **Grain et fibres du papier** sur toutes les faces et sur le sol : une texture de papier (grain, taches, fibres) fabriquée par le code au lancement, posée selon les coordonnées propres à chaque modèle (le motif ne « glisse » pas quand un animal bouge). Force : ±8 % de luminosité.
+- **Arêtes de pli** : le bord de chaque face est assombri de 17 % sur un trait d'un pixel (les diagonales internes des faces ne sont pas marquées). Elles s'effacent de loin (caméra au-delà de 34) pour que l'île dézoomée reste calme. Pas sur les faces douces (brins, feuilles), comme en Canvas 2D.
+- **Ombre de contact** : le pied des modèles (40 premiers centièmes de hauteur) est jusqu'à 26 % plus sombre (18 % pour l'herbe) : les objets semblent posés, pas flottants.
+- **Eau** : reflet de la couleur du ciel, plus fort quand on la regarde de biais ; petites ondes ; étincelles de soleil qui dérivent (le jour seulement) ; plus sombre la nuit.
+- **Nuit** : la cabane d'Odile éclaire autour d'elle (lumière chaude, portée 7,5 tuiles), des étoiles scintillent dans le ciel (sauf par orage), pétales, feuilles et flocons s'assombrissent avec la nuit.
+- **Effet maquette** : l'image est dessinée dans une image intermédiaire, puis le haut et le bas sont légèrement flous (13 échantillons), plus fort quand on voit l'île entière, discret de près. La bande nette suit le centre de la vue.
+- **Qualité qui baisse seule** : qualité 2 (tout), 1 (sans effet maquette), 0 (sans ombres portées). Les téléphones démarrent en qualité 1. Si l'appareil passe sous 45 images/s : d'abord sans effet maquette, puis définition plus basse, puis, sous 32 images/s, sans ombres. Les réglages affichent la qualité. `?qualite=0`, `1` ou `2` dans l'adresse la fixe (tests, comparaisons).
+- **Correction** : depuis le sprint 8a, un contour au sol (survol, guide, carte) faisait redimensionner le rendu à chaque image ; corrigé (gain de fluidité pendant la pose).
+- **Pluie, neige, pétales en 3D** : faits dès le sprint 8a.
+- **Tests** : `tools/test-webgl.js` passe à 19 vérifications (matériaux papier compilés, effet maquette actif sur ordinateur, lampe allumée la nuit, qualité qui baisse par paliers, capture de près).
+
 ### 10.5 Ordre de travail (une conversation par sprint)
 
 | Sprint | Contenu | Qui |
@@ -755,7 +767,7 @@ Précisions du sprint 8a (rendu WebGL, `src/moteur3d.js`, Three.js r160) :
 | 6 | Test de jeu par Christophe et ses proches, retours, corrections (première série de corrections faite le 31/10 : barre, bord de l'île, pose en glissant, guide, caméra, graphismes) | Christophe, puis Claude |
 | 7 | Gameplay actif : l'île se dérègle, coups de pouce, voisinages et carte des habitats, demandes des habitants, effets visibles (fait le 31/10, section 12) | Claude |
 | 8a | Moteur WebGL à l'identique : instances, sol, décalques, vraies ombres portées, soleil qui tourne, repli Canvas 2D (fait le 31/10) | Claude |
-| 8b | Rendu papier : grain et fibres sur les faces, arêtes de pli, ombre douce dans les creux, eau qui reflète le ciel, effet maquette (flou de profondeur), vraie nuit (lumière de la cabane), pluie, neige et pétales en 3D | Claude |
+| 8b | Rendu papier : grain et fibres sur les faces, arêtes de pli, ombre de contact, eau qui reflète le ciel, effet maquette, vraie nuit (lumière de la cabane, étoiles), qualité qui baisse seule (fait le 31/10) | Claude |
 | 8c | Vie et mouvement : herbe dense qui ondule, arbres qui se balancent, aménagements qui se déplient à la pose, passage d'étape en 3D, qualité automatique pour téléphones, fichier allégé | Claude |
 
 ### 10.6 Critères de réussite (mesurés par simulation et par les tests)
@@ -789,6 +801,7 @@ Précisions du sprint 8a (rendu WebGL, `src/moteur3d.js`, Three.js r160) :
 ### Décisions du 31/10 au soir (lancement du sprint 8)
 9. **Choix de Claude du sprint 7 validés** (12.7) : gestes Arroser et Graines au sol dès la Prairie, carte des habitats aussi pour les gestes et cachée pendant le guide, réglages de départ de `P.vie`, barre de 11 boutons.
 10. **Découpage du chantier WebGL** en trois sprints (10.5) : 8a moteur à l'identique avec ombres, 8b rendu papier, 8c vie et mouvement.
+11. **Fin de chaque étape** : Claude donne toujours à Christophe l'action à faire et le texte exact à coller pour lancer l'étape suivante (nouvelle conversation, consigne ChatGPT...).
 
 Aucune question ouverte pour le moment.
 
