@@ -9,7 +9,7 @@
   const N = Core.N;
   const CLE_SAUVEGARDE = 'biome-foret-papier-v2', CLE_LANGUE = 'biome-langue';
   // Version affichée dans les réglages et annoncée au premier lancement après une mise à jour (sprint 6).
-  const VERSION = '8.1';
+  const VERSION = '8.2';
   const ETAPES_PROTO = data.etapes.map(e => e.id);
   const ORDRE_ESPECES = data.etapes.flatMap(e => e.debloque.especes).filter(id => data.especes[id]);
   const ACTIONS = ['semer_herbe', 'semer_fleurs', 'tas_pierres', 'mare', 'hotel_insectes', 'paillis', 'semer_ronce', 'planter_bouleau', 'tas_bois', 'nichoir'];
@@ -77,6 +77,22 @@
   // ?qualite=0, 1 ou 2 fixe la qualité du rendu WebGL (tests, comparaisons) : elle ne baisse plus seule.
   const qualiteFixee = qRendu.has('qualite');
   if (qualiteFixee) rendu.qualite = Math.max(0, Math.min(2, +qRendu.get('qualite') || 0));
+  // Sprint 8c : qualité automatique par paliers, qui baisse si l'appareil peine et remonte s'il redevient fluide.
+  // q : qualité WebGL (2 tout, 1 sans effet maquette, 0 sans ombres) ; dpr : définition maximale ; densite : herbe dense.
+  const PALIERS = [{ q: 2, dpr: 2, densite: 1 }, { q: 1, dpr: 2, densite: 1 }, { q: 1, dpr: 1.5, densite: 1 }, { q: 1, dpr: 1.25, densite: 1 },
+    { q: 1, dpr: 1, densite: 0 }, { q: 0, dpr: 1, densite: 0 }, { q: 0, dpr: 0.75, densite: 0 }];
+  // Les téléphones démarrent sans effet maquette, en définition ×1,5 (écrans très denses, petites cartes graphiques).
+  const palierDepart = rendu.webgl ? (mobile ? 2 : 0) : 3;
+  const qualiteAuto = { palier: palierDepart, echecs: PALIERS.map(() => 0), fluide: 0, changements: 0 };
+  function appliquerPalier(k) {
+    const P = PALIERS[k];
+    qualiteAuto.palier = k;
+    if (!qualiteFixee) rendu.qualite = P.q;
+    rendu.dprMax = P.dpr;
+    rendu.densite = P.densite;
+  }
+  if (rendu.webgl) appliquerPalier(palierDepart);
+  window.biomeQualite = () => Object.assign({ paliers: PALIERS.length }, qualiteAuto, { qualite: rendu.qualite, dprMax: rendu.dprMax, densite: rendu.densite });
   const cam = rendu.camera;
 
   // =====================================================================
@@ -1354,9 +1370,17 @@
     return new Promise(resolve => {
       const v = el('div', 'cinematique', racine);
       v.innerHTML = `<div class="pli haut-pli"></div><div class="pli bas-pli"></div><div class="titre-etape"><small>${echapper(nomEtape(id))}</small><h2>${echapper(TX('etapes.' + id + '.titre_passage') || '')}</h2><p>${echapper(TX('etapes.' + id + '.texte_passage') || '')}</p><button type="button" class="grand">${T('boutons.continuer')}</button></div>`;
+      // Sprint 8c : en WebGL, c'est l'île elle-même qui se replie (objets couchés, sol redevenu page crème), et la caméra
+      // tourne lentement autour ; elle se redéplie du centre vers le bord quand le joueur continue.
+      const en3d = rendu.webgl;
+      if (en3d) { v.classList.add('en3d'); rendu.plier(etat); }
       requestAnimationFrame(() => v.classList.add('pliee'));
       setTimeout(() => rendu.cadrer(etat), 900);
-      v.querySelector('button').onclick = () => { v.classList.add('depliee'); setTimeout(() => { v.remove(); resolve(); }, 700); };
+      v.querySelector('button').onclick = () => {
+        v.classList.add('depliee');
+        if (en3d) rendu.deplier(etat);
+        setTimeout(() => { v.remove(); resolve(); }, 700);
+      };
     });
   }
 
@@ -1480,7 +1504,7 @@
     if (!b) return;
     const moy = fpsSecondes.length ? fpsSecondes.reduce((a, v) => a + v, 0) / fpsSecondes.length : fps;
     const min = fpsSecondes.length ? Math.min(...fpsSecondes) : fps;
-    b.textContent = T('mesure.detail', { fps: Math.round(moy), min: Math.round(min), dpr: (Math.min(window.devicePixelRatio || 1, rendu.dprMax || 2)).toFixed(1) }) + ' · ' + rendu.nom + (rendu.webgl ? ' · ' + T('mesure.qualite', { q: rendu.qualite }) : '');
+    b.textContent = T('mesure.detail', { fps: Math.round(moy), min: Math.round(min), dpr: (Math.min(window.devicePixelRatio || 1, rendu.dprMax || 2)).toFixed(1) }) + ' · ' + rendu.nom + (rendu.webgl ? ' · ' + T('mesure.qualite', { q: rendu.qualite }) + ' · ' + T('mesure.palier', { p: qualiteAuto.palier + 1, n: PALIERS.length }) + (qualiteFixee ? '' : ' (' + T('mesure.auto') + ')') : '');
   }
   window.biomeFps = () => ({ moyenne: fpsSecondes.length ? fpsSecondes.reduce((a, v) => a + v, 0) / fpsSecondes.length : fps, secondes: fpsSecondes.slice() });
   function changerLangue(l) {
@@ -1750,6 +1774,23 @@
   let lents = 0;
   let avant = performance.now(), dernierLent = 0, dernierSauve = Date.now(), derniereImage = Date.now(), fps = 60, dernierReglage = 0;
   let survolTuile = null, survolCle = '', survolOk = true;
+  // Sprint 8c : appareil qui peine (moins de 45 images/s pendant 3 s) → palier suivant (effet maquette, définition, herbe
+  // dense, ombres) ; de nouveau fluide (plus de 57 images/s pendant 15 s) → on remonte d'un palier, sauf vers un palier qui a
+  // déjà échoué deux fois (pas de va-et-vient). Pas de réglage pendant les 4 premières secondes ni pendant une pub.
+  function reglerQualiteAuto(now, dt) {
+    if (qualiteFixee || !rendu.webgl || now < 4000 || Ads.enCours || document.hidden) return;
+    const Q = qualiteAuto;
+    if (fps > 57) Q.fluide += dt; else Q.fluide = 0;
+    if (now - dernierReglage < 3000) return;
+    if (fps < 45 && Q.palier < PALIERS.length - 1) {
+      Q.echecs[Q.palier]++;
+      appliquerPalier(Q.palier + 1);
+      Q.changements++; Q.fluide = 0; dernierReglage = now;
+    } else if (Q.fluide > 15 && Q.palier > 0 && Q.echecs[Q.palier - 1] < 2 && Q.changements < 12) {
+      appliquerPalier(Q.palier - 1);
+      Q.changements++; Q.fluide = 0; dernierReglage = now;
+    }
+  }
   function boucle(now) {
     const dt = Math.max(0, Math.min(0.1, (now - avant) / 1000)); avant = now;
     // Onglet caché puis revenu : l'absence compte comme du temps hors ligne (pas de départ, pas d'événement).
@@ -1758,13 +1799,7 @@
     derniereImage = reel;
     fps += (1 / Math.max(dt, 1e-3) - fps) * 0.05;
     compterImage(now);
-    // Appareil qui peine (moins de 45 images/s) : d'abord sans effet maquette, puis définition plus basse, puis sans ombres (sprint 8b).
-    if (now > 4000 && now - dernierReglage > 3000 && fps < 45 && !qualiteFixee) {
-      if (rendu.qualite >= 2) rendu.baisserQualite();
-      else if (rendu.dprMax > 1) rendu.dprMax = Math.max(1, rendu.dprMax - 0.5);
-      else if (fps < 32) rendu.baisserQualite();
-      dernierReglage = now;
-    }
+    reglerQualiteAuto(now, dt);
     if (!pause && !rapportRetour) {
       const s0 = etat.seve;
       Core.tick(etat, data, dt * vitesse);

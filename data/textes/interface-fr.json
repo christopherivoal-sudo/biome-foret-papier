@@ -315,7 +315,9 @@
     "titre": "Images par seconde",
     "detail": "{fps} en moyenne, {min} au plus bas (30 dernières secondes), définition ×{dpr}",
     "aide": "À noter pendant les tests sur téléphone.",
-    "qualite": "qualité {q}"
+    "qualite": "qualité {q}",
+    "palier": "palier {p} sur {n}",
+    "auto": "réglé seul"
   },
   "camera": {
     "gauche": "Tourner à gauche",

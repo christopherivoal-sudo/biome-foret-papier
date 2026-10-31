@@ -8,6 +8,8 @@
 //   floraison (pétales, fleurs plus grandes).
 // - Agents animés, nuées des populations, spécimens rares en papier journal ou washi, effets du journal.
 // - Cabane et garde forestière au bord de l'île.
+// Sprint 8c (vie et mouvement) : vent (herbe, fleurs, ronces, arbres), herbe plus dense en WebGL, objets qui se
+// déplient quand on les pose, île qui se replie et se redéplie au passage d'étape.
 (function (racine, fabrique) {
   if (typeof module === 'object' && module.exports) module.exports = fabrique(require('./engine.js'), require('./models.js'));
   else racine.BiomeRendu = fabrique(racine.BiomeEngine, racine.BiomeModels);
@@ -23,6 +25,12 @@
   const SOL_PAUVRE = [222, 196, 148], SOL_RICHE = [150, 108, 70];
   const HERBE = { printemps: [136, 190, 96], ete: [116, 172, 84], automne: [146, 162, 88], hiver: [150, 160, 112] };
   const HERBE_SECHE = [204, 188, 118], NEIGE = [243, 241, 235], EAU = [104, 160, 196], GLACE = [190, 216, 228];
+  // Sprint 8c : souplesse au vent de chaque sorte de plante (moteur WebGL ; le Canvas 2D l'ignore).
+  const VENT = { herbe: 0.55, fleurs: 0.32, ronce: 0.04, arbre: 0.016, chene: 0.035 };
+  const O_HERBE = { vent: VENT.herbe }, O_FLEURS = { vent: VENT.fleurs };
+  const avecVent = (o, v) => (o ? Object.assign({ vent: v }, o) : { vent: v });
+  // Effet « livre animé » : départ rapide, petit dépassement, puis retour en place.
+  const rebond = q => { const c = 1.9; q -= 1; return 1 + (c + 1) * q * q * q + c * q * q; };
 
   // options.webgl (sprint 8a) : dessine avec le moteur WebGL (moteur3d.js, Three.js) ; repli Canvas 2D s'il échoue.
   function creer(canvas, dataBrute, Core, options) {
@@ -41,6 +49,9 @@
     const odile = { a: 0, x: 0, z: 0, dir: 0, pause: 0, jumelles: false };
     // Cibles cliquables de l'image en cours (sprint 5) : animaux, nuées, garde et cabane.
     let cibles = [];
+    // Sprint 8c : objets qui se déplient à la pose (tuile → début de l'animation) et pli de l'île au passage d'étape.
+    const apparitions = new Map();
+    let signatures = null, etatSuivi = null, plis = null;
 
     // ---------- Terrain ----------
     function rayonBord(etat) { return Math.sqrt(etat.rayon * etat.rayon + etat.rayon) + 0.35; }
@@ -182,10 +193,12 @@
       for (const v of t.v) { const cv = couleursSommets[v]; if (cv) { r += cv[0]; g += cv[1]; b += cv[2]; n++; } }
       return n ? [col[0] * 0.45 + r / n * 0.55, col[1] * 0.45 + g / n * 0.55, col[2] * 0.45 + b / n * 0.55] : col;
     }
+    const PAGE = [240, 230, 208];
     function colorerSolGL(etat, A) {
       preparerCouleurs(etat, A);
-      const tris = terrain.tris;
-      GL.colorerSol(k => couleurTri(etat, tris[k]));
+      const tris = terrain.tris, f = facteurPliSol();
+      // Pendant le pli de l'île, le sol redevient une page de papier crème avant de reprendre ses couleurs.
+      GL.colorerSol(f > 0 ? k => mel(couleurTri(etat, tris[k]), PAGE, f) : k => couleurTri(etat, tris[k]));
     }
     function dessinerTerrain(etat, A) {
       const T = terrain, P = T.P, V = T.V, te = R3.teinte;
@@ -244,6 +257,55 @@
       return Math.min(1, 0.25 + 0.75 * t.age / Math.max(j, 0.01));
     }
 
+    // ---------- Vie et mouvement (sprint 8c) ----------
+    // Repère les tuiles qui viennent de changer (aménagement posé, plante semée) pour les faire se déplier.
+    const PLIABLES = { ronce: 1, arbre: 1, bois_mort: 1, roche: 1 };
+    function suivreTuiles(etat, liste) {
+      if (etatSuivi !== etat) { etatSuivi = etat; signatures = new Map(); apparitions.clear(); for (const i of liste) { const t = etat.tuiles[i]; signatures.set(i, t.c + (t.a || '') + (t.nichoir ? 'n' : '') + (t.e || '')); } return; }
+      for (const i of liste) {
+        const t = etat.tuiles[i], sg = t.c + (t.a || '') + (t.nichoir ? 'n' : '') + (t.e || ''), av = signatures.get(i);
+        if (av === sg) continue;
+        signatures.set(i, sg);
+        if (av === undefined) continue; // tuile gagnée par l'agrandissement : le pli de l'île s'en charge
+        const x = (i % N) - C, z = ((i / N) | 0) - C;
+        if (t.a || PLIABLES[t.c] || (t.nichoir && av.indexOf('n') < 0)) {
+          apparitions.set(i, { t0: temps, d: 0.85, grand: true });
+          effets.push({ t: 'anneau', x, z, age: 0, r: 0.7, c: '255,248,221' });
+        } else if (t.c === 'herbe' || t.c === 'fleurs') apparitions.set(i, { t0: temps, d: 0.5 });
+        else if (t.c === 'eau') effets.push({ t: 'anneau', x: x + 0.5, z: z + 0.5, age: 0, r: 1.2, c: '214,236,246' });
+      }
+    }
+    function deplie(i) {
+      const a = apparitions.get(i);
+      if (!a) return 1;
+      const q = (temps - a.t0) / a.d;
+      if (q >= 1) { apparitions.delete(i); return 1; }
+      return a.grand ? rebond(Math.max(0, q)) : lisse(0, 1, q);
+    }
+    // Pli de l'île au passage d'étape : les objets se couchent du bord vers le centre, puis se relèvent
+    // du centre vers le bord quand le joueur continue.
+    function pli(x, z) {
+      if (!plis) return 1;
+      const d = Math.min(1, Math.hypot(x, z) / Math.max(1, plis.Re)), e = temps - plis.t0;
+      if (plis.phase === 'replie') { const r = (1 - d) * 0.45; return 1 - lisse(r, r + 0.55, e) * 0.97; }
+      const r = d * 0.6, q = borne((e - r) / 0.7, 0, 1);
+      return q <= 0 ? 0.03 : 0.03 + 0.97 * rebond(q);
+    }
+    // R3.add avec le dépliage de la tuile et le pli de l'île.
+    function poser(mesh, x, y, z, ry, s, sy, o, cell) {
+      let k = plis ? pli(x, z) : 1;
+      if (cell !== undefined && apparitions.size) k *= deplie(cell);
+      if (k === 1) { R3.add(mesh, x, y, z, ry, s, sy, o); return; }
+      const kk = Math.max(0.03, k), o2 = Object.assign({}, o);
+      o2.tilt = (o2.tilt || 0) + Math.max(0, 1 - kk) * 1.1; // l'objet se relève comme une page de livre animé
+      R3.add(mesh, x, y * Math.min(1, kk), z, ry, s * (0.7 + 0.3 * Math.min(1.15, kk)), (sy || s) * kk, o2);
+    }
+    function facteurPliSol() {
+      if (!plis) return 0;
+      const e = temps - plis.t0;
+      return plis.phase === 'replie' ? lisse(0, 1.1, e) * 0.55 : (1 - lisse(0.1, 1.4, e)) * 0.55;
+    }
+
     // ---------- Objets des tuiles ----------
     // couche 'bas' : herbe et fleurs (dessinées dans le fond mis en cache) ; 'haut' : tout le reste (trié chaque image).
     function objetsTuiles(etat, A, liste, rares, couche) {
@@ -262,48 +324,54 @@
           if (sais === 'hiver' && hash(i, 8) < 0.7) continue;
           // De loin, une seule touffe par tuile, puis plus du tout : le sol vert suffit et l'île reste lisible.
           if (cam.dist > 34 && t.c === 'herbe' && !papier) continue;
-          R3.add(touffes[h1 < 0.5 ? 0 : 1], x + (h1 - 0.5) * 0.5, 0, z + (h2 - 0.5) * 0.5, h2 * 6.28, 1.0, ht, t.c === 'herbe' && papier ? { papier } : undefined);
+          poser(touffes[h1 < 0.5 ? 0 : 1], x + (h1 - 0.5) * 0.5, 0, z + (h2 - 0.5) * 0.5, h2 * 6.28, 1.0, ht, t.c === 'herbe' && papier ? avecVent({ papier }, VENT.herbe) : O_HERBE, i);
           // Sprint 6 : herbe plus dense (3 touffes par tuile), pour une prairie qui se lit de loin.
           if (sais !== 'hiver' && t.c === 'herbe' && cam.dist < 26) {
-            R3.add(touffes[h2 < 0.5 ? 1 : 0], x - 0.28 + hash(i, 7) * 0.12, 0, z + 0.22 - hash(i, 9) * 0.1, h1 * 6.28, 0.85, ht * 0.85);
-            R3.add(touffes[h1 < 0.5 ? 1 : 0], x + 0.26 - hash(i, 11) * 0.1, 0, z - 0.26 + hash(i, 12) * 0.12, h2 * 3.1 + 1, 0.8, ht * 0.8);
+            poser(touffes[h2 < 0.5 ? 1 : 0], x - 0.28 + hash(i, 7) * 0.12, 0, z + 0.22 - hash(i, 9) * 0.1, h1 * 6.28, 0.85, ht * 0.85, O_HERBE, i);
+            poser(touffes[h1 < 0.5 ? 1 : 0], x + 0.26 - hash(i, 11) * 0.1, 0, z - 0.26 + hash(i, 12) * 0.12, h2 * 3.1 + 1, 0.8, ht * 0.8, O_HERBE, i);
+            // Sprint 8c : en WebGL, prairie dense (6 touffes par tuile de près) qui ondule au vent.
+            if (GL && api.densite >= 1 && cam.dist < 20) {
+              poser(touffes[h2 < 0.5 ? 0 : 1], x + 0.3 - hash(i, 13) * 0.14, 0, z + 0.28 - hash(i, 14) * 0.12, h1 * 4.1 + 2, 0.75, ht * 0.78, O_HERBE, i);
+              poser(touffes[h1 < 0.5 ? 0 : 1], x - 0.3 + hash(i, 15) * 0.14, 0, z - 0.3 + hash(i, 16) * 0.12, h2 * 5.3 + 3, 0.72, ht * 0.74, O_HERBE, i);
+              poser(touffes[h2 < 0.5 ? 1 : 0], x + (hash(i, 17) - 0.5) * 0.2, 0, z + 0.36 - hash(i, 18) * 0.1, h1 * 2.2 + 4, 0.68, ht * 0.7, O_HERBE, i);
+            }
           }
           if (t.c === 'fleurs' && sais !== 'hiver') {
             // Sprint 6 : fleurs plus grandes et plus nombreuses (on les voit au-dessus de l'herbe).
             const n = floraison ? 5 : 3 + (hash(i, 3) < 0.5), sc = 1.55 * (floraison ? 1.25 : 1) * (seche ? 0.8 : 1) * (0.6 + 0.4 * Math.min(1, t.age + 0.3));
             for (let k = 0; k < n; k++) {
               const fx = x + (hash(i, 10 + k) - 0.5) * 0.75, fz = z + (hash(i, 14 + k) - 0.5) * 0.75;
-              R3.add(M.fleurs[(((hash(i, 4) * 4) | 0) + k) % 4], fx, 0, fz, hash(i, 5 + k) * 6, sc, sc * (seche ? 0.85 : 1), papier ? { papier } : undefined);
+              poser(M.fleurs[(((hash(i, 4) * 4) | 0) + k) % 4], fx, 0, fz, hash(i, 5 + k) * 6, sc, sc * (seche ? 0.85 : 1), papier ? avecVent({ papier }, VENT.fleurs) : O_FLEURS, i);
             }
           }
           continue;
         } else if (t.c === 'ronce') {
           const m = maturite(t);
-          R3.add(M.ronce[varRonce][h1 < 0.5 ? 0 : 1], x, 0, z, h2 * 6.28, 0.55 + 0.6 * m, (0.55 + 0.6 * m) * (seche ? 0.9 : 1), papier ? { papier } : undefined);
+          poser(M.ronce[varRonce][h1 < 0.5 ? 0 : 1], x, 0, z, h2 * 6.28, 0.55 + 0.6 * m, (0.55 + 0.6 * m) * (seche ? 0.9 : 1), avecVent(papier ? { papier } : null, VENT.ronce), i);
         } else if (t.c === 'arbre') {
           const m = maturite(t), jeu = M.bouleau[sais] || M.bouleau.ete;
           const s = 0.3 + 0.75 * m, rot = h2 * 6.28;
-          R3.add(jeu[h1 < 0.5 ? 0 : 1], x, 0, z, rot, s, s, papier ? { papier } : undefined);
-          if (t.nichoir) R3.add(M.nichoir, x + Math.sin(rot) * 0.08 * s, 0.95 * s, z + Math.cos(rot) * 0.08 * s, rot, 1.1);
+          poser(jeu[h1 < 0.5 ? 0 : 1], x, 0, z, rot, s, s, avecVent(papier ? { papier } : null, VENT.arbre), i);
+          if (t.nichoir) poser(M.nichoir, x + Math.sin(rot) * 0.08 * s, 0.95 * s, z + Math.cos(rot) * 0.08 * s, rot, 1.1, undefined, undefined, i);
         } else if (t.c === 'roche') {
-          R3.add(M.roche[(h1 * 3) | 0], x, 0, z, h2 * 6.28, 0.9 + h1 * 0.3, 0.9, sais === 'hiver' ? undefined : undefined);
+          poser(M.roche[(h1 * 3) | 0], x, 0, z, h2 * 6.28, 0.9 + h1 * 0.3, 0.9, undefined, i);
         } else if (t.c === 'bois_mort' && t.ancre === i) {
-          R3.add(t.naturel ? M.bois_mort_naturel : M.tas_bois, x, 0, z, t.naturel ? h2 * 6.28 : (h2 < 0.5 ? 0 : Math.PI / 2), 1);
-        } else if (t.a === 'tas_pierres') R3.add(M.tas_pierres, x, 0, z, h2 * 6.28, 1.05);
-        else if (t.a === 'hotel_insectes') R3.add(M.hotel_insectes, x, 0, z, versCamera(x, z), 1);
+          poser(t.naturel ? M.bois_mort_naturel : M.tas_bois, x, 0, z, t.naturel ? h2 * 6.28 : (h2 < 0.5 ? 0 : Math.PI / 2), 1, undefined, undefined, i);
+        } else if (t.a === 'tas_pierres') poser(M.tas_pierres, x, 0, z, h2 * 6.28, 1.05, undefined, undefined, i);
+        else if (t.a === 'hotel_insectes') poser(M.hotel_insectes, x, 0, z, versCamera(x, z), 1, undefined, undefined, i);
         if (t.champi && fructifie(A)) {
           const n = 1 + (hash(i, 30) < 0.5);
-          for (let k = 0; k < n; k++) R3.add(k ? M.coulemelleBouton : M.coulemelle, x + (hash(i, 31 + k) - 0.5) * 0.6, 0, z + (hash(i, 33 + k) - 0.5) * 0.6, hash(i, 35) * 6, k ? 1.1 : 1.15, undefined, papier ? { papier } : undefined);
+          for (let k = 0; k < n; k++) poser(k ? M.coulemelleBouton : M.coulemelle, x + (hash(i, 31 + k) - 0.5) * 0.6, 0, z + (hash(i, 33 + k) - 0.5) * 0.6, hash(i, 35) * 6, k ? 1.1 : 1.15, undefined, papier ? { papier } : undefined);
         }
         if (etat.teaser && etat.teaser.chene === i && (t.c === 'herbe' || t.c === 'nu' || t.c === 'fleurs') && !t.a) {
           // Teaser de la Jeune forêt : le jeune chêne sort de terre en une minute, puis se balance doucement.
           const pousse = lisse(0, 60, etat.temps - (etat.teaser.t || 0)), s = (0.35 + 0.85 * pousse) * 1.15;
-          R3.add(M.jeune_chene[sais] || M.jeune_chene.ete, x + 0.12, 0, z - 0.1, 0.6 + Math.sin(temps * 0.7) * 0.06, s, s);
+          poser(M.jeune_chene[sais] || M.jeune_chene.ete, x + 0.12, 0, z - 0.1, 0.6 + Math.sin(temps * 0.7) * 0.06, s, s, { vent: VENT.chene });
         }
         if (t.graines >= 1 && (t.c === 'fleurs' || t.c === 'ronce' || t.c === 'arbre')) {
           // Graines mûres à récolter : petite capsule qui flotte au-dessus de la plante.
           const hy = t.c === 'arbre' ? 2.3 * (0.3 + 0.75 * maturite(t)) : t.c === 'ronce' ? 0.95 : 0.6;
-          R3.add(M.graine, x + 0.15, hy + Math.sin(temps * 2 + i) * 0.05, z, temps * 0.8 + i, 1.5);
+          poser(M.graine, x + 0.15, hy + Math.sin(temps * 2 + i) * 0.05, z, temps * 0.8 + i, 1.5);
           cibles.push({ k: 'graine', tuile: i, x: x + 0.15, y: hy, z, r: 1.2 });
         }
       }
@@ -337,16 +405,16 @@
             const saut = bouge ? Math.abs(Math.sin(p.ph)) * 0.15 : 0;
             ombre(p.x, p.z, 0.2 * G, 0.2);
             o.tilt = bouge ? -0.12 : 0;
-            R3.add(M.lapin, p.x, saut, p.z, p.dir, 1.0 * G, 1.0 * G, o); break;
+            poser(M.lapin, p.x, saut, p.z, p.dir, 1.0 * G, 1.0 * G, o); break;
           }
           case 'renard': {
             ombre(p.x, p.z, 0.3 * G, 0.3);
-            R3.add(M.renard, p.x, bouge ? Math.abs(Math.sin(p.ph)) * 0.05 : 0, p.z, p.dir, 1.15 * G, 1.15 * G, o); break;
+            poser(M.renard, p.x, bouge ? Math.abs(Math.sin(p.ph)) * 0.05 : 0, p.z, p.dir, 1.15 * G, 1.15 * G, o); break;
           }
           case 'herisson': {
             ombre(p.x, p.z, 0.22 * G, 0.15);
             o.roll = bouge ? Math.sin(p.ph * 1.6) * 0.08 : 0;
-            R3.add(M.herisson, p.x, 0, p.z, p.dir, 1.15 * G, 1.15 * G, o); break;
+            poser(M.herisson, p.x, 0, p.z, p.dir, 1.15 * G, 1.15 * G, o); break;
           }
           case 'merle': case 'alouette': {
             const jeu = M[a.esp];
@@ -359,9 +427,9 @@
             const mesh = p.haut > 0.15 ? (bat ? jeu.haut : jeu.bas) : jeu.pose;
             ombre(p.x, p.z, 0.16, 0.1 + p.haut * 0.3);
             const sautille = !vole && bouge ? Math.abs(Math.sin(p.ph * 1.4)) * 0.06 : 0;
-            R3.add(mesh, p.x, p.haut + sautille, p.z, p.dir, 1.25 * G, 1.25 * G, o); break;
+            poser(mesh, p.x, p.haut + sautille, p.z, p.dir, 1.25 * G, 1.25 * G, o); break;
           }
-          default: R3.add(M.froisse, p.x, 0, p.z, 0, 1, 1, o);
+          default: poser(M.froisse, p.x, 0, p.z, 0, 1, 1, o);
         }
       }
       if (image % 120 === 0) for (const id in lisses) if (lisses[id].vu < image - 60) delete lisses[id];
@@ -400,12 +468,12 @@
             for (let s = 0; s < k; s++) {
               const q = pl[Math.floor(hash(z * 13 + s, 3) * pl.length) % pl.length];
               const px = q[0] + (hash(z, s + 5) - 0.5) * 0.7, pz = q[1] + (hash(z, s + 9) - 0.5) * 0.7;
-              R3.add(M.turricule, px + 0.15, 0, pz - 0.1, s, 1.2);
+              poser(M.turricule, px + 0.15, 0, pz - 0.1, s, 1.2);
               // Le ver sort de terre puis rentre (on le voit moins quand le sol est sec ou gelé).
               const ph = (temps * 0.18 + hash(z, s)) % 1, dehors = hiver || A.meteo === 'secheresse' ? 0.15 : 0.4;
               if (ph < dehors) {
                 const hy = Math.sin(Math.PI * ph / dehors);
-                R3.add(M.ver[Math.floor(temps * 2 + s) % 2], px, 0, pz, hash(z, s + 2) * 6, 1.4 * api.grossir, 1.4 * hy * api.grossir, s === 0 && papierZone ? { papier: papierZone } : undefined);
+                poser(M.ver[Math.floor(temps * 2 + s) % 2], px, 0, pz, hash(z, s + 2) * 6, 1.4 * api.grossir, 1.4 * hy * api.grossir, s === 0 && papierZone ? { papier: papierZone } : undefined);
                 cibles.push({ k: 'pop', esp: id, zone: z, papier: s === 0 ? papierZone : '', x: px, y: 0.15, z: pz });
               }
             }
@@ -423,7 +491,7 @@
               const sautT = ph > 0.8 ? (ph - 0.8) / 0.2 : 0;
               const px = a0[0] + (a1[0] - a0[0]) * sautT, pz = a0[1] + (a1[1] - a0[1]) * sautT;
               const dir = Math.atan2(a1[0] - a0[0], a1[1] - a0[1]);
-              R3.add(sautT > 0 ? M.sauterelle.saut : M.sauterelle.pose, px, Math.sin(Math.PI * sautT) * 0.45, pz, dir, 1.1 * api.grossir, 1.1 * api.grossir, s === 0 && papierZone ? { papier: papierZone } : undefined);
+              poser(sautT > 0 ? M.sauterelle.saut : M.sauterelle.pose, px, Math.sin(Math.PI * sautT) * 0.45, pz, dir, 1.1 * api.grossir, 1.1 * api.grossir, s === 0 && papierZone ? { papier: papierZone } : undefined);
               cibles.push({ k: 'pop', esp: id, zone: z, papier: s === 0 ? papierZone : '', x: px, y: Math.sin(Math.PI * sautT) * 0.45 + 0.1, z: pz });
             }
           } else if (id === 'abeille' || id === 'tircis') {
@@ -439,8 +507,8 @@
               const py = (id === 'abeille' ? 0.45 : 0.6) + Math.sin(ph * Math.PI) * (id === 'abeille' ? 0.35 : 0.7) + Math.sin(temps * 5 + s) * 0.03;
               const dir = Math.atan2(P1[0] - P0[0], P1[1] - P0[1]) + Math.sin(temps * 2 + s) * 0.6;
               const o = s === 0 && papierZone ? { papier: papierZone } : undefined;
-              if (id === 'abeille') R3.add(Math.floor(temps * 30 + s) % 2 ? M.abeille.haut : M.abeille.bas, px, py, pz, dir, 1.5 * api.grossir, 1.5 * api.grossir, o);
-              else R3.add(M.tircis[Math.floor(temps * (ph < 0.35 ? 4 : 9) + s) % 3], px, py, pz, dir, 1.6 * api.grossir, 1.6 * api.grossir, o);
+              if (id === 'abeille') poser(Math.floor(temps * 30 + s) % 2 ? M.abeille.haut : M.abeille.bas, px, py, pz, dir, 1.5 * api.grossir, 1.5 * api.grossir, o);
+              else poser(M.tircis[Math.floor(temps * (ph < 0.35 ? 4 : 9) + s) % 3], px, py, pz, dir, 1.6 * api.grossir, 1.6 * api.grossir, o);
               cibles.push({ k: 'pop', esp: id, zone: z, papier: s === 0 ? papierZone : '', x: px, y: py, z: pz });
             }
           }
@@ -452,7 +520,7 @@
     function dessinerGarde(etat, A, dt) {
       const T = terrain, cb = T.cabane;
       R3.add(T.promontoire, cb.x, 0, cb.z, 0, 1);
-      R3.add(M.cabane, cb.x, 0, cb.z, cb.dir + Math.PI, 1);
+      poser(M.cabane, cb.x, 0, cb.z, cb.dir + Math.PI, 1);
       // Odile fait le tour de sa cabane, s'arrête et observe l'animal le plus proche aux jumelles.
       odile.pause -= dt;
       if (odile.pause <= 0) {
@@ -470,7 +538,7 @@
         odile.dir = lerpAngle(odile.dir, vise, Math.min(1, dt * 4));
       }
       ombre(odile.x, odile.z, 0.14, 0.2);
-      R3.add(odile.jumelles ? M.odileJumelles : M.odile, odile.x, bouge ? Math.abs(Math.sin(temps * 8)) * 0.025 : 0, odile.z, odile.dir, 1.2);
+      poser(odile.jumelles ? M.odileJumelles : M.odile, odile.x, bouge ? Math.abs(Math.sin(temps * 8)) * 0.025 : 0, odile.z, odile.dir, 1.2);
       cibles.push({ k: 'garde', x: cb.x, y: 0.6, z: cb.z, r: 1.3 }, { k: 'garde', x: odile.x, y: 0.4, z: odile.z });
     }
 
@@ -510,7 +578,7 @@
         ctx.fillStyle = grain; ctx.fillRect(0, 0, w, h);
       }
     }
-    let grain = null, couleurCiel = null;
+    let grain = null, couleurCiel = null, ventForce = 1;
     function emettre(etat, A, dt) {
       const Re = terrain.Re;
       const ajouter = (n, f) => { for (let k = 0; k < n; k++) particules.push(f()); };
@@ -770,7 +838,12 @@
       ctx = GL.fondCtx; ciel(w, h, A); ctx = ctxPrincipal;
       // Sprint 8b : l'eau reflète le ciel ; la cabane s'éclaire la nuit.
       const cb = terrain.cabane;
-      GL.reglerAmbiance(couleurCiel, (1 - A.nuit) * (1 - A.orage * 0.8), temps, { x: cb.x * 0.92, y: 0.75, z: cb.z * 0.92, force: A.nuit });
+      // Sprint 8c : brise ordinaire, vent fort pendant l'orage, presque rien par sécheresse ; sa direction tourne lentement.
+      const force = (A.meteo === 'orage' ? 2.6 : A.meteo === 'secheresse' ? 0.45 : A.orage > 0 ? 1.6 : 1) * (A.saison === 'hiver' ? 0.8 : 1) * (A.nuit > 0.5 ? 0.75 : 1);
+      ventForce += (force - ventForce) * Math.min(1, dt * 0.5);
+      GL.reglerAmbiance(couleurCiel, (1 - A.nuit) * (1 - A.orage * 0.8), temps, { x: cb.x * 0.92, y: 0.75, z: cb.z * 0.92, force: A.nuit }, { force: ventForce, angle: 0.65 + Math.sin(temps * 0.013) * 0.9 });
+      suivreTuiles(etat, liste);
+      if (plis) { if (plis.phase === 'replie') cam.yaw += dt * 0.16; else if (temps - plis.t0 > 1.8) plis = null; }
       R3.begin();
       R3.add(terrain.jupe, 0, 0, 0, 0, 1, 1, { ombre: false });
       colorerSolGL(etat, A);
@@ -814,6 +887,8 @@
       lireJournal(etat);
       cibles = [];
       const liste = Core.tuilesIle(etat), rares = indexRares(etat);
+      suivreTuiles(etat, liste);
+      if (plis && plis.phase !== 'replie' && temps - plis.t0 > 1.8) plis = null;
 
       // 1. Ciel, tranche de l'îlot, sol plié, décors plats et ombres fixes : « fond » mis en cache
       // tant que la caméra ne bouge pas (rafraîchi toutes les 1,5 s pour l'eau, la lumière, l'humidité).
@@ -924,8 +999,15 @@
       nom: GL ? 'WebGL' : 'Canvas 2D', webgl: !!GL,
       // Qualité du rendu WebGL (sprint 8b) : 2 = tout, 1 = sans effet maquette, 0 = sans ombres portées.
       get qualite() { return GL ? GL.qualite : 0; },
-      set qualite(q) { if (!GL) return; while (GL.qualite > q && GL.baisserQualite()); if (q > GL.qualite) GL.qualite = Math.min(q, GL.gl.shadowMap.enabled ? 2 : 0); },
+      set qualite(q) { if (GL) GL.reglerQualite(q); },
       baisserQualite: () => (GL ? GL.baisserQualite() : false),
+      // Sprint 8c : densité de l'herbe (1 : prairie dense de près, 0 : allégée pour les appareils lents).
+      densite: 1,
+      // Passage d'étape en 3D : l'île se replie (plier), puis se redéplie du centre vers le bord (deplier).
+      plier(etat) { plis = { phase: 'replie', t0: temps, Re: etat ? Math.sqrt(etat.rayon * etat.rayon + etat.rayon) : 10 }; },
+      deplier(etat) { plis = { phase: 'deplie', t0: temps, Re: etat ? Math.sqrt(etat.rayon * etat.rayon + etat.rayon) : (plis ? plis.Re : 10) }; },
+      get plie() { return plis ? plis.phase : ''; },
+      get depliages() { return apparitions.size; },
       dessiner, tuileSous, cadrer, deplacer, zoomer, penteAuto, grossir: 1.35, cibleSous, ecran, ecranCabane, get cibles() { return cibles; }, camera: cam, moteur: R3, modeles: M, dprMax: 2 };
     return api;
   }

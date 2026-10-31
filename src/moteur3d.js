@@ -12,6 +12,8 @@
 // Sprint 8b (rendu papier) : grain et fibres du papier sur chaque face, arêtes de pli, ombre de contact au pied
 // des modèles, eau qui reflète le ciel (avec des reflets de soleil), lumière de la cabane la nuit,
 // effet maquette (haut et bas de l'image légèrement flous), et qualité qui baisse seule si l'appareil peine.
+// Sprint 8c (vie et mouvement) : vent dans la carte graphique (herbe qui ondule, fleurs, ronces et arbres qui se
+// balancent, ombres portées comprises), avec des rafales qui traversent l'île ; qualité réglable dans les deux sens.
 (function (racine, fabrique) {
   if (typeof module === 'object' && module.exports) module.exports = fabrique(require('./engine.js'));
   else racine.BiomeMoteur3D = fabrique(racine.BiomeEngine);
@@ -70,8 +72,55 @@
     return c;
   }
 
-  // Code ajouté aux matériaux Lambert de Three.js. o : { douce, aretes, contact, sol }.
+  // Code ajouté aux matériaux Lambert de Three.js. o : { douce, aretes, contact, sol, vent }.
   const GLSL_ENTETE_V = 'varying vec3 vLoc;\nvarying vec3 vLocN;\nvarying float vMondeY;\n';
+  // Vent (sprint 8c) : chaque copie plie selon le carré de sa hauteur au-dessus de son pied (le pied ne bouge pas).
+  // La phase dépend de la position de la copie : les touffes voisines ondulent ensemble, comme une vague qui passe,
+  // et une rafale lente traverse l'île. a : souplesse du modèle (herbe très souple, bouleau raide).
+  const GLSL_VENT_V = 'uniform float uTemps;\nuniform float uVent;\nuniform vec2 uVentDir;\n';
+  function glslProjection(a, monde) {
+    return [
+      '\tvec4 mvPosition = vec4(transformed, 1.0);',
+      '#ifdef USE_INSTANCING',
+      '\tmvPosition = instanceMatrix * mvPosition;',
+      '#endif',
+      a ? ['\t{ vec3 pied = vec3(0.0);',
+        '#ifdef USE_INSTANCING',
+        '\tpied = instanceMatrix[3].xyz;',
+        '#endif',
+        '\tfloat hh = max(0.0, mvPosition.y - pied.y);',
+        '\tfloat av = dot(pied.xz, uVentDir);',
+        '\tfloat ph = uTemps * ' + (a > 0.1 ? '2.3' : '1.25') + ' - av * 0.55 + pied.x * 0.11 - pied.z * 0.07;',
+        '\tfloat rafale = 0.55 + 0.45 * smoothstep(-0.2, 1.0, sin(uTemps * 0.42 - av * 0.16));',
+        '\tfloat b = (0.62 * sin(ph) + 0.28 * sin(ph * 2.37 + 1.3) + 0.35) * rafale * uVent * ' + a.toFixed(4) + ';',
+        '\tmvPosition.xz += uVentDir * b * hh * hh;',
+        '\tmvPosition.y -= 0.35 * abs(b) * hh * hh * min(1.0, abs(b) * hh * 4.0); }'].join('\n') : '',
+      monde ? '\tvMondeY = (modelMatrix * mvPosition).y;' : '',
+      '\tmvPosition = modelViewMatrix * mvPosition;',
+      '\tgl_Position = projectionMatrix * mvPosition;'].join('\n');
+  }
+  // Faces non éclairées (cœurs de fleurs, lumières) : seulement le vent.
+  function ventSeul(m, a, U) {
+    if (!a) return m;
+    m.onBeforeCompile = sh => {
+      for (const k of ['uTemps', 'uVent', 'uVentDir']) sh.uniforms[k] = U[k];
+      sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\n' + GLSL_VENT_V)
+        .replace('#include <project_vertex>', glslProjection(a, false));
+    };
+    m.customProgramCacheKey = () => 'basiqueVent' + a.toFixed(4);
+    return m;
+  }
+  // Matériau d'ombre qui plie au vent comme le modèle (sinon l'ombre d'un arbre resterait immobile).
+  function profondeurVent(T, a, U) {
+    const m = new T.MeshDepthMaterial({ depthPacking: T.RGBADepthPacking, side: T.DoubleSide });
+    m.onBeforeCompile = sh => {
+      for (const k of ['uTemps', 'uVent', 'uVentDir']) sh.uniforms[k] = U[k];
+      sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\n' + GLSL_VENT_V)
+        .replace('#include <project_vertex>', glslProjection(a, false));
+    };
+    m.customProgramCacheKey = () => 'ombreVent' + a.toFixed(4);
+    return m;
+  }
   const GLSL_ENTETE_F = [
     'uniform sampler2D uGrain;', 'uniform float uForceGrain;', 'uniform float uAretes;', 'uniform float uTemps;',
     'uniform vec3 uCielEau;', 'uniform float uJour;',
@@ -87,11 +136,11 @@
     m.onBeforeCompile = sh => {
       for (const k in U) sh.uniforms[k] = U[k];
       let v = sh.vertexShader, f = sh.fragmentShader;
-      v = v.replace('#include <common>', '#include <common>\n' + GLSL_ENTETE_V +
+      v = v.replace('#include <common>', '#include <common>\n' + GLSL_ENTETE_V + GLSL_VENT_V +
         (o.aretes ? 'attribute vec3 bary;\nvarying vec3 vBary;\n' : '') + (o.sol ? 'attribute float eau;\nvarying float vEau;\n' : ''));
       v = v.replace('#include <begin_vertex>', '#include <begin_vertex>\n\tvLoc = transformed; vLocN = objectNormal;' +
         (o.aretes ? ' vBary = bary;' : '') + (o.sol ? ' vEau = eau;' : ''));
-      v = v.replace('#include <project_vertex>', '#include <project_vertex>\n\t{ vec4 wp = vec4(transformed, 1.0);\n#ifdef USE_INSTANCING\n\twp = instanceMatrix * wp;\n#endif\n\twp = modelMatrix * wp; vMondeY = wp.y; }');
+      v = v.replace('#include <project_vertex>', glslProjection(o.vent || 0, true));
       f = f.replace('#include <common>', '#include <common>\n' + GLSL_ENTETE_F +
         (o.aretes ? 'varying vec3 vBary;\n' : '') + (o.sol ? 'varying float vEau;\n' : ''));
       let apres = '\tdiffuseColor.rgb *= grainPapier();\n';
@@ -116,7 +165,7 @@
         '#include <opaque_fragment>'].join('\n'));
       sh.vertexShader = v; sh.fragmentShader = f;
     };
-    m.customProgramCacheKey = () => 'papier' + (o.douce ? 'D' : '') + (o.aretes ? 'A' : '') + (o.contact ? 'C' : '') + (o.sol ? 'S' : '');
+    m.customProgramCacheKey = () => 'papier' + (o.douce ? 'D' : '') + (o.aretes ? 'A' : '') + (o.contact ? 'C' : '') + (o.sol ? 'S' : '') + (o.vent ? 'V' + o.vent.toFixed(4) : '');
     if (o.aretes) m.extensions = Object.assign(m.extensions || {}, { derivatives: true });
     return m;
   }
@@ -211,24 +260,26 @@
     const U = this.U = {
       uGrain: { value: grain }, uForceGrain: { value: 0.16 }, uAretes: { value: 1 }, uTemps: { value: 0 },
       uCielEau: { value: new T.Color(0.75, 0.85, 0.88) }, uJour: { value: 1 },
+      uVent: { value: 1 }, uVentDir: { value: new T.Vector2(0.8, 0.6) },
     };
+    this.ombresVent = {};
     // Faces « douces » : comme engine.js, k = 0,84 + 0,26 × éclairement, au lieu de 0,58 + 0,52 × éclairement.
-    const fabriquer = (papierRare, alpha) => {
+    const fabriquer = (papierRare, alpha, vent) => {
       const base = { vertexColors: true, side: T.DoubleSide };
       if (papierRare) base.map = textures[papierRare];
       if (alpha) { base.transparent = true; base.depthWrite = false; }
       return [
-        papier(new T.MeshLambertMaterial(base), { aretes: true, contact: true }, U),
-        papier(new T.MeshLambertMaterial(base), { douce: true, contact: true }, U),
-        new T.MeshBasicMaterial(Object.assign({}, base, { map: null })),
+        papier(new T.MeshLambertMaterial(base), { aretes: true, contact: true, vent }, U),
+        papier(new T.MeshLambertMaterial(base), { douce: true, contact: true, vent }, U),
+        ventSeul(new T.MeshBasicMaterial(Object.assign({}, base, { map: null })), vent, U),
       ];
     };
     this.matSol = papier(new T.MeshLambertMaterial({ vertexColors: true, side: T.DoubleSide }), { sol: true }, U);
     this.materiaux = {};
-    this._mat = (papier, alpha) => {
-      const cle = (papier || '') + '|' + (alpha || 0);
+    this._mat = (papier, alpha, vent) => {
+      const cle = (papier || '') + '|' + (alpha || 0) + '|' + (vent || 0);
       let m = this.materiaux[cle];
-      if (!m) { m = this.materiaux[cle] = fabriquer(papier, alpha); if (alpha) for (const x of m) x.opacity = alpha; }
+      if (!m) { m = this.materiaux[cle] = fabriquer(papier, alpha, vent || 0); if (alpha) for (const x of m) x.opacity = alpha; }
       return m;
     };
 
@@ -268,6 +319,7 @@
 
     this.sol = null;
     this.sansOmbre = false;
+    this.ventActif = true;
     this.np = 0;
     this.taille = [0, 0, 0];
     this.tmp = [0, 0, 0];
@@ -345,18 +397,22 @@
     this.dec.n = 0;
     this.np = 0;
   };
-  Renderer3D.prototype._lot = function (mesh, papier, alpha, ombre) {
+  Renderer3D.prototype._lot = function (mesh, papier, alpha, ombre, vent) {
     let id = this.ids.get(mesh);
     if (id === undefined) { id = this.nbIds++; this.ids.set(mesh, id); }
-    const cle = id + '|' + papier + '|' + alpha + '|' + (ombre ? 1 : 0);
+    const cle = id + '|' + papier + '|' + alpha + '|' + (ombre ? 1 : 0) + '|' + vent;
     let l = this.lots.get(cle);
-    if (!l) { l = { cle, mesh, papier, alpha, ombre, im: null, cap: 0, n: 0 }; this.lots.set(cle, l); }
+    if (!l) { l = { cle, mesh, papier, alpha, ombre, vent, im: null, cap: 0, n: 0 }; this.lots.set(cle, l); }
     if (l.n >= l.cap) this._agrandir(l);
     return l;
   };
   Renderer3D.prototype._agrandir = function (l) {
     const T = this.T, cap = Math.max(8, l.cap * 2);
-    const im = new T.InstancedMesh(this._geo(l.mesh, l.papier), this._mat(l.papier, l.alpha), cap);
+    const im = new T.InstancedMesh(this._geo(l.mesh, l.papier), this._mat(l.papier, l.alpha, l.vent), cap);
+    if (l.vent && l.ombre) {
+      const k = l.vent.toFixed(4);
+      im.customDepthMaterial = this.ombresVent[k] || (this.ombresVent[k] = profondeurVent(T, l.vent, this.U));
+    }
     im.instanceMatrix.setUsage(T.DynamicDrawUsage);
     im.instanceColor = new T.InstancedBufferAttribute(new Float32Array(cap * 3).fill(1), 3);
     im.instanceColor.setUsage(T.DynamicDrawUsage);
@@ -373,12 +429,14 @@
     this.scene.add(im);
     l.im = im; l.cap = cap;
   };
-  // Même signature qu'engine.js. o : { alpha, tilt, roll, papier, ombre (false : ne projette pas d'ombre), couleur ([r,g,b] 0-255, multiplie) }
+  // Même signature qu'engine.js. o : { alpha, tilt, roll, papier, ombre (false : ne projette pas d'ombre), couleur ([r,g,b] 0-255, multiplie),
+  // vent (sprint 8c : souplesse au vent, 0 = immobile ; quelques valeurs fixes, une par sorte de plante) }
+  const VIDE = {};
   Renderer3D.prototype.add = function (mesh, x, y, z, ry, s, sy, o) {
-    o = o || {};
+    o = o || VIDE;
     const papier = o.papier && this.textures[o.papier] ? o.papier : '';
     const alpha = o.alpha !== undefined && o.alpha < 0.99 ? Math.max(0.1, Math.round(o.alpha * 10) / 10) : 0;
-    const l = this._lot(mesh, papier, alpha, o.ombre !== false && !alpha && !this.sansOmbre);
+    const l = this._lot(mesh, papier, alpha, o.ombre !== false && !alpha && !this.sansOmbre, this.ventActif && o.vent ? o.vent : 0);
     const sY = sy || s, tilt = o.tilt || 0, roll = o.roll || 0;
     // M = Translation · Ry · Rz(roulis) · Rx(bascule) · Échelle, comme engine.js.
     const cy = Math.cos(ry || 0), sn = Math.sin(ry || 0), ct = Math.cos(tilt), st = Math.sin(tilt), cr = Math.cos(roll), sr = Math.sin(roll);
@@ -520,7 +578,9 @@
   };
   // Ambiance passée par rendu.js à chaque image (sprint 8b) : couleur du ciel pour l'eau, nuit, lampe de la cabane.
   // ciel : [r, g, b] (0-255) ; jour : 0 (nuit) à 1 ; lampe : { x, y, z, force (0 à 1) }.
-  Renderer3D.prototype.reglerAmbiance = function (ciel, jour, temps, lampe) {
+  // vent (sprint 8c) : { force (1 = brise ordinaire), angle (radians) }.
+  Renderer3D.prototype.reglerAmbiance = function (ciel, jour, temps, lampe, vent) {
+    if (vent) { this.U.uVent.value = vent.force; this.U.uVentDir.value.set(Math.cos(vent.angle), Math.sin(vent.angle)); }
     if (ciel) this.U.uCielEau.value.setRGB(ciel[0] / 255, ciel[1] / 255, ciel[2] / 255);
     this.U.uJour.value = jour;
     this.U.uTemps.value = temps;
@@ -529,9 +589,20 @@
   // Baisse d'un cran la qualité (appareil trop lent) : d'abord l'effet maquette, puis les ombres portées.
   Renderer3D.prototype.baisserQualite = function () {
     if (this.qualite <= 0) return false;
-    this.qualite--;
-    if (this.qualite < 1) { this.gl.shadowMap.enabled = false; this.soleil.castShadow = false; for (const m of Object.values(this.materiaux)) for (const x of m) x.needsUpdate = true; this.matSol.needsUpdate = true; }
+    this.reglerQualite(this.qualite - 1);
     return true;
+  };
+  // Sprint 8c : la qualité peut aussi remonter (appareil redevenu fluide après un à-coup). 2, 1 ou 0.
+  Renderer3D.prototype.reglerQualite = function (q) {
+    q = Math.max(0, Math.min(2, q | 0));
+    const ombres = q >= 1;
+    if (ombres !== this.gl.shadowMap.enabled) {
+      this.gl.shadowMap.enabled = ombres; this.soleil.castShadow = ombres;
+      for (const m of Object.values(this.materiaux)) for (const x of m) x.needsUpdate = true;
+      this.matSol.needsUpdate = true;
+    }
+    if (q < 2 && this.flou) { this.flou.dispose(); this.flou = null; }
+    this.qualite = q;
   };
   Renderer3D.prototype._rendreAvecFlou = function () {
     const T = this.T, gl = this.gl, t = this.taille, W = Math.round(t[0] * t[2]), H = Math.round(t[1] * t[2]);

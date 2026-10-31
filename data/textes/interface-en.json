@@ -315,7 +315,9 @@
     "titre": "Frames per second",
     "detail": "{fps} average, {min} lowest (last 30 seconds), resolution ×{dpr}",
     "aide": "Note this down during phone tests.",
-    "qualite": "quality {q}"
+    "qualite": "quality {q}",
+    "palier": "level {p} of {n}",
+    "auto": "automatic"
   },
   "camera": {
     "gauche": "Turn left",

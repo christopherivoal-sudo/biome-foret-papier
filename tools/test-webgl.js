@@ -3,6 +3,8 @@
 // sur la caméra d'engine.js (clics, bulles et repères restent justes), un clic sur l'île sème bien,
 // le repli Canvas 2D marche (sans Three.js, ou avec ?canvas2d), et le travail du processeur par image baisse.
 // Sprint 8b : matériaux papier, effet maquette, lampe de la cabane la nuit, qualité qui baisse seule.
+// Sprint 8c : vent (herbe, fleurs, ronces, arbres, et leurs ombres), objets qui se déplient à la pose, île qui se replie
+// au passage d'étape, qualité automatique par paliers, fichier allégé.
 // Écrit des captures dans dist/captures/webgl-*.png.
 // Usage : node tools/test-webgl.js   (construire d'abord : node tools/construire.js)
 // Le navigateur de test n'a pas de carte graphique : il dessine 3 images par seconde, c'est normal ici.
@@ -104,6 +106,49 @@ function verifier(c, m) { if (c) { ok++; console.log('  ✓ ' + m); } else { ko+
   await p.waitForTimeout(1500);
   await p.screenshot({ path: path.join(DOS, 'webgl-qualite0.png'), timeout: 120000 });
 
+  // Sprint 8c : vent, dépliage, pli de l'île.
+  await p.evaluate(() => window.BIOME_JEU.rendu.qualite = 2);
+  await charger(p, scenes[2].etat);
+  await p.waitForTimeout(2500);
+  const v = await p.evaluate(() => {
+    const g = window.BIOME_JEU.rendu.moteur, prog = g.gl.info.programs.map(x => x.cacheKey).join(' ');
+    let ombresVent = 0;
+    for (const l of g.lots.values()) if (l.im && l.vent && l.ombre && l.im.customDepthMaterial) ombresVent++;
+    return { herbe: prog.includes('V0.5500'), arbre: prog.includes('V0.0160'), ombre: /ombreVent0\.0160/.test(prog), ombresVent, force: g.U.uVent.value };
+  });
+  verifier(v.herbe && v.arbre && v.force > 0, `vent dans la carte graphique : herbe et bouleaux souples (force ${v.force.toFixed(2)})`);
+  verifier(v.ombre && v.ombresVent > 0, `les ombres des arbres et des ronces bougent avec le vent (${v.ombresVent} modèles)`);
+  // Deux images à 0,8 s d'écart, île arrêtée (vitesse 0) : seuls le vent et les animaux bougent.
+  const a1 = await p.screenshot({ clip: { x: 300, y: 250, width: 600, height: 300 }, timeout: 120000 });
+  await p.waitForTimeout(800);
+  const a2 = await p.screenshot({ clip: { x: 300, y: 250, width: 600, height: 300 }, timeout: 120000 });
+  verifier(!a1.equals(a2), 'l\'île bouge d\'une image à l\'autre même à l\'arrêt (herbe qui ondule)');
+  const dep = await p.evaluate(() => {
+    const J = window.BIOME_JEU, e = J.etat, N = window.BiomeCore.N, C = window.BiomeCore.CENTRE;
+    e.seve = 5000;
+    for (let d = 1; d < 9; d++) for (const [dx, dy] of [[d, 0], [-d, 0], [0, d], [0, -d], [d, d], [-d, -d]]) {
+      const x = C + dx, y = C + dy, t = e.tuiles[y * N + x];
+      if (t && (t.c === 'nu' || t.c === 'herbe') && !t.a) { const r = window.BiomeCore.action(e, window.BIOME_DATA, 'tas_pierres', x, y); if (r && r.ok) return { x, y }; }
+    }
+    return null;
+  });
+  await p.waitForTimeout(300);
+  const enCours = await p.evaluate(() => window.BIOME_JEU.rendu.depliages);
+  await p.screenshot({ path: path.join(DOS, 'webgl-depliage.png'), timeout: 120000 });
+  // Le navigateur de test dessine environ 3 images/s : le temps du rendu avance lentement, on attend la fin.
+  const attendre = async (f, ms) => { const t0 = Date.now(); let r; while (!(r = await p.evaluate(f)) && Date.now() - t0 < ms) await p.waitForTimeout(250); return r; };
+  const fini = (await attendre(() => window.BIOME_JEU.rendu.depliages === 0, 20000)) ? 0 : 1;
+  verifier(dep && enCours > 0 && fini === 0, 'un tas de pierres posé se déplie, puis reste en place');
+  await p.evaluate(() => window.BIOME_JEU.rendu.plier(window.BIOME_JEU.etat));
+  await p.waitForTimeout(2500);
+  const plie = await p.evaluate(() => window.BIOME_JEU.rendu.plie);
+  await p.screenshot({ path: path.join(DOS, 'webgl-pli.png'), timeout: 120000 });
+  await p.evaluate(() => window.BIOME_JEU.rendu.deplier(window.BIOME_JEU.etat));
+  await p.waitForTimeout(900);
+  await p.screenshot({ path: path.join(DOS, 'webgl-depli.png'), timeout: 120000 });
+  const deplie = (await attendre(() => window.BIOME_JEU.rendu.plie === '', 25000)) ? '' : 'encore';
+  verifier(plie === 'replie' && deplie === '', 'passage d\'étape : l\'île se replie puis se redéplie');
+
   // Travail du processeur par image (la carte graphique fait le reste).
   const mesure = () => p.evaluate(() => { const R = window.BIOME_JEU.rendu, e = window.BIOME_JEU.etat; R.dessiner(e, 0.016, {}); const t0 = performance.now(); for (let k = 0; k < 10; k++) R.dessiner(e, 0.016, {}); return (performance.now() - t0) / 10; });
   await charger(p, scenes[2].etat);
@@ -116,6 +161,28 @@ function verifier(c, m) { if (c) { ok++; console.log('  ✓ ' + m); } else { ko+
   const t2D = await p.evaluate(() => { const R = window.BIOME_JEU.rendu, e = window.BIOME_JEU.etat; const t0 = performance.now(); for (let k = 0; k < 10; k++) R.dessiner(e, 0.016, { sansCache: true }); return (performance.now() - t0) / 10; });
   verifier(tGL < t2D, `processeur par image : ${tGL.toFixed(1)} ms en WebGL contre ${t2D.toFixed(1)} ms en Canvas 2D (île de 2 h)`);
   await p.close();
+
+  console.log('Qualité automatique (sprint 8c)');
+  // Sans ?qualite, le jeu règle seul sa qualité. Ici (pas de carte graphique, 3 images/s), il doit descendre les paliers.
+  p = await ctx.newPage();
+  p.on('pageerror', e => erreurs.push(e.message));
+  await p.goto(URL + '?langue=fr&nouvelle=1');
+  await p.waitForTimeout(1500);
+  const q0 = await p.evaluate(() => window.biomeQualite());
+  await p.waitForTimeout(26000);
+  const q1 = await p.evaluate(() => window.biomeQualite());
+  verifier(q0.palier === 0 && q0.qualite === 2, 'ordinateur : départ au palier 1 (tout)');
+  verifier(q1.palier >= 4 && q1.densite === 0 && q1.dprMax <= 1, `appareil lent : descend seul jusqu'au palier ${q1.palier + 1} (qualité ${q1.qualite}, définition ×${q1.dprMax}, herbe allégée)`);
+  await p.close();
+  const mob = await nav.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, deviceScaleFactor: 3 });
+  p = await mob.newPage();
+  await p.goto(URL + '?langue=fr&nouvelle=1');
+  await p.waitForTimeout(1500);
+  const qm = await p.evaluate(() => window.biomeQualite());
+  verifier(qm.palier === 2 && qm.qualite === 1 && qm.dprMax === 1.5, 'téléphone : départ sans effet maquette, définition ×1,5');
+  await p.close(); await mob.close();
+  const taille = fs.statSync(path.join(R, 'dist', 'jeu.html')).size / 1024;
+  verifier(taille < 900, `fichier du jeu allégé : ${taille.toFixed(0)} Ko`);
 
   console.log('Repli sans Three.js');
   p = await ouvrir('nouvelle=1', () => { Object.defineProperty(window, 'THREE', { get() { return undefined; }, set() {}, configurable: false }); });

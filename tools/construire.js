@@ -16,7 +16,19 @@ const graine = k >= 0 ? Number(args[k + 1]) : 1;
 const json = o => JSON.stringify(o).replace(/</g, '\\u003c');
 const data = require('./donnees.js')();
 // Sprint 8a : Three.js (vendor/three, MIT) transformé en script classique (window.THREE).
-const three = require('./three-global.js')();
+// Sprint 8c : copie réduite aux pièces utilisées (vendor/three/three.biome.min.js, tools/alleger-three.js) ;
+// --three-complet reprend la version entière.
+const threeReduit = path.join(R, 'vendor', 'three', 'three.biome.min.js');
+const three = !args.includes('--three-complet') && fs.existsSync(threeReduit) ? fs.readFileSync(threeReduit, 'utf8') : require('./three-global.js')();
+// Sprint 8c : nos scripts sont compactés (commentaires et espaces retirés) si esbuild est présent ; --lisible les garde tels quels.
+let esbuild = null;
+if (!args.includes('--lisible')) for (const p of ['esbuild', '/opt/npm-tools/node_modules/esbuild']) { try { esbuild = require(p); break; } catch (e) { /* suivant */ } }
+const lireJS = f => {
+  const src = lire(f);
+  if (!esbuild) return src;
+  return esbuild.transformSync(src, { minify: true, legalComments: 'none', target: 'es2019' }).code.replace(/<\/script/gi, '<\\/script');
+};
+const lireCSS = f => (esbuild ? esbuild.transformSync(lire(f), { loader: 'css', minify: true }).code : lire(f));
 fs.mkdirSync(path.join(R, 'dist'), { recursive: true });
 
 const jeu = `<!DOCTYPE html>
@@ -25,25 +37,25 @@ const jeu = `<!DOCTYPE html>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
 <title>Biome, la forêt de papier</title>
-<style>${lire('src/game.css')}</style>
+<style>${lireCSS('src/game.css')}</style>
 </head>
 <body>
 <canvas id="scene"></canvas>
 <div id="jeu"></div>
 <script>window.BIOME_DATA = ${json(data)};</script>
-<script>${lire('src/core.js')}</script>
-<script>${lire('src/engine.js')}</script>
-<script>${lire('src/models.js')}</script>
+<script>${lireJS('src/core.js')}</script>
+<script>${lireJS('src/engine.js')}</script>
+<script>${lireJS('src/models.js')}</script>
 <script>${three}</script>
-<script>${lire('src/moteur3d.js')}</script>
-<script>${lire('src/rendu.js')}</script>
-<script>${lire('src/ads.js')}</script>
-<script>${lire('src/game.js')}</script>
+<script>${lireJS('src/moteur3d.js')}</script>
+<script>${lireJS('src/rendu.js')}</script>
+<script>${lireJS('src/ads.js')}</script>
+<script>${lireJS('src/game.js')}</script>
 </body>
 </html>
 `;
 fs.writeFileSync(path.join(R, 'dist', 'jeu.html'), jeu);
-console.log(`dist/jeu.html : ${(jeu.length / 1024).toFixed(0)} Ko.`);
+console.log(`dist/jeu.html : ${(Buffer.byteLength(jeu) / 1024).toFixed(0)} Ko${esbuild ? ' (scripts compactés)' : ''}.`);
 
 if (args.includes('--vitrine')) {
   const scenes = require('./scenes.js')(graine).map(s => ({ id: s.id, nom: s.nom, etat: s.etat }));

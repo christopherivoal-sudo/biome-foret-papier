@@ -1,6 +1,6 @@
 # Biome, la forêt de papier : document de conception v2
 
-Version 1.9, 31 octobre 2026 (précisions du sprint 3 en 5.1 et 8.5, du sprint 4 en 1.9 et 10.4, du sprint 5 en 10.4, du sprint 5 bis en 4.3, 5.1, 6.2 et 10.4, du sprint 6 en 10.4 ; gameplay actif du sprint 7 en section 12 ; rendu WebGL des sprints 8a et 8b en 10.4 et 10.5). Rédigé par Claude, décisions de Christophe intégrées (section 11).
+Version 2.0, 31 octobre 2026 (précisions du sprint 3 en 5.1 et 8.5, du sprint 4 en 1.9 et 10.4, du sprint 5 en 10.4, du sprint 5 bis en 4.3, 5.1, 6.2 et 10.4, du sprint 6 en 10.4 ; gameplay actif du sprint 7 en section 12 ; rendu WebGL des sprints 8a, 8b et 8c en 10.4 et 10.5). Rédigé par Claude, décisions de Christophe intégrées (section 11).
 
 Repères de lecture :
 - **[PROTO]** : construit dans le prototype v2.
@@ -753,6 +753,15 @@ Précisions du sprint 8b (rendu papier, `src/moteur3d.js`) :
 - **Pluie, neige, pétales en 3D** : faits dès le sprint 8a.
 - **Tests** : `tools/test-webgl.js` passe à 19 vérifications (matériaux papier compilés, effet maquette actif sur ordinateur, lampe allumée la nuit, qualité qui baisse par paliers, capture de près).
 
+Précisions du sprint 8c (vie et mouvement, `src/moteur3d.js`, `src/rendu.js`, `src/game.js`) :
+- **Vent** calculé par la carte graphique : chaque copie d'herbe, de fleur, de ronce ou d'arbre plie selon le carré de sa hauteur (le pied ne bouge pas). Souplesse par plante (herbe 0,55, fleurs 0,32, jeune chêne 0,035, ronce 0,04, bouleau 0,016 ; `VENT` dans `rendu.js`). Les touffes voisines ondulent ensemble, comme une vague qui traverse la prairie, et une rafale lente passe sur l'île. Les **ombres portées** des arbres et des ronces bougent avec eux. Force : brise ordinaire 1, nuit 0,75, hiver 0,8, nuages qui s'annoncent 1,6, orage 2,6, sécheresse 0,45 (air immobile) ; la direction tourne lentement. Le moteur Canvas 2D (repli) reste immobile.
+- **Prairie dense** en WebGL : de près (caméra à moins de 20), 6 touffes par tuile au lieu de 3.
+- **Objets qui se déplient** à la pose, comme dans un livre animé : tas de pierres, hôtel, tas de bois, nichoir, ronce, bouleau se relèvent en 0,85 s avec un petit dépassement, et un anneau de papier s'ouvre au sol ; herbe et fleurs semées poussent en 0,5 s ; une mare creusée fait une onde.
+- **Passage d'étape en 3D** : l'île elle-même se replie (les objets se couchent du bord vers le centre, le sol redevient une page crème) pendant que la caméra tourne lentement ; le titre de l'étape s'affiche sur une carte de papier en haut de l'écran, sans cacher l'île. Au bouton « Continuer », tout se redéplie du centre vers le bord. En Canvas 2D, l'ancienne cinématique (deux volets de papier) est gardée.
+- **Qualité automatique par paliers** (7 paliers : effet maquette, définition ×2 → ×0,75, herbe dense, ombres portées). Ordinateur : palier 1 (tout). **Téléphone : palier 3** (sans effet maquette, définition ×1,5, ombres de 1 024 px). Moins de 45 images/s → palier suivant (au plus toutes les 3 s) ; plus de 57 images/s pendant 15 s → on remonte d'un palier, sauf vers un palier qui a déjà échoué deux fois (pas de va-et-vient) ; rien pendant une pub ou onglet caché. Les réglages affichent le palier (« palier 3 sur 7, réglé seul »). `?qualite=0/1/2` fixe toujours la qualité.
+- **Fichier allégé** : 827 Ko au lieu de 1 164 Ko (242 Ko une fois compressé par le serveur). Three.js réduit aux 31 pièces utilisées (`vendor/three/three.biome.min.js`, 504 Ko au lieu de 655, produit par `tools/alleger-three.js`, à relancer seulement si `moteur3d.js` utilise une nouvelle pièce de Three.js) ; nos scripts et la feuille de style compactés à la construction si esbuild est présent (`--lisible` pour les garder tels quels, `--three-complet` pour la version entière de Three.js). La construction n'a toujours besoin d'aucun outil externe.
+- **Tests** : `tools/test-webgl.js` passe à 28 vérifications (vent compilé, ombres au vent, île qui bouge à l'arrêt, dépliage d'un tas de pierres, pli et dépli de l'île, paliers sur ordinateur, sur téléphone et sur un appareil lent, taille du fichier). Fluidité réelle toujours à vérifier par Christophe (pas de carte graphique ici).
+
 ### 10.5 Ordre de travail (une conversation par sprint)
 
 | Sprint | Contenu | Qui |
@@ -768,7 +777,7 @@ Précisions du sprint 8b (rendu papier, `src/moteur3d.js`) :
 | 7 | Gameplay actif : l'île se dérègle, coups de pouce, voisinages et carte des habitats, demandes des habitants, effets visibles (fait le 31/10, section 12) | Claude |
 | 8a | Moteur WebGL à l'identique : instances, sol, décalques, vraies ombres portées, soleil qui tourne, repli Canvas 2D (fait le 31/10) | Claude |
 | 8b | Rendu papier : grain et fibres sur les faces, arêtes de pli, ombre de contact, eau qui reflète le ciel, effet maquette, vraie nuit (lumière de la cabane, étoiles), qualité qui baisse seule (fait le 31/10) | Claude |
-| 8c | Vie et mouvement : herbe dense qui ondule, arbres qui se balancent, aménagements qui se déplient à la pose, passage d'étape en 3D, qualité automatique pour téléphones, fichier allégé | Claude |
+| 8c | Vie et mouvement : herbe dense qui ondule, arbres qui se balancent, aménagements qui se déplient à la pose, passage d'étape en 3D, qualité automatique pour téléphones, fichier allégé (fait le 31/10) | Claude |
 
 ### 10.6 Critères de réussite (mesurés par simulation et par les tests)
 - Première arrivée d'espèce en moins de 30 s ; un événement visible toutes les 60 s au moins.
