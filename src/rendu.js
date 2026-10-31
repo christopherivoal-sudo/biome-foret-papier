@@ -26,7 +26,8 @@
   const HERBE = { printemps: [136, 190, 96], ete: [116, 172, 84], automne: [146, 162, 88], hiver: [150, 160, 112] };
   const HERBE_SECHE = [204, 188, 118], NEIGE = [243, 241, 235], EAU = [104, 160, 196], GLACE = [190, 216, 228];
   // Sprint 8c : souplesse au vent de chaque sorte de plante (moteur WebGL ; le Canvas 2D l'ignore).
-  const VENT = { herbe: 0.55, fleurs: 0.32, ronce: 0.04, arbre: 0.016, chene: 0.035 };
+  // 8.3 : réglages plus forts (le mouvement de la 8.2 était trop discret pour être vu).
+  const VENT = { herbe: 1.6, fleurs: 0.9, ronce: 0.1, arbre: 0.045, chene: 0.09 };
   const O_HERBE = { vent: VENT.herbe }, O_FLEURS = { vent: VENT.fleurs };
   const avecVent = (o, v) => (o ? Object.assign({ vent: v }, o) : { vent: v });
   // Effet « livre animé » : départ rapide, petit dépassement, puis retour en place.
@@ -269,9 +270,9 @@
         if (av === undefined) continue; // tuile gagnée par l'agrandissement : le pli de l'île s'en charge
         const x = (i % N) - C, z = ((i / N) | 0) - C;
         if (t.a || PLIABLES[t.c] || (t.nichoir && av.indexOf('n') < 0)) {
-          apparitions.set(i, { t0: temps, d: 0.85, grand: true });
-          effets.push({ t: 'anneau', x, z, age: 0, r: 0.7, c: '255,248,221' });
-        } else if (t.c === 'herbe' || t.c === 'fleurs') apparitions.set(i, { t0: temps, d: 0.5 });
+          apparitions.set(i, { t0: temps, d: 1.3, grand: true });
+          effets.push({ t: 'anneau', x, z, age: 0, r: 1.3, c: '255,248,221' });
+        } else if (t.c === 'herbe' || t.c === 'fleurs') apparitions.set(i, { t0: temps, d: 0.8 });
         else if (t.c === 'eau') effets.push({ t: 'anneau', x: x + 0.5, z: z + 0.5, age: 0, r: 1.2, c: '214,236,246' });
       }
     }
@@ -297,7 +298,7 @@
       if (cell !== undefined && apparitions.size) k *= deplie(cell);
       if (k === 1) { R3.add(mesh, x, y, z, ry, s, sy, o); return; }
       const kk = Math.max(0.03, k), o2 = Object.assign({}, o);
-      o2.tilt = (o2.tilt || 0) + Math.max(0, 1 - kk) * 1.1; // l'objet se relève comme une page de livre animé
+      o2.tilt = (o2.tilt || 0) + Math.max(0, 1 - kk) * 1.45; // l'objet se relève comme une page de livre animé
       R3.add(mesh, x, y * Math.min(1, kk), z, ry, s * (0.7 + 0.3 * Math.min(1.15, kk)), (sy || s) * kk, o2);
     }
     function facteurPliSol() {

@@ -91,10 +91,10 @@
         '\tfloat hh = max(0.0, mvPosition.y - pied.y);',
         '\tfloat av = dot(pied.xz, uVentDir);',
         '\tfloat ph = uTemps * ' + (a > 0.1 ? '2.3' : '1.25') + ' - av * 0.55 + pied.x * 0.11 - pied.z * 0.07;',
-        '\tfloat rafale = 0.55 + 0.45 * smoothstep(-0.2, 1.0, sin(uTemps * 0.42 - av * 0.16));',
+        '\tfloat rafale = 0.35 + 0.85 * smoothstep(-0.3, 1.0, sin(uTemps * 0.42 - av * 0.16));',
         '\tfloat b = (0.62 * sin(ph) + 0.28 * sin(ph * 2.37 + 1.3) + 0.35) * rafale * uVent * ' + a.toFixed(4) + ';',
         '\tmvPosition.xz += uVentDir * b * hh * hh;',
-        '\tmvPosition.y -= 0.35 * abs(b) * hh * hh * min(1.0, abs(b) * hh * 4.0); }'].join('\n') : '',
+        '\tmvPosition.y -= 0.3 * abs(b) * hh * hh * min(1.0, abs(b) * hh * 2.5); }'].join('\n') : '',
       monde ? '\tvMondeY = (modelMatrix * mvPosition).y;' : '',
       '\tmvPosition = modelViewMatrix * mvPosition;',
       '\tgl_Position = projectionMatrix * mvPosition;'].join('\n');

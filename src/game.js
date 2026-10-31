@@ -9,7 +9,7 @@
   const N = Core.N;
   const CLE_SAUVEGARDE = 'biome-foret-papier-v2', CLE_LANGUE = 'biome-langue';
   // Version affichée dans les réglages et annoncée au premier lancement après une mise à jour (sprint 6).
-  const VERSION = '8.2';
+  const VERSION = '8.3';
   const ETAPES_PROTO = data.etapes.map(e => e.id);
   const ORDRE_ESPECES = data.etapes.flatMap(e => e.debloque.especes).filter(id => data.especes[id]);
   const ACTIONS = ['semer_herbe', 'semer_fleurs', 'tas_pierres', 'mare', 'hotel_insectes', 'paillis', 'semer_ronce', 'planter_bouleau', 'tas_bois', 'nichoir'];

@@ -114,7 +114,7 @@ function verifier(c, m) { if (c) { ok++; console.log('  ✓ ' + m); } else { ko+
     const g = window.BIOME_JEU.rendu.moteur, prog = g.gl.info.programs.map(x => x.cacheKey).join(' ');
     let ombresVent = 0;
     for (const l of g.lots.values()) if (l.im && l.vent && l.ombre && l.im.customDepthMaterial) ombresVent++;
-    return { herbe: prog.includes('V0.5500'), arbre: prog.includes('V0.0160'), ombre: /ombreVent0\.0160/.test(prog), ombresVent, force: g.U.uVent.value };
+    return { herbe: prog.includes('V1.6000'), arbre: prog.includes('V0.0450'), ombre: /ombreVent0\.0450/.test(prog), ombresVent, force: g.U.uVent.value };
   });
   verifier(v.herbe && v.arbre && v.force > 0, `vent dans la carte graphique : herbe et bouleaux souples (force ${v.force.toFixed(2)})`);
   verifier(v.ombre && v.ombresVent > 0, `les ombres des arbres et des ronces bougent avec le vent (${v.ombresVent} modèles)`);
