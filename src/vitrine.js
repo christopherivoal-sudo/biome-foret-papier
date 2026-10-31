@@ -12,7 +12,7 @@
   const cam = rendu.camera;
   const NOMS = {}; for (const id in DATA.textes.fr.especes) NOMS[id] = DATA.textes.fr.especes[id].nom;
 
-  const reglages = { mode: 'ile', scene: 1, saison: 'auto', moment: 'auto', meteo: 'auto', vitesse: 1, papier: '' };
+  const reglages = { mode: 'ile', scene: 2, saison: 'auto', moment: 'auto', meteo: 'auto', vitesse: 1, papier: '' };
   let etat = null;
   function chargerScene(k) {
     reglages.scene = k;
@@ -164,7 +164,7 @@
   }
   // Paramètres d'adresse (captures automatiques) : ?mode=galerie&scene=2&saison=hiver&moment=nuit&meteo=orage&papier=washi
   const q = new URLSearchParams(location.search);
-  chargerScene(q.has('scene') ? +q.get('scene') : 1);
+  chargerScene(q.has('scene') ? +q.get('scene') : 2);
   for (const k of ['mode', 'saison', 'moment', 'meteo', 'papier']) if (q.has(k)) reglages[k] = q.get(k);
   if (q.has('vitesse')) reglages.vitesse = +q.get('vitesse');
   if (reglages.mode === 'galerie') cadrerGalerie();
